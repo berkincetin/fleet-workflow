@@ -1,0 +1,262 @@
+{
+  ".claude/settings.json": {
+    "mtime": 1783824210.9321482,
+    "ast_hash": "f6794ee9e595a8e1e64bc6eea94a6174",
+    "semantic_hash": "f6794ee9e595a8e1e64bc6eea94a6174"
+  },
+  "CLAUDE.md": {
+    "mtime": 1784053584.8783388,
+    "ast_hash": "f8dfb7a8688d98990f4d22bb66bc5430",
+    "semantic_hash": "f8dfb7a8688d98990f4d22bb66bc5430"
+  },
+  "docs/DEPARTMENT_SCENARIOS.md": {
+    "mtime": 1783380983.373909,
+    "ast_hash": "5f3432a426318078ed8476e261b3f870",
+    "semantic_hash": "5f3432a426318078ed8476e261b3f870"
+  },
+  "docs/IMPLEMENTATION_PLAN.md": {
+    "mtime": 1784053321.0475261,
+    "ast_hash": "60131db70f8fd9a999cb4ee8a9b491a7",
+    "semantic_hash": "60131db70f8fd9a999cb4ee8a9b491a7"
+  },
+  "docs/PROJECT_OVERVIEW.md": {
+    "mtime": 1783827005.3956454,
+    "ast_hash": "b6166f7afcfd3e3936004ca0e23e4c2b",
+    "semantic_hash": "b6166f7afcfd3e3936004ca0e23e4c2b"
+  },
+  "docs/TECHNICAL_REQUIREMENTS.md": {
+    "mtime": 1784053372.9260504,
+    "ast_hash": "972c436a12023c16fec31be159e445be",
+    "semantic_hash": "972c436a12023c16fec31be159e445be"
+  },
+  ".claude/settings.local.json": {
+    "mtime": 1783825268.557567,
+    "ast_hash": "206940b8fcab0cd0c1987baaad8ee4bd",
+    "semantic_hash": "206940b8fcab0cd0c1987baaad8ee4bd"
+  },
+  "docs/split/INDEX.md": {
+    "mtime": 1783827200.9710782,
+    "ast_hash": "11403159512fb6908ce4a9972d36e10a",
+    "semantic_hash": "11403159512fb6908ce4a9972d36e10a"
+  },
+  "docs/split/department-scenarios/00-wave-plan.md": {
+    "mtime": 1783827160.3409302,
+    "ast_hash": "e54cf3b6f32022a12ce344a489941694",
+    "semantic_hash": "e54cf3b6f32022a12ce344a489941694"
+  },
+  "docs/split/department-scenarios/01-support-copilot.md": {
+    "mtime": 1783827160.3409302,
+    "ast_hash": "a88fc43839371401b5a3a6c9cf125378",
+    "semantic_hash": "a88fc43839371401b5a3a6c9cf125378"
+  },
+  "docs/split/department-scenarios/02-self-service-analytics.md": {
+    "mtime": 1783827160.3419402,
+    "ast_hash": "0b0fd0686bfbca4becff46f9138f9992",
+    "semantic_hash": "0b0fd0686bfbca4becff46f9138f9992"
+  },
+  "docs/split/department-scenarios/03-dev-agent.md": {
+    "mtime": 1783827160.3429399,
+    "ast_hash": "9220b6431b1ddf17199afb56a98564e3",
+    "semantic_hash": "9220b6431b1ddf17199afb56a98564e3"
+  },
+  "docs/split/department-scenarios/04-invoice-reconciliation.md": {
+    "mtime": 1783827160.3429399,
+    "ast_hash": "d4532b3b573bdd9ee40464f2c95e8cd7",
+    "semantic_hash": "d4532b3b573bdd9ee40464f2c95e8cd7"
+  },
+  "docs/split/department-scenarios/05-hr-talent-onboarding.md": {
+    "mtime": 1783827160.3439617,
+    "ast_hash": "30a5cff4a370b94354a020b8aed5539c",
+    "semantic_hash": "30a5cff4a370b94354a020b8aed5539c"
+  },
+  "docs/split/department-scenarios/06-listing-quality.md": {
+    "mtime": 1783827160.344972,
+    "ast_hash": "5313882b51268b0d8118c8f6bfc84f4d",
+    "semantic_hash": "5313882b51268b0d8118c8f6bfc84f4d"
+  },
+  "docs/split/department-scenarios/07-vehicle-intake.md": {
+    "mtime": 1783827160.344972,
+    "ast_hash": "5817de705cbab971ee767943b1d42e84",
+    "semantic_hash": "5817de705cbab971ee767943b1d42e84"
+  },
+  "docs/split/department-scenarios/08-insights-publisher.md": {
+    "mtime": 1783827160.3459709,
+    "ast_hash": "fca6f35261cf070b3c6ddddca3feb1ca",
+    "semantic_hash": "fca6f35261cf070b3c6ddddca3feb1ca"
+  },
+  "docs/split/department-scenarios/09-dealer-onboarding.md": {
+    "mtime": 1783827160.3459709,
+    "ast_hash": "fe1202c1b40cf080ddef0b3b9d98767e",
+    "semantic_hash": "fe1202c1b40cf080ddef0b3b9d98767e"
+  },
+  "docs/split/department-scenarios/10-legal-document-review.md": {
+    "mtime": 1783827160.346971,
+    "ast_hash": "0f0e2a7d876d49c118d93b8c6874f68d",
+    "semantic_hash": "0f0e2a7d876d49c118d93b8c6874f68d"
+  },
+  "docs/split/department-scenarios/99-onboarding-checklist.md": {
+    "mtime": 1783827160.346971,
+    "ast_hash": "9340b2d750609c04d1556f3522bd04de",
+    "semantic_hash": "9340b2d750609c04d1556f3522bd04de"
+  },
+  "docs/split/implementation-plan/00-method-and-protocol.md": {
+    "mtime": 1783827160.324635,
+    "ast_hash": "f3f7b06c593fc2be788a99dde456dcdb",
+    "semantic_hash": "f3f7b06c593fc2be788a99dde456dcdb"
+  },
+  "docs/split/implementation-plan/99-demo-script-and-deferrables.md": {
+    "mtime": 1783827160.338453,
+    "ast_hash": "d9a1153cff7bde8cfeaada37ba798333",
+    "semantic_hash": "d9a1153cff7bde8cfeaada37ba798333"
+  },
+  "docs/split/implementation-plan/sprint-0-prerequisites.md": {
+    "mtime": 1784053384.415774,
+    "ast_hash": "3cb660f6e2dbeac92c86e6ebb7903ed6",
+    "semantic_hash": "3cb660f6e2dbeac92c86e6ebb7903ed6"
+  },
+  "docs/split/implementation-plan/sprint-1-repo-stack-ci-gateway.md": {
+    "mtime": 1784053407.678888,
+    "ast_hash": "a57bfceb68fda1e4dab0d18d6d2f63dd",
+    "semantic_hash": "a57bfceb68fda1e4dab0d18d6d2f63dd"
+  },
+  "docs/split/implementation-plan/sprint-10-demo-docs.md": {
+    "mtime": 1784053448.8821409,
+    "ast_hash": "8e2393a67f594deaa7392c6a320fc257",
+    "semantic_hash": "8e2393a67f594deaa7392c6a320fc257"
+  },
+  "docs/split/implementation-plan/sprint-2-llm-gateway-budgets.md": {
+    "mtime": 1783827160.3334408,
+    "ast_hash": "9cee7098e8aa4bdf01ca1236dde0f227",
+    "semantic_hash": "9cee7098e8aa4bdf01ca1236dde0f227"
+  },
+  "docs/split/implementation-plan/sprint-3-rag.md": {
+    "mtime": 1783827160.334439,
+    "ast_hash": "94f2c154345d56d17148c7bb7a3e5bdd",
+    "semantic_hash": "94f2c154345d56d17148c7bb7a3e5bdd"
+  },
+  "docs/split/implementation-plan/sprint-4-runtime-chat-first-agent.md": {
+    "mtime": 1784053417.1203947,
+    "ast_hash": "ed63da7c74798cdb8f631818f4f49a2e",
+    "semantic_hash": "ed63da7c74798cdb8f631818f4f49a2e"
+  },
+  "docs/split/implementation-plan/sprint-5-mcp-agents-approvals.md": {
+    "mtime": 1784053425.50039,
+    "ast_hash": "eb51dd100c1bb5c8ea763e4e39fc1db9",
+    "semantic_hash": "eb51dd100c1bb5c8ea763e4e39fc1db9"
+  },
+  "docs/split/implementation-plan/sprint-6-n8n-automations.md": {
+    "mtime": 1784053433.0665884,
+    "ast_hash": "8937457787067a2519eb8e04b6a2e51d",
+    "semantic_hash": "8937457787067a2519eb8e04b6a2e51d"
+  },
+  "docs/split/implementation-plan/sprint-7-admin-observability.md": {
+    "mtime": 1783827160.3364398,
+    "ast_hash": "fe0a1b84c7fcbc79b7db18c15bf26501",
+    "semantic_hash": "fe0a1b84c7fcbc79b7db18c15bf26501"
+  },
+  "docs/split/implementation-plan/sprint-8-kvkk-lane.md": {
+    "mtime": 1784053441.2895353,
+    "ast_hash": "c7b4d33898af4d8e39e9ae690470644c",
+    "semantic_hash": "c7b4d33898af4d8e39e9ae690470644c"
+  },
+  "docs/split/implementation-plan/sprint-9-hardening.md": {
+    "mtime": 1783827160.3369458,
+    "ast_hash": "61732a907dab2118c8a2b6349ebe6233",
+    "semantic_hash": "61732a907dab2118c8a2b6349ebe6233"
+  },
+  "docs/split/project-overview/01-vision-and-problem.md": {
+    "mtime": 1783827160.3109555,
+    "ast_hash": "24cd3a135a16d9da7f0a131760512abd",
+    "semantic_hash": "24cd3a135a16d9da7f0a131760512abd"
+  },
+  "docs/split/project-overview/02-platform-modules.md": {
+    "mtime": 1783827160.312109,
+    "ast_hash": "410fa8881ace10d7d66cf148b6e98bc2",
+    "semantic_hash": "410fa8881ace10d7d66cf148b6e98bc2"
+  },
+  "docs/split/project-overview/03-department-use-cases.md": {
+    "mtime": 1783827160.313488,
+    "ast_hash": "fb3579ba529626d6d7bdcf12f04bc713",
+    "semantic_hash": "fb3579ba529626d6d7bdcf12f04bc713"
+  },
+  "docs/split/project-overview/04-tech-map-rollout-metrics.md": {
+    "mtime": 1783827160.313488,
+    "ast_hash": "70249e8918db90472038cfffa075d12a",
+    "semantic_hash": "70249e8918db90472038cfffa075d12a"
+  },
+  "docs/split/technical-requirements/01-goals-principles.md": {
+    "mtime": 1783827160.315967,
+    "ast_hash": "bea5f1ad54e63cb4d4c8b19b1ba831bd",
+    "semantic_hash": "bea5f1ad54e63cb4d4c8b19b1ba831bd"
+  },
+  "docs/split/technical-requirements/02-architecture.md": {
+    "mtime": 1783827160.3169768,
+    "ast_hash": "5affee6fe17dbc3f54cd1d56a21a80d5",
+    "semantic_hash": "5affee6fe17dbc3f54cd1d56a21a80d5"
+  },
+  "docs/split/technical-requirements/03-tech-stack.md": {
+    "mtime": 1784053461.7007332,
+    "ast_hash": "14f5bc5ac8820a0cd8ddd0b77662c487",
+    "semantic_hash": "14f5bc5ac8820a0cd8ddd0b77662c487"
+  },
+  "docs/split/technical-requirements/04-model-management-gateway.md": {
+    "mtime": 1783827160.3169768,
+    "ast_hash": "4b43573d337724e5fc86beb4fc05d3f1",
+    "semantic_hash": "4b43573d337724e5fc86beb4fc05d3f1"
+  },
+  "docs/split/technical-requirements/05-cost-token-optimization.md": {
+    "mtime": 1783827160.3184829,
+    "ast_hash": "3b2ac527d2efc9f28e2687fcf7421a90",
+    "semantic_hash": "3b2ac527d2efc9f28e2687fcf7421a90"
+  },
+  "docs/split/technical-requirements/06-observability.md": {
+    "mtime": 1783827160.3184829,
+    "ast_hash": "2a1f37e2f116663038aa290df4206080",
+    "semantic_hash": "2a1f37e2f116663038aa290df4206080"
+  },
+  "docs/split/technical-requirements/07-security.md": {
+    "mtime": 1783827160.3194926,
+    "ast_hash": "482db456c6fcdc85f5d4749612d45847",
+    "semantic_hash": "482db456c6fcdc85f5d4749612d45847"
+  },
+  "docs/split/technical-requirements/08-privacy-kvkk.md": {
+    "mtime": 1783827160.3194926,
+    "ast_hash": "590bee7dffb3779c183aee232a2a619a",
+    "semantic_hash": "590bee7dffb3779c183aee232a2a619a"
+  },
+  "docs/split/technical-requirements/09-guardrails-hitl.md": {
+    "mtime": 1783827160.320492,
+    "ast_hash": "936f22614b9ab2d3a8a1a79d5ab7f9ae",
+    "semantic_hash": "936f22614b9ab2d3a8a1a79d5ab7f9ae"
+  },
+  "docs/split/technical-requirements/10-scalability-capacity.md": {
+    "mtime": 1783827160.320492,
+    "ast_hash": "d9ce5498fd73cc45910105effcfeccf2",
+    "semantic_hash": "d9ce5498fd73cc45910105effcfeccf2"
+  },
+  "docs/split/technical-requirements/11-data-model.md": {
+    "mtime": 1783827160.321626,
+    "ast_hash": "b074194e9ae7162b06108d6703e97d7d",
+    "semantic_hash": "b074194e9ae7162b06108d6703e97d7d"
+  },
+  "docs/split/technical-requirements/12-screens.md": {
+    "mtime": 1783827160.321626,
+    "ast_hash": "9420d2abe436fd5d923dbd6fdca2de4f",
+    "semantic_hash": "9420d2abe436fd5d923dbd6fdca2de4f"
+  },
+  "docs/split/technical-requirements/13-testing-strategy.md": {
+    "mtime": 1784053469.421288,
+    "ast_hash": "e858afaabcb0105caf5705c2867f2e33",
+    "semantic_hash": "e858afaabcb0105caf5705c2867f2e33"
+  },
+  "docs/split/technical-requirements/14-environments-cicd-backup.md": {
+    "mtime": 1784053483.2600932,
+    "ast_hash": "88ca32fe736a0715004442b381a9142a",
+    "semantic_hash": "88ca32fe736a0715004442b381a9142a"
+  },
+  "docs/split/technical-requirements/15-phase-map-risks.md": {
+    "mtime": 1783827160.322634,
+    "ast_hash": "907c01a23ada29c7bc40d98e3033ef6c",
+    "semantic_hash": "907c01a23ada29c7bc40d98e3033ef6c"
+  }
+}

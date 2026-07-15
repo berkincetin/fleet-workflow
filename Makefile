@@ -8,7 +8,7 @@ dev: ## boot the full local dev stack
 down: ## stop the dev stack
 	$(COMPOSE) down
 
-lint: ## ruff + mypy (Python) and eslint + tsc (web)
+lint: ## ruff + mypy (Python) and eslint (web); tsc/typecheck wired in when web gains real code
 	uv run ruff check .
 	-uv run mypy apps packages
 	pnpm -r --if-present lint

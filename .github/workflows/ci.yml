@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   lint:
@@ -78,7 +79,7 @@ jobs:
           push: false
           load: true
       - name: Trivy scan
-        uses: aquasecurity/trivy-action@v0.29.0
+        uses: aquasecurity/trivy-action@v0.33.1
         with:
           image-ref: fleet-api:ci
           severity: HIGH,CRITICAL

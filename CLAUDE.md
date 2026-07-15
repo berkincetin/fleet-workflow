@@ -64,7 +64,7 @@ Definition of done for any task: `make lint && make test` green; evals run if ag
 The platform is developed on **`local` only** (see TRD §14 — `test`/`demo/staging`/`prod` are server-side infrastructure stood up at release). Git flow:
 - **Never push to `main` directly.** `main` is branch-protected; work lands via PR and merges only after the required GitHub Actions checks (lint+typecheck, unit, testcontainers integration, security scans, image build) pass. This is the enforcement point for "no commit ships without passing CI" — Actions gates the *merge*, and a local `pre-push` hook runs lint+unit before a push.
 - **Commit messages:** a single sentence in English summarizing the change — no body, no bullet list — unless the user asks otherwise. **Do not** add a `Claude`/AI byline and **do not** add a `Co-Authored-By` trailer.
-- **Do not run `git commit` yourself.** Write the message; the user runs the commit (and merges the PR) — unless they explicitly tell you to commit (e.g. "commit'i at").
+- **Commit automatically in this repo.** In `fleet-workflow`, run `git commit` yourself as part of completing each task/stage — the user does not want to commit by hand here (decided 2026-07-15). Use the message rules above (single-sentence English subject, no AI byline, no `Co-Authored-By`). Work still lands on a feature branch and merges to `main` via PR only after the required CI checks pass — auto-committing does **not** mean pushing straight to protected `main`. This repo-specific rule overrides the global "only write the message" default in `~/.claude/CLAUDE.md`.
 - Feature branches for task batches; the Dev Agent's own branches use the `agent/*` prefix (guardrail) and target the *sandbox* repo from prerequisite 0.3, not this repo.
 
 ## Task Execution Protocol
@@ -95,9 +95,9 @@ Work is assigned by task number from `docs/IMPLEMENTATION_PLAN.md` (e.g. "1.1-1.
    a. Run the full gate green: `make lint && make test` (unit + testcontainers integration) — **and bring the stack up with `make dev` to run the integration/AC checks against real containers, not just mocks**; `make eval ALL=1` if any agent changed.
    b. Write a durable sprint report to `docs/reports/sprint-<N>.md` (create `docs/reports/` on first use): tasks + AC results, what was tested and how (unit + docker integration commands and their output), issues and resolutions, deviations/TODOs. This is the persisted version of the step-4 findings report — the chat summary is not the record.
    c. Refresh the knowledge graph: `/graphify . --update`.
-   d. Prepare the commit/PR: write the single-sentence English commit message (no AI byline, no `Co-Authored-By` — see *Commit & Branch Convention*) and **stop for the user to commit and open/merge the PR** — do not run `git commit` or push unless explicitly told to.
+   d. Commit and open the PR: write the single-sentence English commit message (no AI byline, no `Co-Authored-By` — see *Commit & Branch Convention*), **commit it yourself on the feature branch, and push + open the PR** so CI runs. Do not merge to protected `main` yourself — the PR merges only after the required CI checks are green.
 
-A task is not done until its AC is verified (unit **and** docker-integration where the task has an integration surface), the findings report has been delivered, and its `docs/PROGRESS.md` entry is written. A sprint is not done until its `docs/reports/sprint-<N>.md` report is written, the graph is refreshed, and the commit message is ready for the user.
+A task is not done until its AC is verified (unit **and** docker-integration where the task has an integration surface), the findings report has been delivered, and its `docs/PROGRESS.md` entry is written. A sprint is not done until its `docs/reports/sprint-<N>.md` report is written, the graph is refreshed, and the work is committed and pushed as a PR.
 
 ## Non-Negotiable Rules
 1. **LLM calls only via the gateway client** (`runtime/core/llm/`). Importing provider SDKs (openai/anthropic/…) anywhere else fails CI (import-linter contract).

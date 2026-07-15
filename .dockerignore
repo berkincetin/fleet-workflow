@@ -1,0 +1,16 @@
+# Docker reads .dockerignore from the build CONTEXT root. Our images build with
+# context = repo root (docker build -f apps/api/Dockerfile .), so the effective
+# ignore list lives here, not next to the Dockerfile.
+**/__pycache__
+**/*.pyc
+.venv
+.git
+node_modules
+**/node_modules
+.next
+**/.next
+apps/web
+docs
+graphify-out
+.superpowers
+tests

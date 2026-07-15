@@ -6,6 +6,16 @@ resolution-markers = [
     "python_full_version < '3.15'",
 ]
 
+[manifest]
+members = [
+    "fleet",
+    "fleet-api",
+    "fleet-mcp",
+    "fleet-rag",
+    "fleet-runtime",
+    "fleet-shared",
+]
+
 [[package]]
 name = "ast-serialize"
 version = "0.6.0"
@@ -78,6 +88,31 @@ dev = [
     { name = "pytest-asyncio", specifier = ">=0.24" },
     { name = "ruff", specifier = ">=0.6" },
 ]
+
+[[package]]
+name = "fleet-api"
+version = "0.1.0"
+source = { virtual = "apps/api" }
+
+[[package]]
+name = "fleet-mcp"
+version = "0.1.0"
+source = { virtual = "apps/mcp" }
+
+[[package]]
+name = "fleet-rag"
+version = "0.1.0"
+source = { virtual = "apps/rag" }
+
+[[package]]
+name = "fleet-runtime"
+version = "0.1.0"
+source = { virtual = "apps/runtime" }
+
+[[package]]
+name = "fleet-shared"
+version = "0.1.0"
+source = { virtual = "packages/shared" }
 
 [[package]]
 name = "iniconfig"

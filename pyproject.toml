@@ -6,7 +6,10 @@ requires-python = ">=3.12"
 readme = "README.md"
 
 [tool.uv.workspace]
-members = ["apps/*", "packages/*"]
+# apps/web is a Next.js (pnpm) package, not a Python member — list the Python apps explicitly
+# so the apps/* glob does not pull apps/web into the uv workspace.
+members = ["apps/api", "apps/runtime", "apps/rag", "apps/mcp", "packages/*"]
+exclude = ["apps/web"]
 
 [tool.uv]
 # dev dependencies shared across the workspace

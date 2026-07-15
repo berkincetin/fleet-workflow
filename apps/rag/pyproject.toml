@@ -1,0 +1,5 @@
+[project]
+name = "fleet-rag"
+version = "0.1.0"
+description = "Fleet RAG pipeline"
+requires-python = ">=3.12"

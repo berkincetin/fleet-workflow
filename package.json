@@ -1,0 +1,9 @@
+{
+  "name": "fleet",
+  "private": true,
+  "packageManager": "pnpm@10.6.5",
+  "scripts": {
+    "lint": "pnpm -r --if-present lint",
+    "build": "pnpm -r --if-present build"
+  }
+}

@@ -1,0 +1,5 @@
+[project]
+name = "fleet-runtime"
+version = "0.1.0"
+description = "Fleet LangGraph runtime"
+requires-python = ">=3.12"

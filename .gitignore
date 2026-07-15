@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+# Node
+node_modules/
+.next/
+# Env / secrets
+.env
+.env.*
+!.env.example
+# Build / data
+dist/
+*.egg-info/
+# OS
+.DS_Store
+Thumbs.db
+# Superpowers subagent-driven-development scratch (briefs, reports, review diffs, ledger)
+.superpowers/

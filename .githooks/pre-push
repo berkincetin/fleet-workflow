@@ -12,6 +12,8 @@ echo "[pre-push] ruff..."
 uv run ruff check .
 
 echo "[pre-push] mypy (non-blocking while skeleton is untyped)..."
+# `|| true` is valid here because this runs in real bash; the Makefile uses a
+# make `-` prefix for the same effect because make dispatches recipes via cmd.exe.
 uv run mypy apps packages || true
 
 echo "[pre-push] web lint..."

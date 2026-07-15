@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Fleet pre-push hook — block a push if lint or unit tests fail.
+set -euo pipefail
+
+echo "[pre-push] running lint..."
+make lint
+
+echo "[pre-push] running unit tests..."
+make test
+
+echo "[pre-push] OK"

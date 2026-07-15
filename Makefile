@@ -10,7 +10,7 @@ down: ## stop the dev stack
 
 lint: ## ruff + mypy (Python) and eslint + tsc (web)
 	uv run ruff check .
-	uv run mypy apps packages || true
+	-uv run mypy apps packages
 	pnpm -r --if-present lint
 
 test: ## unit + integration (wired up in Stage B)

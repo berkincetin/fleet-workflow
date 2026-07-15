@@ -79,9 +79,15 @@ jobs:
           push: false
           load: true
       - name: Trivy scan
-        uses: aquasecurity/trivy-action@v0.33.1
-        with:
-          image-ref: fleet-api:ci
-          severity: HIGH,CRITICAL
-          exit-code: "1"
-          ignore-unfixed: true
+        # Run trivy from its official pinned image instead of trivy-action, whose
+        # setup step downloads the trivy binary from GitHub and is flaky on hosted
+        # runners. This scans the just-built image via the mounted Docker socket.
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "${HOME}/.cache/trivy:/root/.cache/trivy" \
+            aquasec/trivy:0.65.0 image \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            fleet-api:ci

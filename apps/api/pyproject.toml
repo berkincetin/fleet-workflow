@@ -1,0 +1,5 @@
+[project]
+name = "fleet-api"
+version = "0.1.0"
+description = "Fleet API gateway"
+requires-python = ">=3.12"

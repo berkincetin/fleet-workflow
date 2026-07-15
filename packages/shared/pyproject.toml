@@ -1,0 +1,5 @@
+[project]
+name = "fleet-shared"
+version = "0.1.0"
+description = "Fleet shared types and client"
+requires-python = ">=3.12"

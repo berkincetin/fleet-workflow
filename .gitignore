@@ -18,3 +18,5 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
+# Superpowers subagent-driven-development scratch (briefs, reports, review diffs, ledger)
+.superpowers/

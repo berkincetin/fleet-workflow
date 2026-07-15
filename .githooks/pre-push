@@ -1,11 +1,23 @@
 #!/usr/bin/env bash
 # Fleet pre-push hook — block a push if lint or unit tests fail.
+#
+# Calls the tools directly (not `make`) so the hook works under Git's bundled
+# bash, whose PATH does not include a Windows-only `make`. We prepend the user
+# uv install dir so the correct `uv` (not an older one on PATH) is used.
 set -euo pipefail
 
-echo "[pre-push] running lint..."
-make lint
+export PATH="$HOME/.local/bin:$PATH"
 
-echo "[pre-push] running unit tests..."
-make test
+echo "[pre-push] ruff..."
+uv run ruff check .
+
+echo "[pre-push] mypy (non-blocking while skeleton is untyped)..."
+uv run mypy apps packages || true
+
+echo "[pre-push] web lint..."
+pnpm -r --if-present lint
+
+echo "[pre-push] unit tests..."
+uv run pytest tests/unit -q
 
 echo "[pre-push] OK"

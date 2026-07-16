@@ -21,7 +21,7 @@ dev-dependencies = [
     "mypy>=1.11",
     "pytest>=8",
     "pytest-asyncio>=0.24",
-    "testcontainers[postgres]>=4.8",
+    "testcontainers[postgres,keycloak]>=4.8",
     "psycopg2-binary>=2.9",
     "bandit>=1.7",
 ]

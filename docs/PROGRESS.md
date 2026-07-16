@@ -59,3 +59,27 @@ Notes / deviations:
 - Root pyproject now depends on `fleet-api` (+[tool.uv.sources]) so the member installs editable for tests/CI. Same pattern will be needed for runtime/rag/mcp/shared later.
 - asyncpg rejects multi-statement prepared statements → seed splits the two CREATE VIEW calls; view bodies unchanged, still atomic.
 - postgres init scripts only run on a FRESH pgdata volume — a pre-existing dev volume needs `docker compose down -v` once to get the langfuse DB.
+
+## 2026-07-16 — 1.3 (auth core) + 1.4 (middleware) + 1.5 (Helm/k3d) — DONE
+
+Built (Stage C of Sprint 1, branch `feat/sprint-1-stage-c`):
+- **1.3 auth core:** `create_app` factory (`app.py`), config (`config.py`, FLEET_ env), domain error model (`errors.py`, AppError/401/403), health/readiness (`/healthz`, `/readyz`), OIDC RS256 token validation vs Keycloak JWKS (`auth.py`), RBAC permission service enforcing TRD §7.1 (`rbac.py`, roles platform_admin/dept_admin/builder/approver/member), protected demo routes (`whoami.py`).
+- **1.4 middleware:** trace_id per request + X-Trace-Id header (`middleware.py` TraceIdMiddleware), append-only audit carrying trace_id (AuditMiddleware + `audit.py`), Redis fixed-window rate limiter → 429 (RateLimitMiddleware), OTel console span exporter (`otel.py`). OpenAPI → generated TS client in `packages/shared` (@fleet/shared, openapi.json + schema.d.ts).
+- **1.5:** Helm umbrella chart `infra/helm/fleet` (8 service templates, values + values-dev), k3d bootstrap (`infra/k3d/{cluster.yaml,up.sh}`), Makefile helm-lint/k3d-up/k3d-down.
+
+Verified (live):
+- AC 1.3: 401 (no token), 401 (bad token), 200 (member with CHAT), 403 (member lacks MANAGE_PLATFORM) — all pass against a REAL Keycloak 26 testcontainer.
+- AC 1.4: an audit_log row is written with the request's trace_id (asserted equal to X-Trace-Id header); rate limiter returns 429 past the limit — against real Postgres + Redis testcontainers.
+- AC 1.5: `make k3d-up` (up.sh) creates a k3d cluster and helm-installs the chart; **8/8 service pods reach Running** (postgres/redis/qdrant/minio/keycloak/prometheus/grafana/loki). Verified twice.
+- Full gate: `make lint` green; unit (3, no backend) + integration (8, real containers) all pass.
+
+Issues (symptom → root cause → resolution):
+- OIDC 200 case risk: Keycloak 26 tokens omit `aud` (use `azp`) → python-jose verify_aud=True means "match if present"; signature (RS256 vs JWKS) + issuer verified unconditionally → safe, verification NOT weakened (reviewer confirmed from library source). RESOLVED.
+- Middleware silently swallowed audit/rate-limit errors (implementer added `except: pass`, violating CLAUDE.md rule 6) to mask that the auth test built the app without Postgres/Redis → removed both excepts (audit = hard guarantee); gave test_auth_rbac.py real Postgres+Redis backing. RESOLVED.
+- create_app unconditionally wired middleware → unit test_health then needed Redis/Postgres → added `with_middleware` flag (default True); unit tests build with it False. RESOLVED.
+- `make k3d-up` kubectl couldn't reach the cluster: k3d wrote kubeconfig as host.docker.internal, which on Windows/Docker Desktop didn't resolve to the published loopback port → up.sh now pins the kubeconfig server to 127.0.0.1:<mapped-port>. RESOLVED.
+
+Notes / deviations:
+- Branch protection (GitHub side of task 1.0) is enabled by the controller right after this PR merges (it needs the CI checks to exist and be green first). Sprint 1 close (sprint report + graph refresh) follows.
+- helm/k3d/kubectl were installed via winget this session; on this machine they + `make` are not all on the Git-bash PATH simultaneously (same class as the Stage-A make/uv PATH note) — `make k3d-up` works when they share a PATH.
+- Forward (non-blocking): JWKS has no caching (fetch per request); `/readyz` opens a fresh engine per call; env.py URL-build duplicates db.py; NetworkPolicies not in the chart yet (Sprint 9 hardening). All recorded in the SDD ledger.

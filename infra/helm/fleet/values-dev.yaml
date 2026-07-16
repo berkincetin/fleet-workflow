@@ -1,0 +1,2 @@
+# Dev (k3d) overrides. Small footprint; ephemeral storage.
+namespace: fleet-dev

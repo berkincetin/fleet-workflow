@@ -1,6 +1,6 @@
 COMPOSE := docker compose -f infra/compose/docker-compose.dev.yml
 
-.PHONY: dev down lint test migrate seed scan
+.PHONY: dev down lint test migrate seed scan openapi client helm-lint k3d-up k3d-down
 
 dev: ## boot the full local dev stack
 	$(COMPOSE) up -d
@@ -26,3 +26,19 @@ seed: ## load synthetic data + analytics fixture views
 scan: ## security scans (bandit + gitleaks; trivy in CI)
 	-uv run bandit -r apps packages -ll
 	-gitleaks detect --no-banner --redact
+
+openapi: ## dump the API OpenAPI schema to packages/shared/openapi.json
+	uv run python -m fleet_api.export_openapi packages/shared/openapi.json
+
+client: openapi ## generate the TypeScript client from the OpenAPI schema
+	pnpm --filter @fleet/shared install
+	pnpm --filter @fleet/shared gen
+
+helm-lint: ## lint the umbrella chart
+	helm lint infra/helm/fleet -f infra/helm/fleet/values-dev.yaml
+
+k3d-up: ## create a local k3d cluster and install the chart
+	bash infra/k3d/up.sh
+
+k3d-down: ## delete the local k3d cluster
+	k3d cluster delete fleet

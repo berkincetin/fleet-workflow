@@ -51,11 +51,17 @@ def test_audit_row_has_trace_id(stack: str) -> None:
         async with engine.connect() as conn:
             row = (
                 await conn.execute(
-                    text("SELECT trace_id FROM audit_log ORDER BY id DESC LIMIT 1")
+                    text(
+                        "SELECT trace_id, actor FROM audit_log ORDER BY id DESC LIMIT 1"
+                    )
                 )
             ).first()
             assert row is not None
             assert row[0] == trace_id
+            # No Authorization header was sent, so the actor must not be
+            # spoofable via a client-controlled header; it falls back to
+            # "anonymous" rather than trusting an X-User header.
+            assert row[1] == "anonymous"
         await engine.dispose()
 
     asyncio.run(_check())

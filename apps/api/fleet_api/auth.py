@@ -36,14 +36,12 @@ def _extract_roles(claims: dict) -> set[str]:
     return set(realm.get("roles", []))
 
 
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),  # noqa: B008
-    settings: Settings = Depends(get_settings),  # noqa: B008
-) -> CurrentUser:
-    """Verify the bearer token and return the current user, or raise 401."""
-    if credentials is None or not credentials.credentials:
-        raise UnauthorizedError("missing bearer token")
-    token = credentials.credentials
+async def verify_bearer_token(token: str, settings: Settings) -> CurrentUser:
+    """Verify a raw bearer token string and return the current user, or raise 401.
+
+    This is the FastAPI-DI-free core of `get_current_user`, so non-request-scoped
+    callers (e.g. middleware) can verify a token without going through `Depends`.
+    """
     try:
         jwks = await _fetch_jwks(settings.oidc_jwks_url)
         claims = jwt.decode(
@@ -60,3 +58,30 @@ async def get_current_user(
     if not sub:
         raise UnauthorizedError("token missing sub")
     return CurrentUser(sub=sub, roles=_extract_roles(claims))
+
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),  # noqa: B008
+    settings: Settings = Depends(get_settings),  # noqa: B008
+) -> CurrentUser:
+    """Verify the bearer token and return the current user, or raise 401."""
+    if credentials is None or not credentials.credentials:
+        raise UnauthorizedError("missing bearer token")
+    return await verify_bearer_token(credentials.credentials, settings)
+
+
+async def try_current_user_sub(auth_header: str | None, settings: Settings) -> str | None:
+    """Best-effort verified `sub` extraction from a raw Authorization header value.
+
+    Returns None (never raises) when the header is missing, malformed, or the
+    token fails verification — callers that only need an audit actor should not
+    fail the request over a bad/absent token.
+    """
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return None
+    token = auth_header[len("Bearer ") :]
+    try:
+        user = await verify_bearer_token(token, settings)
+    except UnauthorizedError:
+        return None
+    return user.sub

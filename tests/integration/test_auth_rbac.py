@@ -156,6 +156,27 @@ def test_200_member_has_chat(
     assert r.status_code == 200
     assert "member" in r.json()["roles"]
 
+    # The audit trail's actor must come from the verified token's sub, not a
+    # client-supplied header: confirm the latest audit row matches the caller.
+    import asyncio
+
+    from fleet_api.db import get_engine
+    from sqlalchemy import text
+
+    async def _check_actor() -> None:
+        engine = get_engine()
+        async with engine.connect() as conn:
+            row = (
+                await conn.execute(
+                    text("SELECT actor FROM audit_log ORDER BY id DESC LIMIT 1")
+                )
+            ).first()
+            assert row is not None
+            assert row[0] == r.json()["sub"]
+        await engine.dispose()
+
+    asyncio.run(_check_actor())
+
 
 def test_403_member_lacks_admin(
     keycloak: str, backing_stack: None, monkeypatch: pytest.MonkeyPatch

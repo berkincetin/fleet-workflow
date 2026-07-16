@@ -6,6 +6,8 @@ import time
 
 import redis.asyncio as redis
 from fleet_api.audit import write_audit
+from fleet_api.auth import try_current_user_sub
+from fleet_api.config import get_settings
 from fleet_api.db import get_engine
 from fleet_api.otel import new_trace_id
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -30,12 +32,20 @@ class AuditMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         response = await call_next(request)
         trace_id = getattr(request.state, "trace_id", None)
+        # Derive the actor from the cryptographically-verified token subject,
+        # never from a client-controlled header. A missing/invalid token still
+        # yields an audit row, just attributed to "anonymous".
+        sub = await try_current_user_sub(
+            request.headers.get("Authorization"), get_settings()
+        )
+        actor = sub or "anonymous"
+        actor_type = "user" if sub else "anonymous"
         engine = get_engine()
         try:
             await write_audit(
                 engine,
-                actor=request.headers.get("X-User", "anonymous"),
-                actor_type="user",
+                actor=actor,
+                actor_type=actor_type,
                 action=f"{request.method} {request.url.path}",
                 entity="http_request",
                 entity_id=str(response.status_code),

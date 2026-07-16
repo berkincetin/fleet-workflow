@@ -41,9 +41,6 @@ class AuditMiddleware(BaseHTTPMiddleware):
                 entity_id=str(response.status_code),
                 trace_id=trace_id,
             )
-        except Exception:
-            # If the audit database is unavailable, log but do not fail the request.
-            pass
         finally:
             await engine.dispose()
         return response
@@ -66,9 +63,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             count = await r.incr(key)
             if count == 1:
                 await r.expire(key, 60)
-        except Exception:
-            # If Redis is unavailable, skip rate limiting but allow the request.
-            return await call_next(request)
         finally:
             await r.aclose()
         if count > self._limit:

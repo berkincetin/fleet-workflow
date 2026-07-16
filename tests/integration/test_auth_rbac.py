@@ -3,6 +3,9 @@
 
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 import time
 
 import httpx
@@ -10,6 +13,8 @@ import pytest
 from fastapi.testclient import TestClient
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
+from testcontainers.postgres import PostgresContainer
+from testcontainers.redis import RedisContainer
 
 REALM = {
     "realm": "fleet",
@@ -77,6 +82,29 @@ def keycloak() -> str:
         yield base
 
 
+@pytest.fixture(scope="module")
+def backing_stack():
+    """Real Postgres + Redis so the audit/rate-limit middleware runs for real
+    instead of being bypassed, matching test_middleware.py's setup."""
+    with PostgresContainer("postgres:16") as pg, RedisContainer("redis:7") as rc:
+        raw = pg.get_connection_url()  # postgresql+psycopg2://...
+        os.environ["FLEET_DATABASE_URL"] = raw
+        subprocess.run(
+            [sys.executable, "-m", "alembic", "-c",
+             "infra/migrations/alembic.ini", "upgrade", "head"],
+            check=True,
+            env={**os.environ},
+        )
+        async_url = raw.replace("+psycopg2", "+asyncpg")
+        redis_host = rc.get_container_host_ip()
+        redis_port = rc.get_exposed_port(6379)
+        os.environ["FLEET_DATABASE_URL"] = async_url
+        os.environ["FLEET_REDIS_URL"] = f"redis://{redis_host}:{redis_port}/0"
+        # High enough that the auth test's handful of requests never trips 429.
+        os.environ["FLEET_RATE_LIMIT_PER_MINUTE"] = "1000"
+        yield
+
+
 def _token(base: str, username: str, password: str) -> str:
     resp = httpx.post(
         f"{base}/realms/fleet/protocol/openid-connect/token",
@@ -104,18 +132,24 @@ def _client(base: str, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     return TestClient(create_app())
 
 
-def test_401_without_token(keycloak: str, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_401_without_token(
+    keycloak: str, backing_stack: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
     client = _client(keycloak, monkeypatch)
     assert client.get("/whoami").status_code == 401
 
 
-def test_401_bad_token(keycloak: str, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_401_bad_token(
+    keycloak: str, backing_stack: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
     client = _client(keycloak, monkeypatch)
     r = client.get("/whoami", headers={"Authorization": "Bearer not-a-jwt"})
     assert r.status_code == 401
 
 
-def test_200_member_has_chat(keycloak: str, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_200_member_has_chat(
+    keycloak: str, backing_stack: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
     token = _token(keycloak, "m", "password123")
     client = _client(keycloak, monkeypatch)
     r = client.get("/whoami", headers={"Authorization": f"Bearer {token}"})
@@ -123,7 +157,9 @@ def test_200_member_has_chat(keycloak: str, monkeypatch: pytest.MonkeyPatch) -> 
     assert "member" in r.json()["roles"]
 
 
-def test_403_member_lacks_admin(keycloak: str, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_403_member_lacks_admin(
+    keycloak: str, backing_stack: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
     token = _token(keycloak, "m", "password123")
     client = _client(keycloak, monkeypatch)
     r = client.get("/admin-only", headers={"Authorization": f"Bearer {token}"})

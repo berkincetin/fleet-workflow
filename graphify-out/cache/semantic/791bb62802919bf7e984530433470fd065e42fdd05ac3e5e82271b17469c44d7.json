@@ -1,0 +1,1 @@
+{"nodes": [{"id": "infra_compose_alertmanager_alertmanager_alertmanager_config", "label": "Alertmanager Config (devnull route)", "file_type": "document", "source_file": "infra/compose/alertmanager/alertmanager.yml", "source_location": "route.receiver", "source_url": null, "captured_at": null, "author": null, "contributor": null}], "edges": [], "hyperedges": []}

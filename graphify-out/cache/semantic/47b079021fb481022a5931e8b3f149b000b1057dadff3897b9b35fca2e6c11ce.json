@@ -1,0 +1,1 @@
+{"nodes": [{"id": "infra_compose_loki_loki_config_loki_config", "label": "Loki Config (filesystem storage)", "file_type": "document", "source_file": "infra/compose/loki/loki-config.yml", "source_location": "root", "source_url": null, "captured_at": null, "author": null, "contributor": null}], "edges": [], "hyperedges": []}

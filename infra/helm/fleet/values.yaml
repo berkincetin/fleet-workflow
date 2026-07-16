@@ -1,0 +1,35 @@
+# Default values. Per-env overrides live in values-<env>.yaml.
+namespace: fleet
+
+postgres:
+  image: postgres:16
+  user: fleet
+  password: fleet_dev_pw
+  db: fleet
+
+redis:
+  image: redis:7
+
+qdrant:
+  image: qdrant/qdrant:v1.12.4
+
+minio:
+  image: minio/minio:RELEASE.2024-12-13T22-19-12Z
+  rootUser: fleet
+  rootPassword: fleet_dev_pw
+
+keycloak:
+  image: quay.io/keycloak/keycloak:26.0
+  adminUser: admin
+  adminPassword: admin
+
+prometheus:
+  image: prom/prometheus:v3.0.1
+
+grafana:
+  image: grafana/grafana:11.4.0
+  adminUser: admin
+  adminPassword: admin
+
+loki:
+  image: grafana/loki:3.3.2

@@ -1,0 +1,2 @@
+Fleet dev stack installed into namespace {{ include "fleet.namespace" . }}.
+Run: kubectl -n {{ include "fleet.namespace" . }} get pods

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: fleet
+description: Fleet platform umbrella chart (dev/test/staging/prod via per-env values).
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

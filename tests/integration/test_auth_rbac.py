@@ -35,7 +35,7 @@ REALM = {
     "roles": {"realm": [{"name": "member"}, {"name": "builder"}]},
     "users": [
         {
-            "username": "m",
+            "username": "member",
             "enabled": True,
             "email": "m@fleet.test",
             "emailVerified": True,
@@ -48,37 +48,106 @@ REALM = {
 }
 
 
+def _admin_token(base: str) -> str:
+    resp = httpx.post(
+        f"{base}/realms/master/protocol/openid-connect/token",
+        data={
+            "client_id": "admin-cli",
+            "grant_type": "password",
+            "username": "admin",
+            "password": "admin",
+        },
+        timeout=10,
+    )
+    resp.raise_for_status()
+    return resp.json()["access_token"]
+
+
+def _provision_realm(base: str) -> None:
+    """Create the fleet realm (client, roles, user) via the Keycloak Admin
+    REST API instead of --import-realm. testcontainers 4.14.2 has no
+    pre-start "copy file into container" primitive (no
+    with_copy_file_to_container / put_archive-before-start hook on
+    DockerContainer), and a host-tempdir volume mount only lands inside the
+    container on setups where the Docker host and daemon share a filesystem
+    (true for local Docker Desktop, false for GitHub Actions ubuntu
+    runners). Provisioning over the Admin API after Keycloak is already
+    listening works identically in both environments.
+    """
+    token = _admin_token(base)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    realm_body = {
+        "realm": REALM["realm"],
+        "enabled": REALM["enabled"],
+        "sslRequired": REALM["sslRequired"],
+        "requiredCredentials": REALM["requiredCredentials"],
+        "passwordPolicy": REALM["passwordPolicy"],
+    }
+    r = httpx.post(f"{base}/admin/realms", json=realm_body, headers=headers, timeout=10)
+    r.raise_for_status()
+
+    for role in REALM["roles"]["realm"]:
+        r = httpx.post(
+            f"{base}/admin/realms/fleet/roles", json=role, headers=headers, timeout=10
+        )
+        r.raise_for_status()
+
+    client = REALM["clients"][0]
+    r = httpx.post(
+        f"{base}/admin/realms/fleet/clients", json=client, headers=headers, timeout=10
+    )
+    r.raise_for_status()
+
+    for user in REALM["users"]:
+        realm_roles = user["realmRoles"]
+        user_body = {k: v for k, v in user.items() if k != "realmRoles"}
+        r = httpx.post(
+            f"{base}/admin/realms/fleet/users", json=user_body, headers=headers, timeout=10
+        )
+        r.raise_for_status()
+        user_id = r.headers["Location"].rstrip("/").rsplit("/", 1)[-1]
+
+        role_reprs = []
+        for role_name in realm_roles:
+            rr = httpx.get(
+                f"{base}/admin/realms/fleet/roles/{role_name}", headers=headers, timeout=10
+            )
+            rr.raise_for_status()
+            role_reprs.append(rr.json())
+        r = httpx.post(
+            f"{base}/admin/realms/fleet/users/{user_id}/role-mappings/realm",
+            json=role_reprs,
+            headers=headers,
+            timeout=10,
+        )
+        r.raise_for_status()
+
+
 @pytest.fixture(scope="module")
 def keycloak() -> str:
-    import json
-    import tempfile
-
     container = (
         DockerContainer("quay.io/keycloak/keycloak:26.0")
-        .with_command("start-dev --import-realm")
+        .with_command("start-dev")
         .with_env("KC_BOOTSTRAP_ADMIN_USERNAME", "admin")
         .with_env("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
         .with_exposed_ports(8080)
     )
-    # Write the realm to a temp dir mounted at the import path.
-    tmp = tempfile.mkdtemp()
-    with open(f"{tmp}/fleet-realm.json", "w", encoding="utf-8") as fh:
-        json.dump(REALM, fh)
-    container.with_volume_mapping(tmp, "/opt/keycloak/data/import", "ro")
     with container:
         wait_for_logs(container, "Listening on", timeout=120)
         host = container.get_container_host_ip()
         port = container.get_exposed_port(8080)
         base = f"http://{host}:{port}"
-        # Give the realm import a moment.
+        # Give the master realm's admin endpoints a moment to come up.
         for _ in range(30):
             try:
-                r = httpx.get(f"{base}/realms/fleet/.well-known/openid-configuration", timeout=3)
+                r = httpx.get(f"{base}/realms/master/.well-known/openid-configuration", timeout=3)
                 if r.status_code == 200:
                     break
             except httpx.HTTPError:
                 pass
             time.sleep(2)
+        _provision_realm(base)
         yield base
 
 
@@ -150,7 +219,7 @@ def test_401_bad_token(
 def test_200_member_has_chat(
     keycloak: str, backing_stack: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    token = _token(keycloak, "m", "password123")
+    token = _token(keycloak, "member", "password123")
     client = _client(keycloak, monkeypatch)
     r = client.get("/whoami", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 200
@@ -181,7 +250,7 @@ def test_200_member_has_chat(
 def test_403_member_lacks_admin(
     keycloak: str, backing_stack: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    token = _token(keycloak, "m", "password123")
+    token = _token(keycloak, "member", "password123")
     client = _client(keycloak, monkeypatch)
     r = client.get("/admin-only", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 403

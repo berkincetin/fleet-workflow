@@ -8,6 +8,10 @@ __pycache__/
 # Node
 node_modules/
 .next/
+# Playwright
+tests/e2e/test-results/
+tests/e2e/playwright-report/
+tests/e2e/.cache/
 # Env / secrets
 .env
 .env.*

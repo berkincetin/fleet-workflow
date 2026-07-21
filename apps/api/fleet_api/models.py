@@ -191,6 +191,16 @@ class Agent(Base):
         Numeric(4, 3), nullable=False, default=0.95
     )
     max_context_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=8000)
+    # RAG collections this agent may retrieve from (§8: agents cannot read
+    # collections above their level — enforced at query time, not here).
+    # A simple array column, not TRD §11's normalized schema — deliberately
+    # minimal for task 4.4's single-agent (Support Copilot) need; if a later
+    # sprint needs per-collection metadata on the association (e.g. a
+    # collection-specific top_k override) this should become a proper
+    # agent_collections join table instead of growing this column further.
+    collection_ids: Mapped[list[int]] = mapped_column(
+        ARRAY(BigInteger), nullable=False, default=list
+    )
     created_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

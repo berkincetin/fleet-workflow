@@ -1,19 +1,28 @@
-"""Chat: conversations, SSE-streamed messages, feedback (task 4.3, TRD §12).
+"""Chat: conversations, SSE-streamed messages, feedback (task 4.3/4.4, TRD §12).
 
 `POST /v1/conversations` creates a thread against an active, non-paused agent.
 `POST /v1/conversations/{id}/messages` streams the assistant's reply as
-Server-Sent Events: one `token` event per text delta (real upstream streaming
-via core.llm.client.LLMClient.reasoning_stream, TRD §5 "streaming everywhere"),
-then a `citations` event, then `done` carrying the persisted message id and
-trace_id. `POST /v1/messages/{id}/feedback` records a thumbs up/down and pushes
-it as a Langfuse score on that message's trace (§6) — the AC is "lands in
-Langfuse", not just the DB row.
+Server-Sent Events, then a `citations` event, then `done` carrying the
+persisted message id and trace_id. `POST /v1/messages/{id}/feedback` records a
+thumbs up/down and pushes it as a Langfuse score on that message's trace (§6)
+— the AC is "lands in Langfuse", not just the DB row.
 
-This endpoint calls the gateway client directly (RAG-less passthrough) rather
-than through core.graph — task 4.4 wires the real Support Copilot agent
-(guardrails/citations/semantic-cache/kill-switch, all built in 4.1/4.2) in as
-this endpoint's model; 4.3 proves the SSE/citation/feedback transport contract
-the UI is built against.
+Two reply paths, chosen per-agent by whether `agent.collection_ids` is set:
+- **RAG (Support Copilot and any future KB-backed agent):** fleet_rag's
+  answer_query() — embed -> hybrid retrieve -> generate -> structural grounding
+  check (TRD §9), the same pipeline task 3.3's /v1/rag/query test harness
+  exercises. This is a single non-streaming call (the citation-verification
+  retry loop needs the full answer before it can validate it), emitted as one
+  `token` event with the complete grounded text, then real citations.
+- **Plain passthrough (no collections configured):** real upstream token
+  streaming via core.llm.client.LLMClient.reasoning_stream (TRD §5 "streaming
+  everywhere") — what task 4.3 built and proved the SSE/feedback transport
+  contract against; citations are always empty on this path.
+
+fleet_rag is imported lazily inside the handler, not at module scope, matching
+the existing avoid-circular-dependency boundary in routers/documents.py and
+routers/rag_query.py (fleet-rag's pyproject depends on fleet-api, not the
+reverse).
 """
 
 from __future__ import annotations
@@ -32,7 +41,7 @@ from fastapi.responses import StreamingResponse
 from fleet_api.auth import CurrentUser, get_current_user
 from fleet_api.config import Settings, get_settings
 from fleet_api.db import get_session
-from fleet_api.models import Agent, Conversation, Feedback, Message, User
+from fleet_api.models import Agent, Collection, Conversation, Feedback, Message, User
 from fleet_api.rbac import Permission, require_permission
 from pydantic import BaseModel
 from redis.asyncio import Redis
@@ -128,6 +137,78 @@ def _sse(event: str, data: dict[str, Any]) -> str:
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
 
 
+async def _assert_agent_may_read_its_collections(session: AsyncSession, agent: Agent) -> None:
+    """§8: agents cannot read collections above their own sensitivity level."""
+    from core.llm.routing import Sensitivity
+
+    if not agent.collection_ids:
+        return
+    agent_level = Sensitivity.parse(agent.sensitivity)
+    rows = (
+        await session.execute(
+            select(Collection).where(Collection.id.in_(agent.collection_ids))
+        )
+    ).scalars().all()
+    for collection in rows:
+        if Sensitivity.parse(collection.sensitivity) > agent_level:
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    f"agent sensitivity {agent.sensitivity!r} cannot read collection "
+                    f"{collection.name!r} (sensitivity {collection.sensitivity!r})"
+                ),
+            )
+
+
+async def _rag_reply(
+    *, agent: Agent, user_content: str, llm_client: LLMClient, trace_id: str
+) -> tuple[str, list[dict[str, Any]]]:
+    """Grounded RAG answer over agent.collection_ids (task 4.4)."""
+    from fleet_rag.query.retrieve import Hit
+    from fleet_rag.query.service import AgentQueryConfig, answer_query
+    from fleet_rag.store.qdrant_store import collection_name, qdrant_client_from_env, search_hybrid
+
+    qdrant = qdrant_client_from_env()
+    collection_names = [collection_name(cid) for cid in agent.collection_ids]
+
+    def _searcher(
+        *, query_vector: list[float], top_k: int, keyword: str | None = None
+    ) -> list[Hit]:
+        hits: list[Hit] = []
+        for qname in collection_names:
+            points = search_hybrid(
+                qdrant, qname, query_vector=query_vector, top_k=top_k, keyword=keyword
+            )
+            hits.extend(
+                Hit(
+                    id=str(p.id),
+                    score=p.score,
+                    document_id=p.payload["document_id"],
+                    chunk_ref=p.payload["content_sha256"],
+                    content=p.payload["content"],
+                    redacted=p.payload.get("redacted", False),
+                )
+                for p in points
+            )
+        hits.sort(key=lambda h: h.score, reverse=True)
+        return hits[:top_k]
+
+    answer = await answer_query(
+        question=user_content,
+        searcher=_searcher,
+        embed_client=llm_client,
+        reasoning_client=llm_client,
+        config=AgentQueryConfig(top_k=5),
+        sensitivity=agent.sensitivity,
+        agent_id=str(agent.id),
+        trace_id=trace_id,
+    )
+    citations = [
+        {"chunk_ref": c.chunk_ref, "document_id": c.document_id} for c in answer.citations
+    ]
+    return answer.text, citations
+
+
 async def _stream_reply(
     *,
     session: AsyncSession,
@@ -143,23 +224,35 @@ async def _stream_reply(
     await session.flush()
 
     text = ""
-    try:
-        async for delta in llm_client.reasoning_stream(
-            [{"role": "system", "content": "You are a helpful assistant."},
-             {"role": "user", "content": user_content}],
-            sensitivity=agent.sensitivity,
-            agent_id=str(agent.id),
-            user_id=str(conversation.user_id),
-            trace_id=trace_id,
-        ):
-            text += delta
-            yield _sse("token", {"delta": delta})
-    except GatewayError as exc:
-        yield _sse("error", {"detail": str(exc)})
-        await session.commit()
-        return
-
     citations: list[dict[str, Any]] = []
+
+    if agent.collection_ids:
+        try:
+            text, citations = await _rag_reply(
+                agent=agent, user_content=user_content, llm_client=llm_client, trace_id=trace_id
+            )
+        except GatewayError as exc:
+            yield _sse("error", {"detail": str(exc)})
+            await session.commit()
+            return
+        yield _sse("token", {"delta": text})
+    else:
+        try:
+            async for delta in llm_client.reasoning_stream(
+                [{"role": "system", "content": "You are a helpful assistant."},
+                 {"role": "user", "content": user_content}],
+                sensitivity=agent.sensitivity,
+                agent_id=str(agent.id),
+                user_id=str(conversation.user_id),
+                trace_id=trace_id,
+            ):
+                text += delta
+                yield _sse("token", {"delta": delta})
+        except GatewayError as exc:
+            yield _sse("error", {"detail": str(exc)})
+            await session.commit()
+            return
+
     yield _sse("citations", {"citations": citations})
 
     assistant_message = Message(
@@ -200,6 +293,8 @@ async def send_message(
 
     if agent.status == "paused" or await killswitch.is_agent_paused(agent.name):
         raise HTTPException(status_code=409, detail="agent is paused")
+
+    await _assert_agent_may_read_its_collections(session, agent)
 
     llm_client = getattr(request.app.state, "llm_client", None) or await build_client()
 

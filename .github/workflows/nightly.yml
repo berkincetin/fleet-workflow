@@ -1,0 +1,108 @@
+name: Nightly
+
+on:
+  schedule:
+    # 03:00 UTC daily.
+    - cron: "0 3 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    # Needs real LLM provider credentials to generate a real grounded answer
+    # (the demo path calls the real gateway -> LiteLLM proxy -> provider, no
+    # mocks) — set these as repo secrets before this job can pass. Without
+    # them the ingest/chat steps still run but answers route through
+    # whichever fallback (or the local Ollama lane) is reachable.
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.7.12"
+      - run: uv sync
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "10.6.5"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+
+      - name: Start dev stack
+        run: |
+          cp .env.example .env
+          make dev
+          # make dev backgrounds compose; give services time to pass their
+          # healthchecks (Keycloak realm import is the slowest).
+          timeout 180 bash -c 'until curl -sf http://localhost:8080/realms/fleet/.well-known/openid-configuration > /dev/null; do sleep 3; done'
+
+      - name: Migrate + seed (incl. Support Copilot demo KB)
+        run: |
+          make migrate
+          make seed
+          make seed-docs
+
+      - name: Start API
+        run: |
+          uv run --package fleet-api uvicorn fleet_api.app:create_app --factory --port 8000 &
+          timeout 60 bash -c 'until curl -sf http://localhost:8000/healthz > /dev/null; do sleep 2; done'
+
+      - name: Build + start web (production — see tests/e2e/playwright.config.ts)
+        working-directory: apps/web
+        run: |
+          pnpm exec next build
+          AUTH_TRUST_HOST=true pnpm exec next start -p 3000 &
+          timeout 60 bash -c 'until curl -sf http://localhost:3000/api/auth/csrf > /dev/null; do sleep 2; done'
+
+      - name: Install Playwright browsers
+        working-directory: tests/e2e
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run E2E demo path
+        working-directory: tests/e2e
+        run: pnpm exec playwright test
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: tests/e2e/playwright-report/
+          retention-days: 14
+
+  eval:
+    runs-on: ubuntu-latest
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.7.12"
+      - run: uv sync
+
+      - name: Start dev stack
+        run: |
+          cp .env.example .env
+          make dev
+          timeout 180 bash -c 'until curl -sf http://localhost:8080/realms/fleet/.well-known/openid-configuration > /dev/null; do sleep 3; done'
+
+      - name: Migrate + seed (incl. Support Copilot demo KB)
+        run: |
+          make migrate
+          make seed
+          make seed-docs
+
+      - name: Run all agent evals
+        run: make eval ALL=1

@@ -40,6 +40,7 @@ class AgentIn(BaseModel):
     semantic_cache: bool = False
     semantic_cache_threshold: float = Field(default=0.95, ge=0, le=1)
     max_context_tokens: int = Field(default=8000, gt=0)
+    collection_ids: list[int] = Field(default_factory=list)
 
 
 class AgentOut(BaseModel):
@@ -54,6 +55,7 @@ class AgentOut(BaseModel):
     semantic_cache: bool
     semantic_cache_threshold: float
     max_context_tokens: int
+    collection_ids: list[int]
 
     model_config = {"from_attributes": True}
 

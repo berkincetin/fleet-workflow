@@ -1,0 +1,7 @@
+# Per-agent eval thresholds (TRD §13.4). `make eval AGENT=x` fails (exit 1)
+# if the agent's pass rate is below its threshold; CI blocks agent-affecting
+# PRs the same way.
+agents:
+  support_copilot:
+    dataset: datasets/support_copilot.jsonl
+    threshold: 0.90

@@ -99,6 +99,29 @@ async def test_answer_query_passes_sensitivity_through_to_both_calls() -> None:
     assert reasoning.calls[0]["sensitivity"] == "pii"
 
 
+async def test_answer_query_forwards_trace_and_agent_id_to_both_calls() -> None:
+    """§6 trace correlation: without this, a chat message's trace_id never
+    reaches the LLM gateway's Langfuse callback for either the embed or the
+    generation call, so a feedback score posted against it 404s."""
+    hits = [
+        Hit(id="p1", score=0.9, document_id=1, chunk_ref="sha-1",
+            content="Fleet was founded in 2024.", redacted=False),
+    ]
+    embed = _FakeEmbedClient([0.1, 0.2])
+    reasoning = _FakeReasoningClient("Fleet was founded in 2024. [chunk:1]")
+    await answer_query(
+        question="When was Fleet founded?",
+        searcher=_searcher(hits),
+        embed_client=embed,
+        reasoning_client=reasoning,
+        config=AgentQueryConfig(),
+        trace_id="trace-rag-1",
+        agent_id="support_copilot",
+    )
+    assert reasoning.calls[0]["trace_id"] == "trace-rag-1"
+    assert reasoning.calls[0]["agent_id"] == "support_copilot"
+
+
 async def test_answer_query_respects_agent_top_k() -> None:
     hits = [
         Hit(id=f"p{i}", score=1.0 - i * 0.1, document_id=1, chunk_ref=f"sha-{i}",

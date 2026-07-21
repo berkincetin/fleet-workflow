@@ -55,6 +55,50 @@ FROM generate_series(1, 500) AS g;
 """
 
 
+async def seed_support_copilot() -> None:
+    """Support Copilot demo agent + its cs-help-center/cs-procedures collections
+    (task 4.4, department scenario 01). Idempotent on unique names, so safe to
+    call every `make seed` alongside the general seed()."""
+    engine = get_engine(database_url())
+    async with engine.begin() as conn:
+        dept_id = (
+            await conn.execute(
+                text("SELECT id FROM departments WHERE name = 'Customer Service'")
+            )
+        ).scalar_one()
+
+        for name, sensitivity, retention_days in (
+            ("cs-help-center", "internal", None),
+            ("cs-procedures", "internal", None),
+        ):
+            await conn.execute(
+                text(
+                    "INSERT INTO collections (name, dept_id, sensitivity, retention_days, "
+                    "pii_policy) VALUES (:n, :d, :s, :r, 'redact') "
+                    "ON CONFLICT (name) DO NOTHING"
+                ),
+                {"n": name, "d": dept_id, "s": sensitivity, "r": retention_days},
+            )
+
+        help_center_id = (
+            await conn.execute(text("SELECT id FROM collections WHERE name = 'cs-help-center'"))
+        ).scalar_one()
+        procedures_id = (
+            await conn.execute(text("SELECT id FROM collections WHERE name = 'cs-procedures'"))
+        ).scalar_one()
+
+        await conn.execute(
+            text(
+                "INSERT INTO agents (name, dept_id, reasoning_model, utility_model, "
+                "sensitivity, semantic_cache, semantic_cache_threshold, max_context_tokens, "
+                "collection_ids) VALUES (:n, :d, 'reasoning', 'utility', 'internal', "
+                "true, 0.95, 12000, :cids) ON CONFLICT (name) DO NOTHING"
+            ),
+            {"n": "support_copilot", "d": dept_id, "cids": [help_center_id, procedures_id]},
+        )
+    await engine.dispose()
+
+
 async def seed() -> None:
     engine = get_engine(database_url())
     async with engine.begin() as conn:
@@ -102,6 +146,7 @@ async def seed() -> None:
 
 def main() -> None:
     asyncio.run(seed())
+    asyncio.run(seed_support_copilot())
 
 
 if __name__ == "__main__":

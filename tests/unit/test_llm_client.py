@@ -20,6 +20,10 @@ _MODELS = [
      "input_price_per_1k": 0.000075, "output_price_per_1k": 0.0003},
     {"name": "local-reasoning", "fleet_role": "reasoning", "sensitivity_clearance": "pii",
      "input_price_per_1k": 0.0, "output_price_per_1k": 0.0},
+    {"name": "embeddings", "fleet_role": "embeddings", "sensitivity_clearance": "internal",
+     "input_price_per_1k": 0.00002, "output_price_per_1k": 0.0},
+    {"name": "local-embeddings", "fleet_role": "embeddings", "sensitivity_clearance": "pii",
+     "input_price_per_1k": 0.0, "output_price_per_1k": 0.0},
 ]
 
 
@@ -30,6 +34,7 @@ class FakeTransport:
     def __init__(self, *, fail: bool = False) -> None:
         self.fail = fail
         self.calls: list[dict] = []
+        self.embed_calls: list[dict] = []
 
     async def complete(self, *, model: str, messages: list[dict], **kw: object) -> dict:
         self.calls.append({"model": model, "messages": messages, **kw})
@@ -39,6 +44,16 @@ class FakeTransport:
             "model": model,
             "choices": [{"message": {"role": "assistant", "content": "pong"}}],
             "usage": {"prompt_tokens": 10, "completion_tokens": 5},
+        }
+
+    async def embed(self, *, model: str, input: list[str], **kw: object) -> dict:
+        self.embed_calls.append({"model": model, "input": input, **kw})
+        if self.fail:
+            raise RuntimeError("all fallbacks exhausted")
+        return {
+            "model": model,
+            "data": [{"embedding": [0.1, 0.2, 0.3], "index": i} for i in range(len(input))],
+            "usage": {"prompt_tokens": 10, "completion_tokens": 0},
         }
 
 
@@ -117,3 +132,25 @@ async def test_transport_failure_raises_gateway_error_and_records_nothing() -> N
             [{"role": "user", "content": "hi"}], sensitivity="internal"
         )
     assert led.rows == []
+
+
+async def test_embeddings_routes_to_embeddings_model() -> None:
+    t, led = FakeTransport(), FakeLedger()
+    resp = await _client(t, led).embeddings(["chunk one", "chunk two"], sensitivity="internal")
+    assert t.embed_calls[0]["model"] == "embeddings"
+    assert t.embed_calls[0]["input"] == ["chunk one", "chunk two"]
+    assert len(resp.vectors) == 2
+    assert resp.model == "embeddings"
+
+
+async def test_embeddings_pii_routes_to_local_model() -> None:
+    t, led = FakeTransport(), FakeLedger()
+    resp = await _client(t, led).embeddings(["secret"], sensitivity="pii")
+    assert resp.model == "local-embeddings"
+
+
+async def test_embeddings_records_spend_row() -> None:
+    t, led = FakeTransport(), FakeLedger()
+    await _client(t, led).embeddings(["x"], sensitivity="internal", trace_id="trace-e")
+    assert len(led.rows) == 1
+    assert led.rows[0]["trace_id"] == "trace-e"

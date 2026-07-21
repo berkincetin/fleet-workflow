@@ -1,5 +1,29 @@
 [project]
 name = "fleet-rag"
 version = "0.1.0"
-description = "Fleet RAG pipeline"
+description = "Fleet RAG pipeline: ingestion, retrieval, citations"
 requires-python = ">=3.12"
+dependencies = [
+    "fleet-api",
+    "fleet-runtime",
+    "arq>=0.26",
+    "qdrant-client>=1.12,<1.13",
+    "minio>=7.2",
+    "presidio-analyzer>=2.2",
+    "pypdf>=5.0",
+    "python-docx>=1.1",
+    "pytesseract>=0.3",
+    "pillow>=11.0",
+    "httpx>=0.27",
+    "en-core-web-sm",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["fleet_rag"]
+
+[tool.uv.sources]
+en-core-web-sm = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl" }

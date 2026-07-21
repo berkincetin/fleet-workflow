@@ -21,6 +21,13 @@ class Settings(BaseSettings):
     # LiteLLM gateway (Sprint 2)
     litellm_base_url: str = "http://localhost:4000/v1"
     litellm_master_key: str = "sk-fleet-dev-master"
+    # RAG ingestion (Sprint 3)
+    minio_endpoint: str = "localhost:9000"
+    minio_root_user: str = "fleet"
+    minio_root_password: str = "fleet_dev_pw"
+    minio_secure: bool = False
+    minio_bucket: str = "fleet-documents"
+    ingest_redis_url: str = "redis://localhost:6379/1"
 
 
 def get_settings() -> Settings:

@@ -13,6 +13,7 @@ import asyncio
 import hashlib
 import io
 from pathlib import Path
+from typing import Any
 
 from core.llm.factory import build_client
 from fleet_api.db import get_engine
@@ -21,12 +22,13 @@ from fleet_rag.ingest.worker import _QdrantSinkAdapter, ingest_document
 from fleet_rag.store.minio_store import ensure_bucket, minio_client_from_env
 from fleet_rag.store.qdrant_store import qdrant_client_from_env
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
 FIXTURES_DIR = Path(__file__).resolve().parents[2].parent / "evals" / "fixtures" / "support_copilot"
 BUCKET = "fleet-documents"
 
 
-async def _collection_id(session_factory, name: str) -> int:
+async def _collection_id(session_factory: async_sessionmaker[Any], name: str) -> int:
     async with session_factory() as session:
         row = (
             await session.execute(text("SELECT id FROM collections WHERE name = :n"), {"n": name})
@@ -36,7 +38,9 @@ async def _collection_id(session_factory, name: str) -> int:
         return int(row[0])
 
 
-async def _upsert_document(session_factory, *, collection_id: int, uri: str, sha256: str) -> int:
+async def _upsert_document(
+    session_factory: async_sessionmaker[Any], *, collection_id: int, uri: str, sha256: str
+) -> int:
     async with session_factory() as session:
         existing = (
             await session.execute(

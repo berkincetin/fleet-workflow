@@ -172,6 +172,131 @@ class Chunk(Base):
     document: Mapped[Document] = relationship()
 
 
+class Agent(Base):
+    """Governed agent config (TRD §11, §4.2 tiering, §5 semantic cache, §9 kill switch)."""
+
+    __tablename__ = "agents"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
+    dept_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"), nullable=True)
+    # active | paused (§9 kill switch — instant, cached 5s in the runtime).
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
+    reasoning_model: Mapped[str] = mapped_column(String(128), nullable=False, default="reasoning")
+    utility_model: Mapped[str] = mapped_column(String(128), nullable=False, default="utility")
+    sensitivity: Mapped[str] = mapped_column(String(32), nullable=False, default="internal")
+    guardrail_policy_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    semantic_cache: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    semantic_cache_threshold: Mapped[float] = mapped_column(
+        Numeric(4, 3), nullable=False, default=0.95
+    )
+    max_context_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=8000)
+    # RAG collections this agent may retrieve from (§8: agents cannot read
+    # collections above their level — enforced at query time, not here).
+    # A simple array column, not TRD §11's normalized schema — deliberately
+    # minimal for task 4.4's single-agent (Support Copilot) need; if a later
+    # sprint needs per-collection metadata on the association (e.g. a
+    # collection-specific top_k override) this should become a proper
+    # agent_collections join table instead of growing this column further.
+    collection_ids: Mapped[list[int]] = mapped_column(
+        ARRAY(BigInteger), nullable=False, default=list
+    )
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class PromptVersion(Base):
+    """Versioned agent prompt (TRD §11; CLAUDE.md rule 5 — version header required)."""
+
+    __tablename__ = "prompt_versions"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    agent_id: Mapped[int] = mapped_column(ForeignKey("agents.id"), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    content: Mapped[str] = mapped_column(String, nullable=False)
+    changelog: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    eval_run_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    agent: Mapped[Agent] = relationship()
+
+
+class Conversation(Base):
+    """A chat thread with an agent (TRD §11)."""
+
+    __tablename__ = "conversations"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    agent_id: Mapped[int] = mapped_column(ForeignKey("agents.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    agent: Mapped[Agent] = relationship()
+    user: Mapped[User] = relationship()
+
+
+class Message(Base):
+    """A single turn in a conversation (TRD §11 — carries cost + citations)."""
+
+    __tablename__ = "messages"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    conv_id: Mapped[int] = mapped_column(ForeignKey("conversations.id"), nullable=False)
+    role: Mapped[str] = mapped_column(String(32), nullable=False)  # user|assistant|system
+    content: Mapped[str] = mapped_column(String, nullable=False)
+    tool_trace: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    tokens_in: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    tokens_out: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    cost_usd: Mapped[float] = mapped_column(Numeric(14, 8), nullable=False, default=0)
+    trace_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    conversation: Mapped[Conversation] = relationship()
+
+
+class Feedback(Base):
+    """Thumbs up/down on a message (TRD §11, §4.3 Chat UI AC)."""
+
+    __tablename__ = "feedback"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    message_id: Mapped[int] = mapped_column(ForeignKey("messages.id"), nullable=False)
+    score: Mapped[int] = mapped_column(Integer, nullable=False)  # 1 (up) | -1 (down)
+    reason: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class Approval(Base):
+    """HITL approval-queue entry for a write:external tool call (TRD §9, §11)."""
+
+    __tablename__ = "approvals"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    agent_id: Mapped[int] = mapped_column(ForeignKey("agents.id"), nullable=False)
+    run_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    action: Mapped[str] = mapped_column(String(255), nullable=False)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    decided_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    decided_at: Mapped[dt.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    sla_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class AuditLog(Base):
     __tablename__ = "audit_log"
 

@@ -29,6 +29,18 @@ migrate: ## apply DB migrations (alembic upgrade head)
 seed: ## load synthetic data + analytics fixture views
 	uv run python -m fleet_api.seed
 
+seed-docs: ## ingest Support Copilot demo KB docs into cs-help-center/cs-procedures (run after seed)
+	uv run python -m fleet_rag.seed_docs
+
+eval: ## run an agent's eval dataset against the live stack; ALL=1 for every agent (make eval AGENT=support_copilot)
+ifdef ALL
+	@for a in $$(uv run python -c "import yaml; print(' '.join(yaml.safe_load(open('evals/config.yaml'))['agents']))"); do \
+		uv run python evals/runner.py --agent $$a || exit 1; \
+	done
+else
+	uv run python evals/runner.py --agent $(AGENT)
+endif
+
 scan: ## security scans (bandit + gitleaks; trivy in CI)
 	-uv run bandit -r apps packages -ll
 	-gitleaks detect --no-banner --redact
@@ -39,6 +51,10 @@ openapi: ## dump the API OpenAPI schema to packages/shared/openapi.json
 client: openapi ## generate the TypeScript client from the OpenAPI schema
 	pnpm --filter @fleet/shared install
 	pnpm --filter @fleet/shared gen
+
+e2e: ## Playwright E2E vs a running stack — needs `make dev` + `make api` + web built/started in production mode (see tests/e2e/playwright.config.ts)
+	pnpm --filter @fleet/e2e install
+	pnpm --filter @fleet/e2e exec playwright test
 
 gateway-sync: ## refresh LiteLLM config prices from the litellm price map
 	uv run python gateway/litellm/pricing_sync.py

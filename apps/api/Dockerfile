@@ -6,13 +6,18 @@ COPY --from=ghcr.io/astral-sh/uv:0.7.12 /uv /uvx /bin/
 
 WORKDIR /app
 
-# Copy only the api package's metadata + source (build context is the repo root).
+# fleet-api depends on fleet-runtime via `tool.uv.sources` workspace = true
+# (Sprint 4: agent kill switches/chat routing use core.llm/core.killswitch),
+# so uv needs the whole workspace root — not just apps/api/ — to resolve it.
+COPY pyproject.toml uv.lock ./
 COPY apps/api/pyproject.toml apps/api/pyproject.toml
 COPY apps/api/fleet_api apps/api/fleet_api
+COPY apps/runtime/pyproject.toml apps/runtime/pyproject.toml
+COPY apps/runtime/core apps/runtime/core
 COPY infra/migrations infra/migrations
 
-# Install the api package into a venv.
-RUN uv pip install --system --no-cache ./apps/api
+# Install the api package (+ its fleet-runtime workspace dependency) into a venv.
+RUN uv pip install --system --no-cache ./apps/api ./apps/runtime
 
 # Non-root user.
 RUN useradd --create-home --uid 10001 fleet

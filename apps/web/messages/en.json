@@ -9,6 +9,14 @@
     "signOut": "Sign out",
     "signInPrompt": "Sign in to continue"
   },
+  "chat": {
+    "title": "Chat",
+    "agent": "Agent",
+    "noAgents": "No agents available yet.",
+    "placeholder": "Ask a question…",
+    "send": "Send",
+    "citationsCount": "{count, plural, one {# citation} other {# citations}}"
+  },
   "knowledge": {
     "title": "Knowledge",
     "collections": "Collections",

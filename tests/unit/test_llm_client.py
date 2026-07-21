@@ -9,6 +9,8 @@ network/DB is needed here.
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+
 import pytest
 from core.llm.client import GatewayError, LLMClient, LLMResponse
 from core.llm.routing import SensitivityRefusal
@@ -55,6 +57,24 @@ class FakeTransport:
             "data": [{"embedding": [0.1, 0.2, 0.3], "index": i} for i in range(len(input))],
             "usage": {"prompt_tokens": 10, "completion_tokens": 0},
         }
+
+    async def stream_complete(
+        self, *, model: str, messages: list[dict], **kw: object
+    ) -> AsyncIterator[dict]:
+        self.calls.append({"model": model, "messages": messages, **kw})
+        if self.fail:
+            raise RuntimeError("all fallbacks exhausted")
+
+        async def _gen() -> AsyncIterator[dict]:
+            for word in ["pong", " two", " three"]:
+                yield {"model": model, "delta": word}
+            yield {
+                "model": model,
+                "delta": "",
+                "usage": {"prompt_tokens": 10, "completion_tokens": 5},
+            }
+
+        return _gen()
 
 
 class FakeLedger:
@@ -125,6 +145,31 @@ async def test_successful_call_records_spend_row() -> None:
     assert round(row["cost_usd"], 8) == round(10 / 1000 * 0.003 + 5 / 1000 * 0.015, 8)
 
 
+async def test_reasoning_forwards_trace_and_agent_id_to_transport() -> None:
+    """§6 trace correlation: the proxy's Langfuse callback must tag the trace
+    with the SAME id spend_ledger.trace_id records, or Langfuse mints its own
+    random trace id and the two never correlate (breaks feedback scoring)."""
+    t, led = FakeTransport(), FakeLedger()
+    await _client(t, led).reasoning(
+        [{"role": "user", "content": "hi"}],
+        sensitivity="internal",
+        trace_id="trace-xyz",
+        agent_id="support-copilot",
+        user_id="u-1",
+        dept_id="cs",
+    )
+    assert t.calls[0]["trace_id"] == "trace-xyz"
+    assert t.calls[0]["agent_id"] == "support-copilot"
+    assert t.calls[0]["user_id"] == "u-1"
+    assert t.calls[0]["dept_id"] == "cs"
+
+
+async def test_embeddings_forwards_trace_id_to_transport() -> None:
+    t, led = FakeTransport(), FakeLedger()
+    await _client(t, led).embeddings(["x"], sensitivity="internal", trace_id="trace-e")
+    assert t.embed_calls[0]["trace_id"] == "trace-e"
+
+
 async def test_transport_failure_raises_gateway_error_and_records_nothing() -> None:
     t, led = FakeTransport(fail=True), FakeLedger()
     with pytest.raises(GatewayError):
@@ -154,3 +199,56 @@ async def test_embeddings_records_spend_row() -> None:
     await _client(t, led).embeddings(["x"], sensitivity="internal", trace_id="trace-e")
     assert len(led.rows) == 1
     assert led.rows[0]["trace_id"] == "trace-e"
+
+
+async def test_reasoning_stream_yields_text_deltas_in_order() -> None:
+    t, led = FakeTransport(), FakeLedger()
+    deltas = [d async for d in _client(t, led).reasoning_stream(
+        [{"role": "user", "content": "hi"}], sensitivity="internal"
+    )]
+    assert deltas == ["pong", " two", " three"]
+
+
+async def test_reasoning_stream_enforces_sensitivity_before_any_chunk() -> None:
+    cloud_only = [m for m in _MODELS if m["sensitivity_clearance"] == "internal"]
+    t, led = FakeTransport(), FakeLedger()
+    client = LLMClient(models=cloud_only, transport=t, ledger=led)
+    with pytest.raises(SensitivityRefusal):
+        async for _ in client.reasoning_stream(
+            [{"role": "user", "content": "x"}], sensitivity="pii"
+        ):
+            pass
+    assert t.calls == []
+    assert led.rows == []
+
+
+async def test_reasoning_stream_forwards_trace_id_to_transport() -> None:
+    t, led = FakeTransport(), FakeLedger()
+    async for _ in _client(t, led).reasoning_stream(
+        [{"role": "user", "content": "hi"}], sensitivity="internal", trace_id="trace-s"
+    ):
+        pass
+    assert t.calls[0]["trace_id"] == "trace-s"
+
+
+async def test_reasoning_stream_records_spend_after_stream_completes() -> None:
+    t, led = FakeTransport(), FakeLedger()
+    stream = _client(t, led).reasoning_stream(
+        [{"role": "user", "content": "hi"}], sensitivity="internal", trace_id="trace-s"
+    )
+    async for _ in stream:
+        pass
+    assert len(led.rows) == 1
+    assert led.rows[0]["tok_in"] == 10
+    assert led.rows[0]["tok_out"] == 5
+    assert led.rows[0]["trace_id"] == "trace-s"
+
+
+async def test_reasoning_stream_transport_failure_raises_gateway_error() -> None:
+    t, led = FakeTransport(fail=True), FakeLedger()
+    with pytest.raises(GatewayError):
+        async for _ in _client(t, led).reasoning_stream(
+            [{"role": "user", "content": "hi"}], sensitivity="internal"
+        ):
+            pass
+    assert led.rows == []

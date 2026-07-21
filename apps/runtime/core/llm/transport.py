@@ -11,6 +11,8 @@ forwarded as LiteLLM metadata so the proxy's Langfuse callback tags the trace.
 
 from __future__ import annotations
 
+import json
+from collections.abc import AsyncIterator
 from typing import Any
 
 import httpx
@@ -59,8 +61,65 @@ class ProxyTransport:
         headers = {"Authorization": f"Bearer {self._master_key}"}
         payload: dict[str, Any] = {"model": model, "input": input}
 
+        metadata = {
+            k: kwargs[k]
+            for k in ("trace_id", "agent_id", "user_id", "dept_id")
+            if kwargs.get(k) is not None
+        }
+        if metadata:
+            payload["metadata"] = metadata
+
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             resp = await client.post(url, json=payload, headers=headers)
             resp.raise_for_status()
             body: dict[str, Any] = resp.json()
             return body
+
+    async def stream_complete(
+        self, *, model: str, messages: list[dict[str, Any]], **kwargs: Any
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Stream a completion (TRD §5 "streaming everywhere"). Yields one dict
+        per SSE chunk: `{"model": ..., "delta": <text>, "usage": <final usage
+        block, only on the last chunk>}`. `stream_options.include_usage` asks
+        the (OpenAI-compatible) proxy for that final usage-only chunk."""
+        url = f"{self._base_url}/chat/completions"
+        headers = {"Authorization": f"Bearer {self._master_key}"}
+
+        metadata = {
+            k: kwargs[k]
+            for k in ("trace_id", "agent_id", "user_id", "dept_id")
+            if kwargs.get(k) is not None
+        }
+        payload: dict[str, Any] = {
+            "model": model,
+            "messages": messages,
+            "stream": True,
+            "stream_options": {"include_usage": True},
+        }
+        for passthrough in ("max_tokens", "temperature", "tools", "response_format"):
+            if passthrough in kwargs:
+                payload[passthrough] = kwargs[passthrough]
+        if metadata:
+            payload["metadata"] = metadata
+
+        async def _iter() -> AsyncIterator[dict[str, Any]]:
+            async with httpx.AsyncClient(timeout=self._timeout) as client, client.stream(
+                "POST", url, json=payload, headers=headers
+            ) as resp:
+                resp.raise_for_status()
+                async for line in resp.aiter_lines():
+                    if not line.startswith("data:"):
+                        continue
+                    raw = line[len("data:") :].strip()
+                    if raw == "[DONE]":
+                        break
+                    event = json.loads(raw)
+                    choices = event.get("choices") or [{}]
+                    delta_text = choices[0].get("delta", {}).get("content", "") or ""
+                    yield {
+                        "model": event.get("model", model),
+                        "delta": delta_text,
+                        "usage": event.get("usage"),
+                    }
+
+        return _iter()

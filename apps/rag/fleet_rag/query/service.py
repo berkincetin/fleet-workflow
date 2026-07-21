@@ -15,6 +15,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Protocol
 
+from core.guardrails import wrap_untrusted
 from fleet_rag.query.answer import Answer, build_answer
 from fleet_rag.query.retrieve import Hit, RetrievalConfig, Searcher, retrieve
 
@@ -48,26 +49,26 @@ class AgentQueryConfig:
     total_token_cap: int = 4000
 
 
-def _wrap_untrusted(hits: list[Hit]) -> str:
-    body = "\n\n".join(f"[chunk:{i}] {h.content}" for i, h in enumerate(hits, start=1))
-    return f"<untrusted_context>\n{body}\n</untrusted_context>"
-
-
 def _parse_citations(text: str) -> list[int]:
     return [int(m) for m in _CITATION_RE.findall(text)]
 
 
 async def _generate(
-    *, question: str, hits: list[Hit], reasoning_client: ReasoningClient, sensitivity: str
+    *,
+    question: str,
+    hits: list[Hit],
+    reasoning_client: ReasoningClient,
+    sensitivity: str,
+    meta: dict[str, Any],
 ) -> tuple[str, list[int]]:
     messages = [
         {"role": "system", "content": _SYSTEM_PROMPT},
         {
             "role": "user",
-            "content": f"{_wrap_untrusted(hits)}\n\nQuestion: {question}",
+            "content": f"{wrap_untrusted([h.content for h in hits])}\n\nQuestion: {question}",
         },
     ]
-    response = await reasoning_client.reasoning(messages, sensitivity=sensitivity)
+    response = await reasoning_client.reasoning(messages, sensitivity=sensitivity, **meta)
     text = response.content
     return text, _parse_citations(text)
 
@@ -81,9 +82,16 @@ async def answer_query(
     config: AgentQueryConfig,
     sensitivity: str = "internal",
     keyword: str | None = None,
+    **meta: Any,
 ) -> Answer:
-    """Embed the question, retrieve grounded context, generate a cited answer."""
-    embed_response = await embed_client.embeddings([question], sensitivity=sensitivity)
+    """Embed the question, retrieve grounded context, generate a cited answer.
+
+    `**meta` (trace_id/agent_id/user_id/dept_id) is forwarded to both the
+    embeddings and reasoning gateway calls so the proxy's Langfuse callback
+    (§6) tags the trace with the caller's own trace_id — needed for the chat
+    endpoint's feedback-scoring path to land a score on the right trace.
+    """
+    embed_response = await embed_client.embeddings([question], sensitivity=sensitivity, **meta)
     query_vector = embed_response.vectors[0]
 
     hits = await retrieve(
@@ -100,7 +108,7 @@ async def answer_query(
     async def _gen(*, question: str, hits: list[Hit]) -> tuple[str, list[int]]:
         return await _generate(
             question=question, hits=hits, reasoning_client=reasoning_client,
-            sensitivity=sensitivity,
+            sensitivity=sensitivity, meta=meta,
         )
 
     return await build_answer(question=question, hits=hits, generate=_gen)

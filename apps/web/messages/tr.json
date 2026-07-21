@@ -9,6 +9,14 @@
     "signOut": "Çıkış yap",
     "signInPrompt": "Devam etmek için giriş yapın"
   },
+  "chat": {
+    "title": "Sohbet",
+    "agent": "Ajan",
+    "noAgents": "Henüz kullanılabilir ajan yok.",
+    "placeholder": "Bir soru sorun…",
+    "send": "Gönder",
+    "citationsCount": "{count, plural, one {# kaynak} other {# kaynak}}"
+  },
   "knowledge": {
     "title": "Bilgi Bankası",
     "collections": "Koleksiyonlar",

@@ -18,6 +18,9 @@ export function NavBar() {
           <Link href="/" className="text-sm font-semibold">
             Fleet
           </Link>
+          <Link href="/chat" className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
+            {t("chat")}
+          </Link>
           <Link href="/knowledge" className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
             {t("knowledge")}
           </Link>

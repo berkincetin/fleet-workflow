@@ -1,0 +1,23 @@
+Uyelik ve Odeme Sikca Sorulan Sorular
+
+Uyelik Turleri:
+- Standart Uyelik: Ucretsizdir, ayda 3 ucretsiz ilan hakki verir.
+- Premium Uyelik: Aylik 149 TL'dir, sinirsiz ilan hakki ve ilanlarin
+  arama sonuclarinda ust siralarda gosterilmesini saglar.
+- Kurumsal Uyelik: Galeriler ve bayiler icindir, ozel fiyatlandirma ve
+  toplu ilan yukleme araclari sunar; fiyat teklifi icin satis ekibiyle
+  iletisime gecilmelidir.
+
+Odeme Yontemleri:
+Platformda kredi karti, banka karti ve havale/EFT ile odeme kabul edilir.
+Premium uyelik odemeleri otomatik olarak her ay yenilenir; iptal etmek
+icin Hesap Ayarlari > Uyelik sayfasindan "Yenilemeyi Iptal Et" secilmelidir.
+
+Iade Politikasi:
+Premium uyelik odemeleri, satin alindiktan sonraki ilk 48 saat icinde,
+hizmet kullanilmamis olmasi kosuluyla iade edilebilir. 48 saat sonrasinda
+yapilan iade talepleri degerlendirmeye alinmaz.
+
+Ilan Yayinlama Suresi:
+Standart ilanlar 30 gun boyunca yayinda kalir ve sure sonunda otomatik
+olarak pasife alinir; kullanici dilerse ilani tekrar aktif hale getirebilir.

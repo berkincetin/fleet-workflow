@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fleet_api.config import get_settings
 from fleet_api.errors import install_error_handlers
 from fleet_api.middleware import (
@@ -32,6 +33,9 @@ def create_app(*, with_middleware: bool = True) -> FastAPI:
     if with_middleware:
         settings = get_settings()
         configure_tracing()
+        # Starlette wraps middleware in reverse add-order (last added = outermost),
+        # and the CORS preflight (OPTIONS) must be handled before anything else
+        # runs — so CORSMiddleware is added last.
         app.add_middleware(
             RateLimitMiddleware,
             redis_url=settings.redis_url,
@@ -39,5 +43,12 @@ def create_app(*, with_middleware: bool = True) -> FastAPI:
         )
         app.add_middleware(AuditMiddleware)
         app.add_middleware(TraceIdMiddleware)
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=[settings.web_origin],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
 
     return app

@@ -1,0 +1,31 @@
+{
+  "nav": {
+    "chat": "Sohbet",
+    "knowledge": "Bilgi Bankası",
+    "approvals": "Onaylarım"
+  },
+  "auth": {
+    "signIn": "Giriş yap",
+    "signOut": "Çıkış yap",
+    "signInPrompt": "Devam etmek için giriş yapın"
+  },
+  "knowledge": {
+    "title": "Bilgi Bankası",
+    "collections": "Koleksiyonlar",
+    "noCollections": "Henüz koleksiyon yok.",
+    "upload": "Belge yükle",
+    "uploadPrompt": "Bu koleksiyona yüklenecek bir dosya seçin.",
+    "selectCollection": "Bir koleksiyon seçin",
+    "documents": "Belgeler",
+    "noDocuments": "Bu koleksiyonda henüz belge yok.",
+    "status": {
+      "pending": "Beklemede",
+      "queued": "Sırada",
+      "ready": "Hazır",
+      "error": "Hata"
+    },
+    "uploading": "Yükleniyor…",
+    "uploadSuccess": "Yükleme tamamlandı — işleme başladı.",
+    "uploadError": "Yükleme başarısız."
+  }
+}

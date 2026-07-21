@@ -74,3 +74,36 @@ def test_rate_limit_429(stack: str) -> None:
     # limit is 3/min; the 4th request in the same window is 429.
     codes = [client.get("/healthz").status_code for _ in range(5)]
     assert 429 in codes
+
+
+def test_cors_preflight_allows_configured_web_origin(stack: str) -> None:
+    # Task 3.4: the web shell (localhost:3000) calls /v1/* from the browser —
+    # the preflight OPTIONS must be answered by CORSMiddleware, which must be
+    # the outermost layer (added last) or Starlette's router 405s it first.
+    from fleet_api.app import create_app
+
+    client = TestClient(create_app())
+    resp = client.options(
+        "/v1/documents",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "authorization",
+        },
+    )
+    assert resp.status_code == 200
+    assert resp.headers["access-control-allow-origin"] == "http://localhost:3000"
+
+
+def test_cors_rejects_unconfigured_origin(stack: str) -> None:
+    from fleet_api.app import create_app
+
+    client = TestClient(create_app())
+    resp = client.options(
+        "/v1/documents",
+        headers={
+            "Origin": "http://evil.example",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    assert "access-control-allow-origin" not in resp.headers

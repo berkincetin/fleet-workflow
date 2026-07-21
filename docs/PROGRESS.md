@@ -313,3 +313,18 @@ Notes / deviations:
 - The Support Copilot's `graph.py`/`prompt.md`/`tools.py`/`eval/` layout that CLAUDE.md's repo-layout comment describes (`apps/runtime/agents/<name>/...`) was **not** built as a literal per-agent LangGraph graph this task — the chat endpoint calls `fleet_rag.query.service.answer_query()` directly rather than compiling a `core.graph.AgentSpec` for it. Support Copilot's Wave-0 spec is "pure RAG, no tools" (department scenario 01), so it doesn't exercise `core.graph`'s HITL/tool-execution machinery at all; the first agent that actually needs a compiled `core.graph.AgentSpec` (with real tool calls) is Sprint 5's Analytics/Jira/GitHub/Slack agents, which is a more honest place to prove that convention end-to-end than retrofitting it onto an agent with zero tools.
 - `evals/runner.py` and `apps/rag/fleet_rag/seed_docs.py` both import from `fleet_rag`/`core` as plain top-level scripts (not their own workspace package) — this works because `uv sync` installs every workspace member editable into the one shared venv, so `uv run python evals/runner.py` from the repo root can import `fleet_rag`/`core` directly without `evals/` needing its own `pyproject.toml`.
 - The `nightly.yml` GitHub Actions workflow was authored and YAML-validated but **could not be executed/observed in this environment** (no push/PR triggered it this session) — its `e2e`/`eval` jobs are unverified in real CI, only their equivalent local commands (`make e2e`, `make eval ALL=1`) were proven live. It also needs `ANTHROPIC_API_KEY`/`OPENAI_API_KEY`/`GEMINI_API_KEY` configured as GitHub repo secrets before it can produce a real grounded answer in CI — flagging this as a manual follow-up for whoever has repo admin access.
+
+## 2026-07-22 — Sprint 4 close: PR #7 build-image CI fix — DONE
+
+Built (Sprint 4 close, branch `feat/sprint-4-runtime-chat-agent`, PR #7):
+- **`apps/api/Dockerfile`**: also copies the root `pyproject.toml`/`uv.lock` and `apps/runtime/{pyproject.toml,core}` into the build context, and installs both `./apps/api` and `./apps/runtime` (was: only `apps/api/` copied, `uv pip install --system ./apps/api`).
+
+Verified:
+- `docker build -f apps/api/Dockerfile -t fleet-api:test-fix .` succeeds locally; `docker run --rm fleet-api:test-fix` prints the expected placeholder output.
+- Pushed; PR #7's `build-image` job (both the push-triggered and PR-triggered workflow runs) — re-verified green after the fix, alongside lint/security/unit/integration all passing.
+
+Issues (symptom → root cause → resolution):
+- **PR #7's `build-image` CI job failed on first push** — caught only once actually pushed, since the local `make test`/`make lint` gate never builds the Docker image. `apps/api/Dockerfile` was written in Sprint 1 when `fleet-api` had zero `tool.uv.sources` workspace dependencies, so it only ever copied `apps/api/` into the build context. Task 4.2 added `fleet-runtime = { workspace = true }` to `fleet-api`'s `pyproject.toml` (for `KillSwitch`/chat routing), so the container-internal `uv` had no way to resolve that workspace reference: `Failed to parse entry: 'fleet-runtime' ... but is not a workspace member`. Fixed as described above; verified with a full local `docker build`+`docker run` before re-pushing rather than trusting CI to catch it a second time. RESOLVED.
+
+Notes:
+- This is exactly the kind of gap `make test`/`make lint`'s local gate doesn't cover (Docker image build is CI-only) — a future improvement worth considering is adding a local `make build-image` target so this class of failure surfaces before push, not after. Not done here since it's out of this sprint's scope; flagging for whoever picks up build/CI improvements next.

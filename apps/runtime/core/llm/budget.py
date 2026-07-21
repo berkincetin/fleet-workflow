@@ -97,10 +97,6 @@ def _period_start(period: str, now: dt.datetime) -> dt.datetime:
     return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
 
-# Which spend_ledger column identifies each scope type.
-_SCOPE_COLUMN = {"dept": "dept_id", "agent": "agent_id", "user": "user_id"}
-
-
 class DbBudgetChecker:
     """Client budget checker over the DB: evaluates every scope present on the
     call meta (global → dept → agent → user) and returns the most-constrained
@@ -165,18 +161,31 @@ async def check_budget(
         limit_usd, soft_pct, period = budget
         start = _period_start(period, now)
 
+        # Literal per-scope queries (no interpolated identifiers, even from a
+        # trusted lookup) so no SQL string is ever built from a variable part.
         if scope_type == "global":
             spend_sql = "SELECT COALESCE(SUM(cost_usd), 0) FROM spend_ledger WHERE ts >= :start"
             params: dict[str, Any] = {"start": start}
-        else:
-            column = _SCOPE_COLUMN.get(scope_type)
-            if column is None:
-                raise ValueError(f"unknown scope_type: {scope_type}")
+        elif scope_type == "dept":
             spend_sql = (
-                f"SELECT COALESCE(SUM(cost_usd), 0) FROM spend_ledger "
-                f"WHERE ts >= :start AND {column} = :sid"
+                "SELECT COALESCE(SUM(cost_usd), 0) FROM spend_ledger "
+                "WHERE ts >= :start AND dept_id = :sid"
             )
             params = {"start": start, "sid": scope_id}
+        elif scope_type == "agent":
+            spend_sql = (
+                "SELECT COALESCE(SUM(cost_usd), 0) FROM spend_ledger "
+                "WHERE ts >= :start AND agent_id = :sid"
+            )
+            params = {"start": start, "sid": scope_id}
+        elif scope_type == "user":
+            spend_sql = (
+                "SELECT COALESCE(SUM(cost_usd), 0) FROM spend_ledger "
+                "WHERE ts >= :start AND user_id = :sid"
+            )
+            params = {"start": start, "sid": scope_id}
+        else:
+            raise ValueError(f"unknown scope_type: {scope_type}")
 
         spent = (await session.execute(text(spend_sql), params)).scalar_one()
 

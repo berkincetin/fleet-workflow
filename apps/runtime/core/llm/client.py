@@ -16,6 +16,7 @@ unit-testable without network or DB; the concrete implementations live in
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -34,6 +35,10 @@ class Transport(Protocol):
     async def embed(
         self, *, model: str, input: list[str], **kwargs: Any
     ) -> dict[str, Any]: ...
+
+    async def stream_complete(
+        self, *, model: str, messages: list[dict[str, Any]], **kwargs: Any
+    ) -> AsyncIterator[dict[str, Any]]: ...
 
 
 class Ledger(Protocol):
@@ -125,6 +130,73 @@ class LLMClient:
         """Classification / extraction / routing / summarization call-sites (§4.3)."""
         return await self._call("utility", messages, sensitivity, redacted, meta)
 
+    async def reasoning_stream(
+        self,
+        messages: list[dict[str, Any]],
+        *,
+        sensitivity: str | Sensitivity = "internal",
+        redacted: bool = False,
+        **meta: Any,
+    ) -> AsyncIterator[str]:
+        """Streaming variant of reasoning() for SSE chat (§4.3, TRD §5 "streaming
+        everywhere"). Sensitivity + budget are enforced before the first chunk is
+        requested, same as the non-streaming call; the spend row is recorded once
+        the stream is exhausted and usage is known."""
+        # 1/2. Same enforcement as _call, before any transport call.
+        model = select_model(
+            self._models, role="reasoning", sensitivity=sensitivity, redacted=redacted
+        )
+        name = model["name"]
+
+        budget: BudgetStatus | None = None
+        if self._budget_checker is not None:
+            budget = await self._budget_checker(meta)
+            budget.raise_if_exceeded()
+
+        try:
+            chunks = await self._transport.stream_complete(model=name, messages=messages, **meta)
+        except GatewayError:
+            raise
+        except Exception as exc:
+            raise GatewayError(f"gateway stream call failed for model {name!r}: {exc}") from exc
+
+        served = name
+        usage_body: dict[str, Any] = {}
+        try:
+            async for chunk in chunks:
+                served = chunk.get("model", served)
+                if chunk.get("usage"):
+                    usage_body = chunk
+                delta = chunk.get("delta", "")
+                if delta:
+                    yield delta
+        except GatewayError:
+            raise
+        except Exception as exc:
+            raise GatewayError(f"gateway stream call failed for model {name!r}: {exc}") from exc
+
+        priced = self._price_for(served, fallback=model)
+        usage = parse_usage(usage_body)
+        cost = compute_cost(
+            usage,
+            input_price_per_1k=float(priced.get("input_price_per_1k", 0.0)),
+            output_price_per_1k=float(priced.get("output_price_per_1k", 0.0)),
+            cached_input_price_per_1k=_opt_float(priced.get("cached_input_price")),
+        )
+        await self._ledger.record(
+            {
+                "model": served,
+                "agent_id": meta.get("agent_id"),
+                "user_id": meta.get("user_id"),
+                "dept_id": meta.get("dept_id"),
+                "tok_in": usage.tok_in,
+                "tok_out": usage.tok_out,
+                "tok_cached": usage.tok_cached,
+                "cost_usd": cost,
+                "trace_id": meta.get("trace_id"),
+            }
+        )
+
     async def embeddings(
         self,
         texts: list[str],
@@ -145,7 +217,7 @@ class LLMClient:
             budget.raise_if_exceeded()
 
         try:
-            body = await self._transport.embed(model=name, input=texts)
+            body = await self._transport.embed(model=name, input=texts, **meta)
         except GatewayError:
             raise
         except Exception as exc:
@@ -203,9 +275,13 @@ class LLMClient:
             budget = await self._budget_checker(meta)
             budget.raise_if_exceeded()
 
-        # 3. Call the proxy (it owns retries + the fallback chain, §4.4).
+        # 3. Call the proxy (it owns retries + the fallback chain, §4.4). Forward
+        #    trace_id/agent_id/user_id/dept_id so the proxy's Langfuse callback
+        #    (§6) tags the trace with the SAME id spend_ledger.trace_id records —
+        #    otherwise Langfuse mints its own random trace id and the two never
+        #    correlate (caught while wiring 4.3's feedback→Langfuse score path).
         try:
-            body = await self._transport.complete(model=name, messages=messages)
+            body = await self._transport.complete(model=name, messages=messages, **meta)
         except GatewayError:
             raise
         except Exception as exc:  # transport/provider error after fallbacks

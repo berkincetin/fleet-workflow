@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     # LiteLLM gateway (Sprint 2)
     litellm_base_url: str = "http://localhost:4000/v1"
     litellm_master_key: str = "sk-fleet-dev-master"
+    # Langfuse (Sprint 4 chat feedback — same keypair LiteLLM's callback uses)
+    langfuse_base_url: str = "http://localhost:3001"
+    langfuse_public_key: str = "pk-lf-fleet-dev"
+    langfuse_secret_key: str = "sk-lf-fleet-dev"
     # RAG ingestion (Sprint 3)
     minio_endpoint: str = "localhost:9000"
     minio_root_user: str = "fleet"

@@ -14,6 +14,7 @@ from fleet_api.middleware import (
 from fleet_api.otel import configure_tracing
 from fleet_api.routers import (
     agents_admin,
+    chat,
     collections,
     documents,
     health,
@@ -38,6 +39,7 @@ def create_app(*, with_middleware: bool = True) -> FastAPI:
     app.include_router(collections.router)
     app.include_router(documents.router)
     app.include_router(rag_query.router)
+    app.include_router(chat.router)
 
     if with_middleware:
         settings = get_settings()

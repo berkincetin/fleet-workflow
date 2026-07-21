@@ -61,6 +61,10 @@ def test_agent_crud_and_pause_blocks_a_real_graph_run() -> None:
         f"{KEYCLOAK_BASE}/realms/fleet/protocol/openid-connect/certs"
     )
     os.environ["FLEET_OIDC_AUDIENCE"] = "fleet-api"
+    # Pin the real compose Redis explicitly — see test_chat_live.py for why
+    # (test_middleware.py leaves FLEET_REDIS_URL pointed at a torn-down
+    # testcontainers Redis if it ran earlier in the same pytest session).
+    os.environ["FLEET_REDIS_URL"] = REDIS_URL
 
     token = _builder_token()
 

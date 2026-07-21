@@ -275,6 +275,341 @@
         }
       }
     },
+    "/v1/admin/agents": {
+      "get": {
+        "tags": [
+          "admin:agents"
+        ],
+        "summary": "List Agents",
+        "operationId": "list_agents_v1_admin_agents_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AgentOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Agents V1 Admin Agents Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "admin:agents"
+        ],
+        "summary": "Create Agent",
+        "operationId": "create_agent_v1_admin_agents_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/agents/{agent_id}": {
+      "get": {
+        "tags": [
+          "admin:agents"
+        ],
+        "summary": "Get Agent",
+        "operationId": "get_agent_v1_admin_agents__agent_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "admin:agents"
+        ],
+        "summary": "Update Agent",
+        "operationId": "update_agent_v1_admin_agents__agent_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin:agents"
+        ],
+        "summary": "Delete Agent",
+        "operationId": "delete_agent_v1_admin_agents__agent_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/agents/{agent_id}/pause": {
+      "post": {
+        "tags": [
+          "admin:agents"
+        ],
+        "summary": "Pause Agent",
+        "description": "Kill switch (\u00a79): instant, cached <=5s in the runtime (core.killswitch).",
+        "operationId": "pause_agent_v1_admin_agents__agent_id__pause_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/agents/{agent_id}/resume": {
+      "post": {
+        "tags": [
+          "admin:agents"
+        ],
+        "summary": "Resume Agent",
+        "operationId": "resume_agent_v1_admin_agents__agent_id__resume_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/agents/global/read-only": {
+      "put": {
+        "tags": [
+          "admin:agents"
+        ],
+        "summary": "Set Global Read Only",
+        "description": "Global kill switch (\u00a79): blocks every write:* tool call platform-wide.",
+        "operationId": "set_global_read_only_v1_admin_agents_global_read_only_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadOnlyIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/collections": {
       "get": {
         "tags": [
@@ -694,10 +1029,371 @@
           }
         ]
       }
+    },
+    "/v1/agents": {
+      "get": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "List Chat Agents",
+        "description": "Active agents any CHAT-permitted user (TRD \u00a77.1: every role) may start a\nconversation with \u2014 unlike /v1/admin/agents, no MANAGE_AGENTS required.",
+        "operationId": "list_chat_agents_v1_agents_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AgentSummaryOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Chat Agents V1 Agents Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/conversations": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Create Conversation",
+        "operationId": "create_conversation_v1_conversations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/conversations/{conversation_id}/messages": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Send Message",
+        "operationId": "send_message_v1_conversations__conversation_id__messages_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Conversation Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/messages/{message_id}/feedback": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Submit Feedback",
+        "operationId": "submit_feedback_v1_messages__message_id__feedback_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Message Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "title": "Response Submit Feedback V1 Messages  Message Id  Feedback Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AgentIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "dept_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dept Id"
+          },
+          "reasoning_model": {
+            "type": "string",
+            "title": "Reasoning Model",
+            "default": "reasoning"
+          },
+          "utility_model": {
+            "type": "string",
+            "title": "Utility Model",
+            "default": "utility"
+          },
+          "sensitivity": {
+            "type": "string",
+            "title": "Sensitivity",
+            "default": "internal"
+          },
+          "guardrail_policy_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guardrail Policy Id"
+          },
+          "semantic_cache": {
+            "type": "boolean",
+            "title": "Semantic Cache",
+            "default": false
+          },
+          "semantic_cache_threshold": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Semantic Cache Threshold",
+            "default": 0.95
+          },
+          "max_context_tokens": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Max Context Tokens",
+            "default": 8000
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "AgentIn"
+      },
+      "AgentOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "dept_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dept Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "reasoning_model": {
+            "type": "string",
+            "title": "Reasoning Model"
+          },
+          "utility_model": {
+            "type": "string",
+            "title": "Utility Model"
+          },
+          "sensitivity": {
+            "type": "string",
+            "title": "Sensitivity"
+          },
+          "guardrail_policy_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guardrail Policy Id"
+          },
+          "semantic_cache": {
+            "type": "boolean",
+            "title": "Semantic Cache"
+          },
+          "semantic_cache_threshold": {
+            "type": "number",
+            "title": "Semantic Cache Threshold"
+          },
+          "max_context_tokens": {
+            "type": "integer",
+            "title": "Max Context Tokens"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "dept_id",
+          "status",
+          "reasoning_model",
+          "utility_model",
+          "sensitivity",
+          "guardrail_policy_id",
+          "semantic_cache",
+          "semantic_cache_threshold",
+          "max_context_tokens"
+        ],
+        "title": "AgentOut"
+      },
+      "AgentSummaryOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "status"
+        ],
+        "title": "AgentSummaryOut"
+      },
       "Body_upload_document_v1_documents_post": {
         "properties": {
           "file": {
@@ -828,6 +1524,42 @@
         ],
         "title": "CollectionOut"
       },
+      "ConversationIn": {
+        "properties": {
+          "agent_id": {
+            "type": "integer",
+            "title": "Agent Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent_id"
+        ],
+        "title": "ConversationIn"
+      },
+      "ConversationOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "agent_id": {
+            "type": "integer",
+            "title": "Agent Id"
+          },
+          "user_id": {
+            "type": "integer",
+            "title": "User Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "agent_id",
+          "user_id"
+        ],
+        "title": "ConversationOut"
+      },
       "DocumentOut": {
         "properties": {
           "id": {
@@ -866,6 +1598,30 @@
         ],
         "title": "DocumentOut"
       },
+      "FeedbackIn": {
+        "properties": {
+          "score": {
+            "type": "integer",
+            "title": "Score"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "score"
+        ],
+        "title": "FeedbackIn"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -878,6 +1634,19 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "MessageIn": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "title": "Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "title": "MessageIn"
       },
       "ModelIn": {
         "properties": {
@@ -1100,6 +1869,19 @@
           "degraded"
         ],
         "title": "QueryOut"
+      },
+      "ReadOnlyIn": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "title": "ReadOnlyIn"
       },
       "ValidationError": {
         "properties": {

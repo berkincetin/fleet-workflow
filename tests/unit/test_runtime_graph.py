@@ -12,8 +12,20 @@ from __future__ import annotations
 from typing import Any
 
 from core.graph import AgentSpec, ToolSpec, build_graph
+from core.killswitch import KillSwitch
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
+
+
+class _FakeRedis:
+    def __init__(self, store: dict[str, str] | None = None) -> None:
+        self.store = store or {}
+
+    async def get(self, key: str) -> str | None:
+        return self.store.get(key)
+
+    async def set(self, key: str, value: str, ex: int | None = None) -> None:
+        self.store[key] = value
 
 
 class _FakeLLMClient:
@@ -118,3 +130,77 @@ async def test_graph_resume_after_rejection_skips_the_tool_call() -> None:
     assert "__interrupt__" not in resumed
     assert resumed.get("tool_result") is None
     assert resumed["rejected"] is True
+
+
+async def test_graph_short_circuits_when_agent_is_paused() -> None:
+    llm = _FakeLLMClient()
+    redis = _FakeRedis({"agent:paused:test_agent": "1"})
+    graph = build_graph(
+        _spec(), llm_client=llm, checkpointer=InMemorySaver(), killswitch=KillSwitch(redis)
+    )
+    config = {"configurable": {"thread_id": "t6"}}
+    result = await graph.ainvoke({"messages": [{"role": "user", "content": "hi"}]}, config)
+
+    assert result["paused"] is True
+    assert llm.reasoning_calls == []
+    assert llm.utility_calls == []
+
+
+async def test_graph_runs_normally_when_agent_not_paused() -> None:
+    llm = _FakeLLMClient()
+    redis = _FakeRedis()
+    graph = build_graph(
+        _spec(), llm_client=llm, checkpointer=InMemorySaver(), killswitch=KillSwitch(redis)
+    )
+    config = {"configurable": {"thread_id": "t7"}}
+    result = await graph.ainvoke({"messages": [{"role": "user", "content": "hi"}]}, config)
+
+    assert not result.get("paused")
+    assert llm.reasoning_calls
+
+
+async def test_graph_blocks_write_tool_when_global_read_only() -> None:
+    """A write:internal tool with autonomy already granted reaches execute_tool
+    directly (no HITL stop) — the read-only gate must still catch it there."""
+    llm = _FakeLLMClient(
+        tool_call={"name": "log_note", "args": {"note": "customer called"}}
+    )
+    redis = _FakeRedis({"global:read_only": "1"})
+    autonomous_spec = AgentSpec(
+        name="test_agent",
+        system_prompt="You are a test agent.",
+        tools=[ToolSpec(name="log_note", risk_class="write:internal", fn=_noop_tool)],
+        eval_pass_rate=0.95,
+        autonomy_enabled=True,
+    )
+    graph = build_graph(
+        autonomous_spec, llm_client=llm, checkpointer=InMemorySaver(),
+        killswitch=KillSwitch(redis),
+    )
+    config = {"configurable": {"thread_id": "t8"}}
+    result = await graph.ainvoke({"messages": [{"role": "user", "content": "log this"}]}, config)
+
+    assert "__interrupt__" not in result
+    assert result.get("tool_result") is None
+    assert result["blocked_read_only"] is True
+
+
+async def test_graph_blocks_approved_tool_if_read_only_flips_after_interrupt() -> None:
+    """Read-only can be flipped on by an admin while a HITL approval is
+    pending; the gate at execute_tool must still catch it after resume."""
+    llm = _FakeLLMClient(
+        tool_call={"name": "send_email", "args": {"to": "customer@example.com"}}
+    )
+    redis = _FakeRedis()
+    ks = KillSwitch(redis)
+    checkpointer = InMemorySaver()
+    graph = build_graph(_spec(), llm_client=llm, checkpointer=checkpointer, killswitch=ks)
+    config = {"configurable": {"thread_id": "t9"}}
+
+    await graph.ainvoke({"messages": [{"role": "user", "content": "email them"}]}, config)
+    await ks.set_global_read_only(True)
+    resumed = await graph.ainvoke(Command(resume={"approved": True}), config)
+
+    assert "__interrupt__" not in resumed
+    assert resumed.get("tool_result") is None
+    assert resumed["blocked_read_only"] is True

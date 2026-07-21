@@ -1,15 +1,17 @@
-"""LangGraph base graph shared by every agent (task 4.1).
+"""LangGraph base graph shared by every agent (task 4.1, killswitch 4.2).
 
-Node order: context builder -> guardrails (in) -> call model (routes
+Node order: killswitch gate (per-agent pause, §9 — short-circuits before any
+other node runs) -> context builder -> guardrails (in) -> call model (routes
 reasoning/utility per AgentSpec.call_tier) -> [HITL interrupt iff the model
 requested a tool whose risk_class requires approval, per core.hitl] ->
-execute tool -> citation attach.
+[global read-only gate blocks write:* tool execution, §9] -> execute tool ->
+citation attach.
 
 Per-agent graphs (apps/runtime/agents/<name>/graph.py) build an AgentSpec
 (system prompt, tier, tools) and call build_graph(); they do not hand-roll
-LangGraph wiring themselves, so every agent gets the guardrail/HITL/citation
-nodes for free and consistently (CLAUDE.md rule 6: cross-cutting concerns are
-never special-cased around).
+LangGraph wiring themselves, so every agent gets the guardrail/HITL/killswitch/
+citation nodes for free and consistently (CLAUDE.md rule 6: cross-cutting
+concerns are never special-cased around).
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ from typing import Any, Protocol, TypedDict
 from core.citations import Citation, attach_citations
 from core.guardrails import detect_injection
 from core.hitl import requires_approval
+from core.killswitch import KillSwitch
 from langgraph.graph import END, StateGraph
 from langgraph.types import interrupt
 
@@ -59,6 +62,8 @@ class GraphState(TypedDict, total=False):
     rejected: bool
     citations: list[dict[str, Any]]
     text: str
+    paused: bool
+    blocked_read_only: bool
 
 
 def _tool_by_name(spec: AgentSpec, name: str) -> ToolSpec | None:
@@ -70,8 +75,17 @@ def build_graph(
     *,
     llm_client: ReasoningUtilityClient,
     checkpointer: Any,
+    killswitch: KillSwitch | None = None,
 ) -> Any:
     """Compile the base graph for one agent, bound to a checkpointer for resume."""
+
+    async def killswitch_gate(state: GraphState) -> dict[str, Any]:
+        if killswitch is not None and await killswitch.is_agent_paused(spec.name):
+            return {"paused": True}
+        return {}
+
+    def route_after_killswitch(state: GraphState) -> str:
+        return END if state.get("paused") else "context_builder"
 
     async def context_builder(state: GraphState) -> dict[str, Any]:
         # Per-agent memory/KB augmentation (core.memory rolling summary, RAG
@@ -134,6 +148,8 @@ def build_graph(
         assert tool_call is not None
         tool = _tool_by_name(spec, tool_call["name"])
         assert tool is not None
+        if killswitch is not None and await killswitch.blocks_tool(risk_class=tool.risk_class):
+            return {"blocked_read_only": True}
         result = await tool.fn(**tool_call.get("args", {}))
         return {"tool_result": result}
 
@@ -142,6 +158,7 @@ def build_graph(
         return {"citations": attached["citations"]}
 
     graph = StateGraph(GraphState)
+    graph.add_node("killswitch_gate", killswitch_gate)
     graph.add_node("context_builder", context_builder)
     graph.add_node("guardrails_in", guardrails_in)
     graph.add_node("call_model", call_model)
@@ -149,7 +166,10 @@ def build_graph(
     graph.add_node("execute_tool", execute_tool)
     graph.add_node("citation_attach", citation_attach)
 
-    graph.set_entry_point("context_builder")
+    graph.set_entry_point("killswitch_gate")
+    graph.add_conditional_edges(
+        "killswitch_gate", route_after_killswitch, {END: END, "context_builder": "context_builder"}
+    )
     graph.add_edge("context_builder", "guardrails_in")
     graph.add_edge("guardrails_in", "call_model")
     graph.add_conditional_edges(

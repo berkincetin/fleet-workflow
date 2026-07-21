@@ -12,7 +12,15 @@ from fleet_api.middleware import (
     TraceIdMiddleware,
 )
 from fleet_api.otel import configure_tracing
-from fleet_api.routers import collections, documents, health, models_admin, rag_query, whoami
+from fleet_api.routers import (
+    agents_admin,
+    collections,
+    documents,
+    health,
+    models_admin,
+    rag_query,
+    whoami,
+)
 
 
 def create_app(*, with_middleware: bool = True) -> FastAPI:
@@ -26,6 +34,7 @@ def create_app(*, with_middleware: bool = True) -> FastAPI:
     app.include_router(health.router)
     app.include_router(whoami.router)
     app.include_router(models_admin.router)
+    app.include_router(agents_admin.router)
     app.include_router(collections.router)
     app.include_router(documents.router)
     app.include_router(rag_query.router)

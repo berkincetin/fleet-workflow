@@ -17,7 +17,9 @@ from qdrant_client.models import (
     Distance,
     FieldCondition,
     Filter,
+    MatchText,
     MatchValue,
+    PayloadSchemaType,
     PointStruct,
     VectorParams,
 )
@@ -42,6 +44,11 @@ def ensure_collection(client: QdrantClient, name: str, *, vector_size: int) -> N
         client.create_collection(
             collection_name=name,
             vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
+        )
+        # Full-text index on chunk content — the keyword half of hybrid
+        # retrieval (task 3.3, dense + keyword filter).
+        client.create_payload_index(
+            collection_name=name, field_name="content", field_schema=PayloadSchemaType.TEXT
         )
 
 
@@ -81,6 +88,27 @@ def search(
                 for d in document_ids
             ]
         )
+    return client.query_points(
+        collection_name=name,
+        query=query_vector,
+        limit=top_k,
+        query_filter=query_filter,
+    ).points
+
+
+def search_hybrid(
+    client: QdrantClient,
+    name: str,
+    *,
+    query_vector: list[float],
+    top_k: int = 5,
+    keyword: str | None = None,
+) -> list[Any]:
+    """Dense kNN search narrowed by an optional keyword (full-text) filter on
+    chunk content — the hybrid retrieval mode for task 3.3."""
+    query_filter = None
+    if keyword:
+        query_filter = Filter(must=[FieldCondition(key="content", match=MatchText(text=keyword))])
     return client.query_points(
         collection_name=name,
         query=query_vector,

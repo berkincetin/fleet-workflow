@@ -112,6 +112,7 @@ async def run_ingestion(
                 "vector": vector,
                 "payload": {
                     "document_id": document_id,
+                    "content_sha256": chunk.content_sha256,
                     "content": policy.text,
                     "redacted": policy.redacted,
                     "original_sensitivity": original_sensitivity,

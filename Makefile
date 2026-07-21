@@ -1,12 +1,18 @@
 COMPOSE := docker compose -f infra/compose/docker-compose.dev.yml
 
-.PHONY: dev down lint test migrate seed scan openapi client helm-lint k3d-up k3d-down gateway-sync gateway-check
+.PHONY: dev down lint test migrate seed scan openapi client helm-lint k3d-up k3d-down gateway-sync gateway-check api web
 
 dev: ## boot the full local dev stack
 	$(COMPOSE) up -d
 
 down: ## stop the dev stack
 	$(COMPOSE) down
+
+api: ## hot-reload the Fleet API (uvicorn --reload) on :8000
+	uv run uvicorn fleet_api.app:create_app --factory --reload --port 8000
+
+web: ## hot-reload the Next.js web shell on :3000
+	pnpm --filter web dev
 
 lint: ## ruff + mypy (Python) and eslint (web); tsc/typecheck wired in when web gains real code
 	uv run ruff check .

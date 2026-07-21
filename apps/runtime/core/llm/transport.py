@@ -50,3 +50,17 @@ class ProxyTransport:
             resp.raise_for_status()
             body: dict[str, Any] = resp.json()
             return body
+
+    async def embed(
+        self, *, model: str, input: list[str], **kwargs: Any
+    ) -> dict[str, Any]:
+        """Send an embeddings request; raise for non-2xx (mapped to GatewayError)."""
+        url = f"{self._base_url}/embeddings"
+        headers = {"Authorization": f"Bearer {self._master_key}"}
+        payload: dict[str, Any] = {"model": model, "input": input}
+
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            resp = await client.post(url, json=payload, headers=headers)
+            resp.raise_for_status()
+            body: dict[str, Any] = resp.json()
+            return body

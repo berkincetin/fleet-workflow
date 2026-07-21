@@ -7,6 +7,7 @@ readme = "README.md"
 dependencies = [
     "fleet-api",
     "fleet-runtime",
+    "fleet-rag",
 ]
 
 [tool.uv.workspace]
@@ -31,6 +32,7 @@ dev-dependencies = [
 [tool.uv.sources]
 fleet-api = { workspace = true }
 fleet-runtime = { workspace = true }
+fleet-rag = { workspace = true }
 
 [tool.ruff]
 target-version = "py312"

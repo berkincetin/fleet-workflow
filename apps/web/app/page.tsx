@@ -1,3 +1,3 @@
 export default function Home() {
-  return <main>Fleet platform — web shell. Screens land in Sprint 3+.</main>;
+  return <p className="text-sm text-[var(--muted-foreground)]">Fleet platform — web shell.</p>;
 }

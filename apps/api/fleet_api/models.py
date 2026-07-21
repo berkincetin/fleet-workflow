@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import datetime as dt
+from typing import Any
 
 from sqlalchemy import (
     ARRAY,
+    JSON,
     BigInteger,
+    Boolean,
     DateTime,
     ForeignKey,
     Integer,
@@ -112,6 +115,61 @@ class Budget(Base):
     period: Mapped[str] = mapped_column(String(16), nullable=False, default="monthly")
     limit_usd: Mapped[float] = mapped_column(Numeric(14, 2), nullable=False)
     soft_pct: Mapped[int] = mapped_column(Integer, nullable=False, default=80)
+
+
+class Collection(Base):
+    """RAG document collection (TRD §8 data classification, §11)."""
+
+    __tablename__ = "collections"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    dept_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"), nullable=True)
+    sensitivity: Mapped[str] = mapped_column(String(32), nullable=False, default="internal")
+    retention_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # redact (default) | block | allow-local-only (§8 PII pipeline).
+    pii_policy: Mapped[str] = mapped_column(String(32), nullable=False, default="redact")
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class Document(Base):
+    """Uploaded source document (TRD §11)."""
+
+    __tablename__ = "documents"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    collection_id: Mapped[int] = mapped_column(ForeignKey("collections.id"), nullable=False)
+    uri: Mapped[str] = mapped_column(String(1024), nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    ocr_status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    meta: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    collection: Mapped[Collection] = relationship()
+
+
+class Chunk(Base):
+    """Embedded, searchable slice of a document (TRD §8 redaction, §11)."""
+
+    __tablename__ = "chunks"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    document_id: Mapped[int] = mapped_column(ForeignKey("documents.id"), nullable=False)
+    content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    qdrant_point_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    redacted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    original_sensitivity: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    document: Mapped[Document] = relationship()
 
 
 class AuditLog(Base):

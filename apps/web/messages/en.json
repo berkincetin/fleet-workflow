@@ -1,0 +1,31 @@
+{
+  "nav": {
+    "chat": "Chat",
+    "knowledge": "Knowledge",
+    "approvals": "My Approvals"
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "signInPrompt": "Sign in to continue"
+  },
+  "knowledge": {
+    "title": "Knowledge",
+    "collections": "Collections",
+    "noCollections": "No collections yet.",
+    "upload": "Upload document",
+    "uploadPrompt": "Choose a file to upload into this collection.",
+    "selectCollection": "Select a collection",
+    "documents": "Documents",
+    "noDocuments": "No documents in this collection yet.",
+    "status": {
+      "pending": "Pending",
+      "queued": "Queued",
+      "ready": "Ready",
+      "error": "Error"
+    },
+    "uploading": "Uploading…",
+    "uploadSuccess": "Upload complete — ingestion started.",
+    "uploadError": "Upload failed."
+  }
+}

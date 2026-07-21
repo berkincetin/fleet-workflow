@@ -31,6 +31,10 @@ class Transport(Protocol):
         self, *, model: str, messages: list[dict[str, Any]], **kwargs: Any
     ) -> dict[str, Any]: ...
 
+    async def embed(
+        self, *, model: str, input: list[str], **kwargs: Any
+    ) -> dict[str, Any]: ...
+
 
 class Ledger(Protocol):
     """Persists a spend_ledger row."""
@@ -46,6 +50,17 @@ class BudgetChecker(Protocol):
 
 class GatewayError(Exception):
     """The proxy call failed after its retries + fallback chain (§4.4)."""
+
+
+@dataclass
+class EmbeddingResponse:
+    """A completed embeddings call: the served model, vectors, usage, cost."""
+
+    model: str
+    vectors: list[list[float]]
+    tok_in: int
+    cost_usd: float
+    raw: dict[str, Any]
 
 
 @dataclass
@@ -109,6 +124,62 @@ class LLMClient:
     ) -> LLMResponse:
         """Classification / extraction / routing / summarization call-sites (§4.3)."""
         return await self._call("utility", messages, sensitivity, redacted, meta)
+
+    async def embeddings(
+        self,
+        texts: list[str],
+        *,
+        sensitivity: str | Sensitivity = "internal",
+        redacted: bool = False,
+        **meta: Any,
+    ) -> EmbeddingResponse:
+        """RAG ingestion/query embedding call-sites (§3.1, §3.3)."""
+        model = select_model(
+            self._models, role="embeddings", sensitivity=sensitivity, redacted=redacted
+        )
+        name = model["name"]
+
+        budget: BudgetStatus | None = None
+        if self._budget_checker is not None:
+            budget = await self._budget_checker(meta)
+            budget.raise_if_exceeded()
+
+        try:
+            body = await self._transport.embed(model=name, input=texts)
+        except GatewayError:
+            raise
+        except Exception as exc:
+            raise GatewayError(f"gateway embed call failed for model {name!r}: {exc}") from exc
+
+        served = body.get("model", name)
+        priced = self._price_for(served, fallback=model)
+        usage = parse_usage(body)
+        cost = compute_cost(
+            usage,
+            input_price_per_1k=float(priced.get("input_price_per_1k", 0.0)),
+            output_price_per_1k=float(priced.get("output_price_per_1k", 0.0)),
+        )
+
+        await self._ledger.record(
+            {
+                "model": served,
+                "agent_id": meta.get("agent_id"),
+                "user_id": meta.get("user_id"),
+                "dept_id": meta.get("dept_id"),
+                "tok_in": usage.tok_in,
+                "tok_out": 0,
+                "tok_cached": 0,
+                "cost_usd": cost,
+                "trace_id": meta.get("trace_id"),
+            }
+        )
+
+        data = sorted(body.get("data") or [], key=lambda d: d.get("index", 0))
+        vectors = [d["embedding"] for d in data]
+
+        return EmbeddingResponse(
+            model=served, vectors=vectors, tok_in=usage.tok_in, cost_usd=cost, raw=body
+        )
 
     async def _call(
         self,

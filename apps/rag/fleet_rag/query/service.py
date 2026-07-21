@@ -15,6 +15,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Protocol
 
+from core.guardrails import wrap_untrusted
 from fleet_rag.query.answer import Answer, build_answer
 from fleet_rag.query.retrieve import Hit, RetrievalConfig, Searcher, retrieve
 
@@ -48,11 +49,6 @@ class AgentQueryConfig:
     total_token_cap: int = 4000
 
 
-def _wrap_untrusted(hits: list[Hit]) -> str:
-    body = "\n\n".join(f"[chunk:{i}] {h.content}" for i, h in enumerate(hits, start=1))
-    return f"<untrusted_context>\n{body}\n</untrusted_context>"
-
-
 def _parse_citations(text: str) -> list[int]:
     return [int(m) for m in _CITATION_RE.findall(text)]
 
@@ -64,7 +60,7 @@ async def _generate(
         {"role": "system", "content": _SYSTEM_PROMPT},
         {
             "role": "user",
-            "content": f"{_wrap_untrusted(hits)}\n\nQuestion: {question}",
+            "content": f"{wrap_untrusted([h.content for h in hits])}\n\nQuestion: {question}",
         },
     ]
     response = await reasoning_client.reasoning(messages, sensitivity=sensitivity)

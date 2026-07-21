@@ -1,6 +1,6 @@
 COMPOSE := docker compose -f infra/compose/docker-compose.dev.yml
 
-.PHONY: dev down lint test migrate seed scan openapi client helm-lint k3d-up k3d-down
+.PHONY: dev down lint test migrate seed scan openapi client helm-lint k3d-up k3d-down gateway-sync gateway-check
 
 dev: ## boot the full local dev stack
 	$(COMPOSE) up -d
@@ -33,6 +33,12 @@ openapi: ## dump the API OpenAPI schema to packages/shared/openapi.json
 client: openapi ## generate the TypeScript client from the OpenAPI schema
 	pnpm --filter @fleet/shared install
 	pnpm --filter @fleet/shared gen
+
+gateway-sync: ## refresh LiteLLM config prices from the litellm price map
+	uv run python gateway/litellm/pricing_sync.py
+
+gateway-check: ## fail if LiteLLM config prices have drifted (CI)
+	uv run python gateway/litellm/pricing_sync.py --check
 
 helm-lint: ## lint the umbrella chart
 	helm lint infra/helm/fleet -f infra/helm/fleet/values-dev.yaml

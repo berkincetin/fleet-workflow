@@ -4,7 +4,16 @@ from __future__ import annotations
 
 import datetime as dt
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, String, func
+from sqlalchemy import (
+    ARRAY,
+    BigInteger,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    func,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -39,6 +48,70 @@ class Role(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     role: Mapped[str] = mapped_column(String(64), nullable=False)
     dept_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"), nullable=True)
+
+
+class Model(Base):
+    """Model registry (TRD §4.1). Mirrored into the LiteLLM config."""
+
+    __tablename__ = "models"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
+    provider: Mapped[str] = mapped_column(String(64), nullable=False)
+    litellm_model_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    endpoint: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    input_price_per_1k: Mapped[float] = mapped_column(Numeric(12, 8), nullable=False)
+    output_price_per_1k: Mapped[float] = mapped_column(Numeric(12, 8), nullable=False)
+    cached_input_price: Mapped[float | None] = mapped_column(Numeric(12, 8), nullable=True)
+    context_window: Mapped[int] = mapped_column(Integer, nullable=False)
+    capabilities: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False, default=list)
+    max_output_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    sensitivity_clearance: Mapped[str] = mapped_column(String(32), nullable=False)
+    region: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    # Smoke-test-on-add result (§4.1).
+    smoke_status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    smoke_detail: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    smoke_latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    smoke_at: Mapped[dt.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class SpendLedger(Base):
+    """Per-call LLM spend record (TRD §5 spend ledger, §11). Append-only."""
+
+    __tablename__ = "spend_ledger"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    ts: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    model: Mapped[str] = mapped_column(String(128), nullable=False)
+    agent_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    user_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    dept_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    tok_in: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    tok_out: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    tok_cached: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    cost_usd: Mapped[float] = mapped_column(Numeric(14, 8), nullable=False, default=0)
+    trace_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+class Budget(Base):
+    """Spend budget for a scope (TRD §5 budget hierarchy, §11)."""
+
+    __tablename__ = "budgets"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    scope_type: Mapped[str] = mapped_column(String(16), nullable=False)  # global|dept|agent|user
+    scope_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    period: Mapped[str] = mapped_column(String(16), nullable=False, default="monthly")
+    limit_usd: Mapped[float] = mapped_column(Numeric(14, 2), nullable=False)
+    soft_pct: Mapped[int] = mapped_column(Integer, nullable=False, default=80)
 
 
 class AuditLog(Base):

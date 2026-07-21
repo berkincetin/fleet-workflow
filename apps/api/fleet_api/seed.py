@@ -9,6 +9,33 @@ from sqlalchemy import text
 
 _DEPARTMENTS = ["Customer Service", "Data", "Finance", "HR", "IT"]
 
+# Default model matrix (TRD §4.2), mirrored from gateway/litellm/config.yaml.
+# Seeded into the registry so Admin → Models and the gateway client have rows to
+# read on a fresh install. status='active' here is a seed convenience (Day-0
+# pinned models are assumed reachable); a real add via the API runs a smoke test.
+# (name, provider, litellm_model_id, in_price_1k, out_price_1k, ctx, caps,
+#  max_out, clearance, region)
+_DEFAULT_MODELS = [
+    ("reasoning", "anthropic", "anthropic/claude-sonnet-4-5", 0.003, 0.015, 200000,
+     ["tools", "json", "vision"], 8192, "internal", "us"),
+    ("reasoning-fallback-1", "openai", "openai/gpt-4o", 0.0025, 0.01, 128000,
+     ["tools", "json", "vision"], 16384, "internal", "us"),
+    ("reasoning-fallback-2", "gemini", "gemini/gemini-1.5-pro", 0.00125, 0.005, 2000000,
+     ["tools", "json", "vision"], 8192, "internal", "us"),
+    ("utility", "gemini", "gemini/gemini-1.5-flash", 0.000075, 0.0003, 1000000,
+     ["tools", "json", "vision"], 8192, "internal", "us"),
+    ("utility-fallback-1", "openai", "openai/gpt-4o-mini", 0.00015, 0.0006, 128000,
+     ["tools", "json"], 16384, "internal", "us"),
+    ("utility-fallback-2", "anthropic", "anthropic/claude-haiku-4-5", 0.001, 0.005, 200000,
+     ["tools", "json"], 8192, "internal", "us"),
+    ("embeddings", "openai", "openai/text-embedding-3-small", 0.00002, 0.0, 8191,
+     ["json"], 1, "internal", "us"),
+    ("local-reasoning", "ollama", "ollama/qwen2.5:7b-instruct-q4_K_M", 0.0, 0.0, 32768,
+     ["tools", "json"], 4096, "pii", "local"),
+    ("local-embeddings", "ollama", "ollama/bge-m3", 0.0, 0.0, 8192,
+     ["json"], 1, "pii", "local"),
+]
+
 _FIXTURE_SALES_VIEW = """
 CREATE OR REPLACE VIEW fixture_sales AS
 SELECT g AS id,
@@ -46,6 +73,24 @@ async def seed() -> None:
             ),
             {"s": "seed-admin", "e": "hash-admin", "d": "Seed Admin"},
         )
+        # Default model matrix (§4.2). Idempotent on unique name.
+        for m in _DEFAULT_MODELS:
+            await conn.execute(
+                text(
+                    "INSERT INTO models (name, provider, litellm_model_id, "
+                    "input_price_per_1k, output_price_per_1k, context_window, "
+                    "capabilities, max_output_tokens, sensitivity_clearance, region, "
+                    "status, smoke_status) "
+                    "VALUES (:name, :provider, :mid, :inp, :outp, :ctx, :caps, :maxo, "
+                    ":clr, :region, 'active', 'ok') "
+                    "ON CONFLICT (name) DO NOTHING"
+                ),
+                {
+                    "name": m[0], "provider": m[1], "mid": m[2], "inp": m[3],
+                    "outp": m[4], "ctx": m[5], "caps": m[6], "maxo": m[7],
+                    "clr": m[8], "region": m[9],
+                },
+            )
         # Analytics fixture views consumed by 5.2 evals (read via fleet_readonly).
         await conn.execute(text(_FIXTURE_SALES_VIEW))
         await conn.execute(text(_FIXTURE_ORDERS_VIEW))

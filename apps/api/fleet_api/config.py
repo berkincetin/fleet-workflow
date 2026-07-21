@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     # Redis (rate limiting)
     redis_url: str = "redis://localhost:6379/0"
     rate_limit_per_minute: int = 120
+    # LiteLLM gateway (Sprint 2)
+    litellm_base_url: str = "http://localhost:4000/v1"
+    litellm_master_key: str = "sk-fleet-dev-master"
 
 
 def get_settings() -> Settings:

@@ -58,7 +58,27 @@ services:
   litellm:
     image: ghcr.io/berriai/litellm:main-v1.53.7-stable
     ports: ["4000:4000"]
-    command: ["--port", "4000"]
+    # Boot from the pinned model matrix (gateway/litellm/config.yaml, TRD §4.2).
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    volumes:
+      - ../../gateway/litellm/config.yaml:/app/config.yaml:ro
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-fleet-dev-master}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      # Langfuse callback (TRD §6). Defaults match the langfuse service's
+      # headless-init keys below so tracing works out of the box; override in
+      # .env to point at a real project.
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-pk-lf-fleet-dev}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-sk-lf-fleet-dev}
+      LANGFUSE_HOST: ${LANGFUSE_HOST:-http://langfuse:3000}
+    depends_on:
+      langfuse:
+        condition: service_started
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   langfuse:
     image: langfuse/langfuse:2
@@ -71,6 +91,16 @@ services:
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-changeme_dev_secret}
       SALT: ${LANGFUSE_SALT:-changeme_dev_salt}
       TELEMETRY_ENABLED: "false"
+      # Headless bootstrap (Langfuse v2): create an org/project/user + a fixed
+      # API keypair on first boot so the LiteLLM proxy can emit traces without a
+      # manual UI step. Dev-only credentials.
+      LANGFUSE_INIT_ORG_ID: fleet
+      LANGFUSE_INIT_PROJECT_ID: fleet-dev
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-pk-lf-fleet-dev}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-sk-lf-fleet-dev}
+      LANGFUSE_INIT_USER_EMAIL: ${LANGFUSE_INIT_USER_EMAIL:-admin@fleet.dev}
+      LANGFUSE_INIT_USER_NAME: Fleet Admin
+      LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_INIT_USER_PASSWORD:-fleet_dev_pw}
     ports: ["3001:3000"]
 
   prometheus:

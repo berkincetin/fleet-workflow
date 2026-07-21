@@ -5,9 +5,9 @@
     "semantic_hash": "f6794ee9e595a8e1e64bc6eea94a6174"
   },
   "CLAUDE.md": {
-    "mtime": 1784192985.1743412,
-    "ast_hash": "0c1d9db2b947ed617c09b509515f0bef",
-    "semantic_hash": "0c1d9db2b947ed617c09b509515f0bef"
+    "mtime": 1784196611.0965478,
+    "ast_hash": "ad0bdbe18a70abf27b27b34adef4974e",
+    "semantic_hash": "ad0bdbe18a70abf27b27b34adef4974e"
   },
   "docs/DEPARTMENT_SCENARIOS.md": {
     "mtime": 1783380983.373909,
@@ -275,9 +275,9 @@
     "semantic_hash": "3316e011e0929861e8ab6d7a29f267de"
   },
   "apps/api/fleet_api/app.py": {
-    "mtime": 1784192634.9878983,
-    "ast_hash": "ed2f56f83e3728b170698a4071c5ef30",
-    "semantic_hash": "ed2f56f83e3728b170698a4071c5ef30"
+    "mtime": 1784587860.7148974,
+    "ast_hash": "dc53a15fe9851a839e2802b893e17bca",
+    "semantic_hash": "dc53a15fe9851a839e2802b893e17bca"
   },
   "apps/api/fleet_api/audit.py": {
     "mtime": 1784192634.9888973,
@@ -290,14 +290,14 @@
     "semantic_hash": "34636a9b28df437fcdab187e68baf9dd"
   },
   "apps/api/fleet_api/config.py": {
-    "mtime": 1784192634.990536,
-    "ast_hash": "2bb9baafba16b5187774c3b67326a8ea",
-    "semantic_hash": "2bb9baafba16b5187774c3b67326a8ea"
+    "mtime": 1784587792.1730769,
+    "ast_hash": "4fb3e052a6e6928c4849dc9e250c36fd",
+    "semantic_hash": "4fb3e052a6e6928c4849dc9e250c36fd"
   },
   "apps/api/fleet_api/db.py": {
-    "mtime": 1784134798.052708,
-    "ast_hash": "def5525e4e8e4403ac736d64e4651cc1",
-    "semantic_hash": "def5525e4e8e4403ac736d64e4651cc1"
+    "mtime": 1784587816.265625,
+    "ast_hash": "2ee91f707197794f670651df8a750ba3",
+    "semantic_hash": "2ee91f707197794f670651df8a750ba3"
   },
   "apps/api/fleet_api/errors.py": {
     "mtime": 1784192634.9915445,
@@ -315,9 +315,9 @@
     "semantic_hash": "9d3e5a45a7921c5f2ed9441d7fb05ecd"
   },
   "apps/api/fleet_api/models.py": {
-    "mtime": 1784134798.052708,
-    "ast_hash": "192654e7d8b302e172fc8928da467d55",
-    "semantic_hash": "192654e7d8b302e172fc8928da467d55"
+    "mtime": 1784588128.4724972,
+    "ast_hash": "0a4f6209c20cc9a3f05948d1003b856c",
+    "semantic_hash": "0a4f6209c20cc9a3f05948d1003b856c"
   },
   "apps/api/fleet_api/otel.py": {
     "mtime": 1784192634.9950676,
@@ -345,9 +345,9 @@
     "semantic_hash": "8c7d2103f4f51c441482813a6e507c4a"
   },
   "apps/api/fleet_api/seed.py": {
-    "mtime": 1784134798.0548625,
-    "ast_hash": "96b9ebfbe9c23a034f524eb0fdf2c3ff",
-    "semantic_hash": "96b9ebfbe9c23a034f524eb0fdf2c3ff"
+    "mtime": 1784587891.703185,
+    "ast_hash": "2fa7020545b6617542a8f85072afed77",
+    "semantic_hash": "2fa7020545b6617542a8f85072afed77"
   },
   "apps/api/pyproject.toml": {
     "mtime": 1784192635.0020616,
@@ -380,9 +380,9 @@
     "semantic_hash": "61ef384ef54f1aa18d9532f319b62fac"
   },
   "apps/runtime/pyproject.toml": {
-    "mtime": 1784115863.2314827,
-    "ast_hash": "c78f157a9433fff9fed2ab5b38714ce5",
-    "semantic_hash": "c78f157a9433fff9fed2ab5b38714ce5"
+    "mtime": 1784588035.3325374,
+    "ast_hash": "3a769bdbb0a1ae9d6767f70a136c55b5",
+    "semantic_hash": "3a769bdbb0a1ae9d6767f70a136c55b5"
   },
   "apps/web/app/layout.tsx": {
     "mtime": 1784116307.2583323,
@@ -480,9 +480,9 @@
     "semantic_hash": "2c20d886eede61190a69c7900d5630ea"
   },
   "pyproject.toml": {
-    "mtime": 1784192635.0358565,
-    "ast_hash": "bb2373e7effe03bf0b2b83ab6fc3d6aa",
-    "semantic_hash": "bb2373e7effe03bf0b2b83ab6fc3d6aa"
+    "mtime": 1784588047.273203,
+    "ast_hash": "ee8f25aff99d6589012dea50f74996c6",
+    "semantic_hash": "ee8f25aff99d6589012dea50f74996c6"
   },
   "tests/integration/test_auth_rbac.py": {
     "mtime": 1784192635.0374517,
@@ -510,9 +510,9 @@
     "semantic_hash": "da17aa9e7f85dfd5cdf315ba075ad4a2"
   },
   "tests/unit/test_models_metadata.py": {
-    "mtime": 1784134798.0718887,
-    "ast_hash": "0048c434dc545b7a641af09c43d3d1a2",
-    "semantic_hash": "0048c434dc545b7a641af09c43d3d1a2"
+    "mtime": 1784587868.722636,
+    "ast_hash": "a9a815b6b96546e9c80017439c31ab50",
+    "semantic_hash": "a9a815b6b96546e9c80017439c31ab50"
   },
   "tests/unit/test_smoke.py": {
     "mtime": 1784117772.7335186,
@@ -555,19 +555,19 @@
     "semantic_hash": "ef861d4d4add39ab1fe3a8c3e9821c12"
   },
   "docs/PRODUCTION_CHECKLIST.md": {
-    "mtime": 1784192962.052588,
-    "ast_hash": "aea10c745d84172a584c45a76d4abec2",
-    "semantic_hash": "aea10c745d84172a584c45a76d4abec2"
+    "mtime": 1784196611.0965478,
+    "ast_hash": "3d86f0f8ca38ba927f50a08b0b928066",
+    "semantic_hash": "3d86f0f8ca38ba927f50a08b0b928066"
   },
   "docs/PROGRESS.md": {
-    "mtime": 1784192635.0048757,
-    "ast_hash": "69b2424f9a4e5bcbecde261dfa8bb0fa",
-    "semantic_hash": "69b2424f9a4e5bcbecde261dfa8bb0fa"
+    "mtime": 1784591187.8320622,
+    "ast_hash": "112f8f5722a321cbbba868cc391749c9",
+    "semantic_hash": "112f8f5722a321cbbba868cc391749c9"
   },
   "docs/reports/sprint-1.md": {
-    "mtime": 1784193048.2590928,
-    "ast_hash": "69a4598abe82dee919e7b99c1804e355",
-    "semantic_hash": "69a4598abe82dee919e7b99c1804e355"
+    "mtime": 1784196611.0975046,
+    "ast_hash": "54642466df227bd133aec150a93ee5dc",
+    "semantic_hash": "54642466df227bd133aec150a93ee5dc"
   },
   "infra/compose/alertmanager/alertmanager.yml": {
     "mtime": 1784117279.5015106,
@@ -575,9 +575,9 @@
     "semantic_hash": "7d3d21f2a818ba021efca56beaeda8b7"
   },
   "infra/compose/docker-compose.dev.yml": {
-    "mtime": 1784134798.0611145,
-    "ast_hash": "b3ae90de69d7ca66168b23e3762f5f1e",
-    "semantic_hash": "b3ae90de69d7ca66168b23e3762f5f1e"
+    "mtime": 1784589883.6582227,
+    "ast_hash": "89388dd16875c1461a766b20c7c56e34",
+    "semantic_hash": "89388dd16875c1461a766b20c7c56e34"
   },
   "infra/compose/grafana/provisioning/datasources/datasources.yml": {
     "mtime": 1784117271.5776486,
@@ -668,5 +668,185 @@
     "mtime": 1784115524.178218,
     "ast_hash": "6e87156489fb0290b9bd67bf690989ea",
     "semantic_hash": "6e87156489fb0290b9bd67bf690989ea"
+  },
+  "apps/api/fleet_api/registry.py": {
+    "mtime": 1784587733.3330233,
+    "ast_hash": "f528d79f7b6890232b2c913c02ffe24a",
+    "semantic_hash": "f528d79f7b6890232b2c913c02ffe24a"
+  },
+  "apps/api/fleet_api/registry_probe.py": {
+    "mtime": 1784587954.68903,
+    "ast_hash": "a90c86a9fd9ce9617ecee050ac027fb1",
+    "semantic_hash": "a90c86a9fd9ce9617ecee050ac027fb1"
+  },
+  "apps/api/fleet_api/routers/models_admin.py": {
+    "mtime": 1784587850.6454308,
+    "ast_hash": "a2c8111be71da6f16c41b688545be810",
+    "semantic_hash": "a2c8111be71da6f16c41b688545be810"
+  },
+  "apps/runtime/core/__init__.py": {
+    "mtime": 1784588061.793544,
+    "ast_hash": "a6e7b35834c7099b5af14a01a431aef3",
+    "semantic_hash": "a6e7b35834c7099b5af14a01a431aef3"
+  },
+  "apps/runtime/core/llm/__init__.py": {
+    "mtime": 1784588061.794544,
+    "ast_hash": "38673728c8e980dc55fa581e6769108b",
+    "semantic_hash": "38673728c8e980dc55fa581e6769108b"
+  },
+  "apps/runtime/core/llm/budget.py": {
+    "mtime": 1784588542.878008,
+    "ast_hash": "075d55e9d2033ccfa40c23be62aba912",
+    "semantic_hash": "075d55e9d2033ccfa40c23be62aba912"
+  },
+  "apps/runtime/core/llm/client.py": {
+    "mtime": 1784588521.2285724,
+    "ast_hash": "9341c97605268e87a2d8fad3035a99db",
+    "semantic_hash": "9341c97605268e87a2d8fad3035a99db"
+  },
+  "apps/runtime/core/llm/cost.py": {
+    "mtime": 1784588178.160544,
+    "ast_hash": "e56f61558ab53c91f91f2d4d2e7385a6",
+    "semantic_hash": "e56f61558ab53c91f91f2d4d2e7385a6"
+  },
+  "apps/runtime/core/llm/factory.py": {
+    "mtime": 1784588557.7292287,
+    "ast_hash": "51819a17d5dfb0e3a3671821a72fc11e",
+    "semantic_hash": "51819a17d5dfb0e3a3671821a72fc11e"
+  },
+  "apps/runtime/core/llm/ledger.py": {
+    "mtime": 1784588277.5747054,
+    "ast_hash": "2a61771b52750eb3291e55af7ece1ac9",
+    "semantic_hash": "2a61771b52750eb3291e55af7ece1ac9"
+  },
+  "apps/runtime/core/llm/routing.py": {
+    "mtime": 1784588107.81108,
+    "ast_hash": "73d0c2df7b7c4262f397ea23bf5b3b87",
+    "semantic_hash": "73d0c2df7b7c4262f397ea23bf5b3b87"
+  },
+  "apps/runtime/core/llm/transport.py": {
+    "mtime": 1784588363.8067176,
+    "ast_hash": "4ccaeebb59987d67f1bd2ac5e4a20906",
+    "semantic_hash": "4ccaeebb59987d67f1bd2ac5e4a20906"
+  },
+  "gateway/litellm/pricing_sync.py": {
+    "mtime": 1784587557.570046,
+    "ast_hash": "fd1f4c524ad3a65bf61f4700d0e2fd22",
+    "semantic_hash": "fd1f4c524ad3a65bf61f4700d0e2fd22"
+  },
+  "infra/migrations/versions/0002_models.py": {
+    "mtime": 1784587769.289775,
+    "ast_hash": "54a9aeff9521212435e5e3ffbceee15a",
+    "semantic_hash": "54a9aeff9521212435e5e3ffbceee15a"
+  },
+  "infra/migrations/versions/0003_spend_and_budgets.py": {
+    "mtime": 1784588142.2269022,
+    "ast_hash": "1bfbeec7584c1a2e3ddb5e9a05317c04",
+    "semantic_hash": "1bfbeec7584c1a2e3ddb5e9a05317c04"
+  },
+  "tests/integration/test_model_smoke_probe.py": {
+    "mtime": 1784591020.2999516,
+    "ast_hash": "88d6b6bf6e07638d1ade7349d926c5ca",
+    "semantic_hash": "88d6b6bf6e07638d1ade7349d926c5ca"
+  },
+  "tests/integration/test_spend_and_budgets.py": {
+    "mtime": 1784588664.2621548,
+    "ast_hash": "ec9778986ee475f729d7866ca004d333",
+    "semantic_hash": "ec9778986ee475f729d7866ca004d333"
+  },
+  "tests/unit/test_budget.py": {
+    "mtime": 1784588608.2837417,
+    "ast_hash": "edffd8979ee7e08d52fe01652b13085d",
+    "semantic_hash": "edffd8979ee7e08d52fe01652b13085d"
+  },
+  "tests/unit/test_litellm_config.py": {
+    "mtime": 1784587612.4499712,
+    "ast_hash": "cffb684c1bc596922020e6c163bfcf04",
+    "semantic_hash": "cffb684c1bc596922020e6c163bfcf04"
+  },
+  "tests/unit/test_llm_client.py": {
+    "mtime": 1784588212.0084605,
+    "ast_hash": "a054bc483bca29c46a7fb828cd919a9b",
+    "semantic_hash": "a054bc483bca29c46a7fb828cd919a9b"
+  },
+  "tests/unit/test_llm_client_budget.py": {
+    "mtime": 1784588466.8414829,
+    "ast_hash": "225702699d9ded6fcacb9d8d39195a60",
+    "semantic_hash": "225702699d9ded6fcacb9d8d39195a60"
+  },
+  "tests/unit/test_llm_cost.py": {
+    "mtime": 1784588162.3597035,
+    "ast_hash": "4306524fc01e637bb3570ba032614d4f",
+    "semantic_hash": "4306524fc01e637bb3570ba032614d4f"
+  },
+  "tests/unit/test_llm_factory.py": {
+    "mtime": 1784588342.2696068,
+    "ast_hash": "baee0d074c9d68f18ddc82231b344339",
+    "semantic_hash": "baee0d074c9d68f18ddc82231b344339"
+  },
+  "tests/unit/test_model_registry.py": {
+    "mtime": 1784587705.8120842,
+    "ast_hash": "3941446471a00ed841c054095b5dce27",
+    "semantic_hash": "3941446471a00ed841c054095b5dce27"
+  },
+  "tests/unit/test_pricing_sync.py": {
+    "mtime": 1784587524.6388197,
+    "ast_hash": "4de6ce55aefdf91922465931a6d236fe",
+    "semantic_hash": "4de6ce55aefdf91922465931a6d236fe"
+  },
+  "tests/unit/test_sensitivity_routing.py": {
+    "mtime": 1784588087.2553563,
+    "ast_hash": "bd6a65e5f94b3a197fb5e47ac13e898b",
+    "semantic_hash": "bd6a65e5f94b3a197fb5e47ac13e898b"
+  },
+  "docs/reports/sprint-2.md": {
+    "mtime": 1784591231.0829415,
+    "ast_hash": "010c369012e2d912d132dd054869d81a",
+    "semantic_hash": "010c369012e2d912d132dd054869d81a"
+  },
+  "docs/source/DEPARTMENT_SCENARIOS.md": {
+    "mtime": 1784053227.1885965,
+    "ast_hash": "5f3432a426318078ed8476e261b3f870",
+    "semantic_hash": "5f3432a426318078ed8476e261b3f870"
+  },
+  "docs/source/IMPLEMENTATION_PLAN.md": {
+    "mtime": 1784053227.1365528,
+    "ast_hash": "280914ea8acdce596427fa09e96910e9",
+    "semantic_hash": "280914ea8acdce596427fa09e96910e9"
+  },
+  "docs/source/PROJECT_OVERVIEW.md": {
+    "mtime": 1784053227.2153766,
+    "ast_hash": "b6166f7afcfd3e3936004ca0e23e4c2b",
+    "semantic_hash": "b6166f7afcfd3e3936004ca0e23e4c2b"
+  },
+  "docs/source/TECHNICAL_REQUIREMENTS.md": {
+    "mtime": 1784053227.1597805,
+    "ast_hash": "fa577f97784f0829e63e6e61a6d46169",
+    "semantic_hash": "fa577f97784f0829e63e6e61a6d46169"
+  },
+  "docs/superpowers/plans/2026-07-15-sprint-1-stage-a.md": {
+    "mtime": 1784115125.5858204,
+    "ast_hash": "6ede99c59d72350b3808326ee5acf498",
+    "semantic_hash": "6ede99c59d72350b3808326ee5acf498"
+  },
+  "docs/superpowers/plans/2026-07-15-sprint-1-stage-b.md": {
+    "mtime": 1784134798.059919,
+    "ast_hash": "c6785ab17b7829ecbc300afd7b508747",
+    "semantic_hash": "c6785ab17b7829ecbc300afd7b508747"
+  },
+  "docs/superpowers/plans/2026-07-16-sprint-1-stage-c.md": {
+    "mtime": 1784192635.0064826,
+    "ast_hash": "adefdb2acd8f2f066881722a529b3423",
+    "semantic_hash": "adefdb2acd8f2f066881722a529b3423"
+  },
+  "docs/superpowers/specs/2026-07-15-sprint-1-foundation-design.md": {
+    "mtime": 1784114738.8586729,
+    "ast_hash": "824794187901d93fb4b0d940d23b007f",
+    "semantic_hash": "824794187901d93fb4b0d940d23b007f"
+  },
+  "gateway/litellm/config.yaml": {
+    "mtime": 1784588286.0694277,
+    "ast_hash": "51dc38bcb24d11a890a163ed21494887",
+    "semantic_hash": "51dc38bcb24d11a890a163ed21494887"
   }
 }

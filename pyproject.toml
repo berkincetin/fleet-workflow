@@ -6,6 +6,7 @@ requires-python = ">=3.12"
 readme = "README.md"
 dependencies = [
     "fleet-api",
+    "fleet-runtime",
 ]
 
 [tool.uv.workspace]
@@ -24,10 +25,12 @@ dev-dependencies = [
     "testcontainers[postgres,keycloak]>=4.8",
     "psycopg2-binary>=2.9",
     "bandit>=1.7",
+    "pyyaml>=6.0",
 ]
 
 [tool.uv.sources]
 fleet-api = { workspace = true }
+fleet-runtime = { workspace = true }
 
 [tool.ruff]
 target-version = "py312"

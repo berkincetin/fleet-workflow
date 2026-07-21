@@ -11,7 +11,7 @@ from fleet_api.middleware import (
     TraceIdMiddleware,
 )
 from fleet_api.otel import configure_tracing
-from fleet_api.routers import health, whoami
+from fleet_api.routers import health, models_admin, whoami
 
 
 def create_app(*, with_middleware: bool = True) -> FastAPI:
@@ -24,6 +24,7 @@ def create_app(*, with_middleware: bool = True) -> FastAPI:
     install_error_handlers(app)
     app.include_router(health.router)
     app.include_router(whoami.router)
+    app.include_router(models_admin.router)
 
     if with_middleware:
         settings = get_settings()

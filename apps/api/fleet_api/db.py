@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+from collections.abc import AsyncIterator
+from functools import lru_cache
 
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -27,3 +29,15 @@ def get_engine(url: str | None = None) -> AsyncEngine:
 def session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
     """Build an async session factory bound to the given engine."""
     return async_sessionmaker(engine, expire_on_commit=False)
+
+
+@lru_cache(maxsize=1)
+def _app_session_factory() -> async_sessionmaker[AsyncSession]:
+    """Process-wide session factory over a single engine (built lazily)."""
+    return session_factory(get_engine())
+
+
+async def get_session() -> AsyncIterator[AsyncSession]:
+    """FastAPI dependency yielding a request-scoped async session."""
+    async with _app_session_factory()() as session:
+        yield session

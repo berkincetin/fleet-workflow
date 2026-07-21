@@ -1,0 +1,152 @@
+# Fleet LiteLLM proxy config — Day-0 pinned model matrix (TRD §4.2).
+#
+# This is the canonical source of truth for the model list. Provider model IDs
+# are pinned here at Day 0; all rows are also mirrored into the `models` registry
+# table (task 2.2) and are editable in Admin → Models, which regenerates &
+# hot-reloads this file (§4.1 add-a-model flow).
+#
+# API keys are supplied by the environment (Sprint 0 prerequisites), referenced
+# below as os.environ/VAR — never hard-code secrets in this file. Ollama runs
+# host-native for the pii lane; OLLAMA_BASE_URL points the proxy at it.
+#
+# Prices below are per-token USD, kept in sync from the registry by
+# gateway/litellm/pricing_sync.py (task 2.1 pricing sync). Do not hand-edit the
+# `input_cost_per_token` / `output_cost_per_token` fields — run the sync.
+
+model_list:
+  # ---- Reasoning (clearance: internal) -------------------------------------
+  - model_name: reasoning
+    litellm_params:
+      model: anthropic/claude-sonnet-4-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+      input_cost_per_token: 0.000003
+      output_cost_per_token: 0.000015
+    model_info:
+      fleet_role: reasoning
+      sensitivity_clearance: internal
+      context_window: 200000
+      capabilities: [tools, json, vision]
+
+  - model_name: reasoning-fallback-1
+    litellm_params:
+      model: openai/gpt-4o
+      api_key: os.environ/OPENAI_API_KEY
+      input_cost_per_token: 0.0000025
+      output_cost_per_token: 0.00001
+    model_info:
+      fleet_role: reasoning
+      sensitivity_clearance: internal
+      context_window: 128000
+      capabilities: [tools, json, vision]
+
+  - model_name: reasoning-fallback-2
+    litellm_params:
+      model: gemini/gemini-1.5-pro
+      api_key: os.environ/GEMINI_API_KEY
+      input_cost_per_token: 0.00000125
+      output_cost_per_token: 0.000005
+    model_info:
+      fleet_role: reasoning
+      sensitivity_clearance: internal
+      context_window: 2000000
+      capabilities: [tools, json, vision]
+
+  # ---- Utility (clearance: internal) ---------------------------------------
+  - model_name: utility
+    litellm_params:
+      model: gemini/gemini-1.5-flash
+      api_key: os.environ/GEMINI_API_KEY
+      input_cost_per_token: 0.000000075
+      output_cost_per_token: 0.0000003
+    model_info:
+      fleet_role: utility
+      sensitivity_clearance: internal
+      context_window: 1000000
+      capabilities: [tools, json, vision]
+
+  - model_name: utility-fallback-1
+    litellm_params:
+      model: openai/gpt-4o-mini
+      api_key: os.environ/OPENAI_API_KEY
+      input_cost_per_token: 0.00000015
+      output_cost_per_token: 0.0000006
+    model_info:
+      fleet_role: utility
+      sensitivity_clearance: internal
+      context_window: 128000
+      capabilities: [tools, json]
+
+  - model_name: utility-fallback-2
+    litellm_params:
+      model: anthropic/claude-haiku-4-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+      input_cost_per_token: 0.000001
+      output_cost_per_token: 0.000005
+    model_info:
+      fleet_role: utility
+      sensitivity_clearance: internal
+      context_window: 200000
+      capabilities: [tools, json]
+
+  # ---- Embeddings (cloud, clearance: internal) -----------------------------
+  - model_name: embeddings
+    litellm_params:
+      model: openai/text-embedding-3-small
+      api_key: os.environ/OPENAI_API_KEY
+      input_cost_per_token: 0.00000002
+      output_cost_per_token: 0.0
+    model_info:
+      fleet_role: embeddings
+      sensitivity_clearance: internal
+      context_window: 8191
+      capabilities: [json]
+
+  # ---- Local lane (clearance: pii) — Ollama, host-native GPU ---------------
+  # No cloud model is ever cleared for pii; these serve pii/confidential traffic.
+  - model_name: local-reasoning
+    litellm_params:
+      model: ollama/qwen2.5:7b-instruct-q4_K_M
+      api_base: os.environ/OLLAMA_BASE_URL
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+    model_info:
+      fleet_role: reasoning
+      sensitivity_clearance: pii
+      context_window: 32768
+      capabilities: [tools, json]
+
+  - model_name: local-embeddings
+    litellm_params:
+      model: ollama/bge-m3
+      api_base: os.environ/OLLAMA_BASE_URL
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+    model_info:
+      fleet_role: embeddings
+      sensitivity_clearance: pii
+      context_window: 8192
+      capabilities: [json]
+
+# Per-model fallback chains (§4.3). Circuit-breaks on provider 5xx/timeout and
+# steps down the same tier, then (reasoning) to the local lane as last resort.
+litellm_settings:
+  drop_params: true
+  num_retries: 2
+  request_timeout: 60
+  # Observability (TRD §6): the proxy emits every call to Langfuse. The client
+  # forwards trace_id/agent/user/dept as metadata; callbacks are wired HERE, not
+  # in the client (CLAUDE.md conventions). Keys come from the env.
+  success_callback: ["langfuse"]
+  failure_callback: ["langfuse"]
+  fallbacks:
+    - reasoning: [reasoning-fallback-1, reasoning-fallback-2, local-reasoning]
+    - reasoning-fallback-1: [reasoning-fallback-2, local-reasoning]
+    - utility: [utility-fallback-1, utility-fallback-2]
+    - utility-fallback-1: [utility-fallback-2]
+    - embeddings: [local-embeddings]
+
+# The proxy exposes an OpenAI-compatible surface; the gateway client (task 2.3)
+# is the ONLY caller (CLAUDE.md rule 1). master_key gates the admin/management
+# API and virtual-key issuance (budgets, task 2.4).
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY

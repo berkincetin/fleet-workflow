@@ -6,18 +6,27 @@ COPY --from=ghcr.io/astral-sh/uv:0.7.12 /uv /uvx /bin/
 
 WORKDIR /app
 
-# fleet-api depends on fleet-runtime via `tool.uv.sources` workspace = true
-# (Sprint 4: agent kill switches/chat routing use core.llm/core.killswitch),
-# so uv needs the whole workspace root — not just apps/api/ — to resolve it.
+# fleet-api depends on fleet-runtime and (Sprint 5) fleet-mcp via `tool.uv.sources`
+# workspace = true; fleet-mcp in turn depends on fleet-rag, which depends back on
+# fleet-api (a workspace-metadata cycle uv resolves fine since nothing actually
+# imports circularly at module load — see apps/mcp/pyproject.toml). So uv needs
+# all four workspace members present to resolve fleet-api's dependency tree, not
+# just apps/api/ + apps/runtime/.
 COPY pyproject.toml uv.lock ./
 COPY apps/api/pyproject.toml apps/api/pyproject.toml
 COPY apps/api/fleet_api apps/api/fleet_api
 COPY apps/runtime/pyproject.toml apps/runtime/pyproject.toml
 COPY apps/runtime/core apps/runtime/core
+COPY apps/runtime/agents apps/runtime/agents
+COPY apps/rag/pyproject.toml apps/rag/pyproject.toml
+COPY apps/rag/fleet_rag apps/rag/fleet_rag
+COPY apps/mcp/pyproject.toml apps/mcp/pyproject.toml
+COPY apps/mcp/fleet_mcp apps/mcp/fleet_mcp
 COPY infra/migrations infra/migrations
 
-# Install the api package (+ its fleet-runtime workspace dependency) into a venv.
-RUN uv pip install --system --no-cache ./apps/api ./apps/runtime
+# Install the api package (+ its fleet-runtime/fleet-rag/fleet-mcp workspace
+# dependencies) into a venv.
+RUN uv pip install --system --no-cache ./apps/api ./apps/runtime ./apps/rag ./apps/mcp
 
 # Non-root user.
 RUN useradd --create-home --uid 10001 fleet

@@ -54,6 +54,36 @@ SELECT g AS id,
 FROM generate_series(1, 500) AS g;
 """
 
+# Task 6.3, dept scenario 04 (Invoice & Reconciliation): a small, fixed
+# purchase-order fixture (not generate_series-scaled like the analytics
+# views) — invoice validation matches a specific PO number, so the eval
+# dataset's cases need stable, known-in-advance rows rather than 500
+# procedurally generated ones. 12 distinct rows (not 5) so the eval
+# dataset's 12 "clean" extraction-accuracy cases can each use a genuinely
+# distinct PO number — duplicate-PO detection is itself a real guardrail
+# (validator.check_duplicate), so reusing PO numbers across "clean" cases
+# would make the agent correctly flag them as duplicates within the batch.
+_FIXTURE_PURCHASE_ORDERS_VIEW = """
+CREATE OR REPLACE VIEW fixture_purchase_orders AS
+SELECT * FROM (VALUES
+    ('PO-1001', 'Acme Tedarik A.S.', 1250.00::numeric, 'TRY'),
+    ('PO-1002', 'Bilgi Teknoloji Ltd.', 4800.50::numeric, 'TRY'),
+    ('PO-1003', 'Kartal Lojistik', 990.00::numeric, 'TRY'),
+    ('PO-1004', 'Deniz Ofis Malzemeleri', 315.75::numeric, 'TRY'),
+    ('PO-1005', 'Yildiz Danismanlik', 7600.00::numeric, 'TRY'),
+    ('PO-1006', 'Marmara Insaat A.S.', 2100.00::numeric, 'TRY'),
+    ('PO-1007', 'Ege Elektronik Ltd.', 615.25::numeric, 'TRY'),
+    ('PO-1008', 'Karadeniz Nakliyat', 3300.00::numeric, 'TRY'),
+    ('PO-1009', 'Anadolu Yazilim', 5450.00::numeric, 'TRY'),
+    ('PO-1010', 'Toros Kimya Sanayi', 890.40::numeric, 'TRY'),
+    ('PO-1011', 'Boğaziçi Danışmanlık', 4200.00::numeric, 'TRY'),
+    ('PO-1012', 'Sakarya Matbaacılık', 175.50::numeric, 'TRY'),
+    ('PO-1013', 'Fırat Enerji', 1875.00::numeric, 'TRY'),
+    ('PO-1014', 'Meric Tarim Urunleri', 660.00::numeric, 'TRY'),
+    ('PO-1015', 'Van Golu Turizm', 425.00::numeric, 'TRY')
+) AS t(po_number, vendor, amount, currency);
+"""
+
 
 async def seed_support_copilot() -> None:
     """Support Copilot demo agent + its cs-help-center/cs-procedures collections
@@ -143,6 +173,30 @@ async def seed_dev_agent() -> None:
     await engine.dispose()
 
 
+async def seed_invoice_agent() -> None:
+    """Invoice & Reconciliation demo agent (task 6.3, department scenario 04).
+    sensitivity=confidential (raw invoices carry IBAN/tax-no PII per the
+    scenario's OCR-local/redact-at-ingest requirements); semantic_cache OFF
+    (§ scenario spec — every invoice is a distinct document, nothing to
+    cache). No RAG collections — the "knowledge" is the fixture PO table via
+    pg_ro, same shape as Analytics' semantic layer."""
+    engine = get_engine(database_url())
+    async with engine.begin() as conn:
+        dept_id = (
+            await conn.execute(text("SELECT id FROM departments WHERE name = 'Finance'"))
+        ).scalar_one()
+        await conn.execute(
+            text(
+                "INSERT INTO agents (name, dept_id, reasoning_model, utility_model, "
+                "sensitivity, semantic_cache, semantic_cache_threshold, max_context_tokens, "
+                "collection_ids) VALUES ('invoice_agent', :d, 'reasoning', 'utility', "
+                "'confidential', false, 0.95, 8000, '{}') ON CONFLICT (name) DO NOTHING"
+            ),
+            {"d": dept_id},
+        )
+    await engine.dispose()
+
+
 async def seed() -> None:
     engine = get_engine(database_url())
     async with engine.begin() as conn:
@@ -182,8 +236,13 @@ async def seed() -> None:
         # Analytics fixture views consumed by 5.2 evals (read via fleet_readonly).
         await conn.execute(text(_FIXTURE_SALES_VIEW))
         await conn.execute(text(_FIXTURE_ORDERS_VIEW))
+        # Invoice-reconciliation fixture consumed by 6.3 (department scenario 04).
+        await conn.execute(text(_FIXTURE_PURCHASE_ORDERS_VIEW))
         await conn.execute(
-            text("GRANT SELECT ON fixture_sales, fixture_orders TO fleet_readonly")
+            text(
+                "GRANT SELECT ON fixture_sales, fixture_orders, "
+                "fixture_purchase_orders TO fleet_readonly"
+            )
         )
     await engine.dispose()
 
@@ -193,6 +252,7 @@ def main() -> None:
     asyncio.run(seed_support_copilot())
     asyncio.run(seed_analytics_agent())
     asyncio.run(seed_dev_agent())
+    asyncio.run(seed_invoice_agent())
 
 
 if __name__ == "__main__":

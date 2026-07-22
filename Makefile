@@ -1,4 +1,4 @@
-COMPOSE := docker compose -f infra/compose/docker-compose.dev.yml
+COMPOSE := docker compose --env-file .env -f infra/compose/docker-compose.dev.yml
 
 .PHONY: dev down lint test migrate seed scan openapi client helm-lint k3d-up k3d-down gateway-sync gateway-check api web
 

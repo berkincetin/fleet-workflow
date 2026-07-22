@@ -1,4 +1,4 @@
-"""Contract test: all Sprint-5.1/5.3 servers registered on one MCPServer
+"""Contract test: all Sprint-5.1/5.3/6.3 servers registered on one MCPServer
 (AC — "each server passes contract tests; risk_class declared per tool").
 
 Each server contributes ToolContract(s) built with fakes/fixtures (no network,
@@ -15,6 +15,7 @@ import base64
 import pytest
 from fleet_mcp.base import MCPAuthError, MCPServer
 from fleet_mcp.servers.email import EmailSendTool
+from fleet_mcp.servers.erp import ErpTool
 from fleet_mcp.servers.github import GitHubTool
 from fleet_mcp.servers.internal_mock import InternalMockTool
 from fleet_mcp.servers.jira import FixtureJiraBackend, JiraTool
@@ -69,6 +70,7 @@ def server() -> MCPServer:
     mcp.register(
         SlackPostTool(sender=_FakeSlackSender(), allowed_channels={"#dev-agent"}).as_contract()
     )
+    mcp.register(ErpTool().as_contract())
     return mcp
 
 
@@ -86,6 +88,7 @@ def test_all_registered_tools_declare_a_valid_risk_class(server: MCPServer) -> N
         "github.commit_file": "write:internal",
         "github.open_pr": "write:external",
         "slack.post": "write:internal",
+        "erp.create_draft_entry": "write:external",
     }
 
 
@@ -122,6 +125,13 @@ async def test_each_tool_callable_through_the_shared_dispatcher(server: MCPServe
         "slack.post", {"channel": "#dev-agent", "text": "hi"}, api_key="test-key"
     )
 
+    entry_result = await server.call_tool(
+        "erp.create_draft_entry",
+        {"vendor": "Acme", "po_number": "PO-1001", "amount": 100.0, "currency": "TRY"},
+        api_key="test-key",
+    )
+    assert entry_result["status"] == "draft"
+
 
 async def test_wrong_api_key_blocks_every_server_uniformly(server: MCPServer) -> None:
     for tool_name, payload in [
@@ -131,6 +141,10 @@ async def test_wrong_api_key_blocks_every_server_uniformly(server: MCPServer) ->
         ("jira.search", {"jql": "x"}),
         ("github.read_repo", {}),
         ("slack.post", {"channel": "#dev-agent", "text": "hi"}),
+        (
+            "erp.create_draft_entry",
+            {"vendor": "Acme", "po_number": "PO-1001", "amount": 100.0, "currency": "TRY"},
+        ),
     ]:
         with pytest.raises(MCPAuthError):
             await server.call_tool(tool_name, payload, api_key="wrong")

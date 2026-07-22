@@ -1,0 +1,103 @@
+{
+  "name": "invoice-intake",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "invoice-intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger-1",
+      "name": "Invoice upload webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-400, 0],
+      "webhookId": "bff61a56-34a2-4bd2-84ef-79e100779cb9"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.FLEET_API_BASE_URL }}/v1/invoice-agent/runs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-Fleet-Api-Key", "value": "={{ $env.FLEET_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ image_base64: $json.body.image_base64 }) }}",
+        "options": {}
+      },
+      "id": "http-invoice-run",
+      "name": "Start invoice agent run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-160, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "status-check",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "pending_approval",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-pending-approval",
+      "name": "Reached approval queue?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [80, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: \"queued_for_approval\", run_id: $json.run_id, detail: $json.detail }) }}",
+        "options": { "responseCode": 201 }
+      },
+      "id": "respond-queued",
+      "name": "Respond: queued for approval",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [320, -80]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: \"blocked\", run_id: $json.run_id, detail: $json.detail }) }}",
+        "options": { "responseCode": 422 }
+      },
+      "id": "respond-blocked",
+      "name": "Respond: blocked",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [320, 80]
+    }
+  ],
+  "connections": {
+    "Invoice upload webhook": {
+      "main": [[{ "node": "Start invoice agent run", "type": "main", "index": 0 }]]
+    },
+    "Start invoice agent run": {
+      "main": [[{ "node": "Reached approval queue?", "type": "main", "index": 0 }]]
+    },
+    "Reached approval queue?": {
+      "main": [
+        [{ "node": "Respond: queued for approval", "type": "main", "index": 0 }],
+        [{ "node": "Respond: blocked", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {},
+  "active": false
+}

@@ -1,0 +1,98 @@
+{
+  "name": "weekly-summary",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "cronExpression", "expression": "0 8 * * 1" }
+          ]
+        }
+      },
+      "id": "cron-trigger-1",
+      "name": "Every Monday 08:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-400, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.FLEET_API_BASE_URL }}/v1/service/pg-query",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-Fleet-Api-Key", "value": "={{ $env.FLEET_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ sql: \"SELECT COUNT(*) AS order_count, COALESCE(SUM(amount_usd), 0) AS total_usd FROM fixture_sales WHERE sold_on >= (SELECT MAX(sold_on) FROM fixture_sales) - INTERVAL '7 days'\" }) }}",
+        "options": {}
+      },
+      "id": "http-pg-query",
+      "name": "Query weekly sales (pg_ro)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-160, 0]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "summary-text",
+              "name": "text",
+              "type": "string",
+              "value": "={{ \"Weekly summary: \" + $json.rows[0].order_count + \" sales, $\" + $json.rows[0].total_usd + \" total (last 7 days).\" }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-summary",
+      "name": "Format summary text",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [80, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.FLEET_API_BASE_URL }}/v1/service/slack-post",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-Fleet-Api-Key", "value": "={{ $env.FLEET_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ channel: \"#weekly-summary\", text: $json.text }) }}",
+        "options": {
+          "response": { "response": { "responseFormat": "text" } }
+        }
+      },
+      "id": "http-slack-post",
+      "name": "Post to Slack (slack.post)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [320, 0]
+    }
+  ],
+  "connections": {
+    "Every Monday 08:00": {
+      "main": [[{ "node": "Query weekly sales (pg_ro)", "type": "main", "index": 0 }]]
+    },
+    "Query weekly sales (pg_ro)": {
+      "main": [[{ "node": "Format summary text", "type": "main", "index": 0 }]]
+    },
+    "Format summary text": {
+      "main": [[{ "node": "Post to Slack (slack.post)", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {},
+  "active": false
+}

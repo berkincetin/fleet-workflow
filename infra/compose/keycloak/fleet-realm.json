@@ -12,6 +12,28 @@
       "standardFlowEnabled": true,
       "redirectUris": ["http://localhost:3000/*"],
       "webOrigins": ["http://localhost:3000"]
+    },
+    {
+      "clientId": "n8n",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "n8n-oauth2-proxy-dev-secret",
+      "directAccessGrantsEnabled": false,
+      "standardFlowEnabled": true,
+      "redirectUris": ["http://localhost:5679/oauth2/callback"],
+      "webOrigins": ["http://localhost:5679"],
+      "protocolMappers": [
+        {
+          "name": "aud-n8n",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "n8n",
+            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        }
+      ]
     }
   ],
   "roles": {

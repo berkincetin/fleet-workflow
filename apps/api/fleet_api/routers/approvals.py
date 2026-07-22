@@ -8,21 +8,25 @@ decision (status/decided_by/decided_at) and resumes the paused graph run via
 `thread_id`) against a real AsyncPostgresSaver — same mechanism proven in
 task 4.1's test_runtime_graph_live.py, now reachable from the API.
 
-Dev Agent (5.5) is the only interrupt-producing agent this sprint, so the
-resume path is dev-agent-specific rather than a generic per-agent registry
-(CLAUDE.md: no premature abstraction) — a second interrupt-producing agent
-would be the natural trigger to extract one.
+Dev Agent (5.5) was the only interrupt-producing agent through Sprint 5, so
+the resume path stayed dev-agent-specific rather than a generic per-agent
+registry (CLAUDE.md: no premature abstraction) — Invoice Agent (6.3) is that
+second interrupt-producing agent, the trigger already flagged for extracting
+one. `_RESUMERS` is a small dict keyed by `agents.name`, not a class
+hierarchy/plugin system — still the simplest thing that lets a third agent
+register itself with one new entry and one new function, not a framework.
 """
 
 from __future__ import annotations
 
 import datetime as dt
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from fleet_api.auth import CurrentUser, get_current_user
 from fleet_api.db import get_session
-from fleet_api.models import Approval
+from fleet_api.models import Agent, Approval
 from fleet_api.rbac import Permission, require_permission
 from langgraph.types import Command
 from pydantic import BaseModel
@@ -95,6 +99,60 @@ async def _resume_dev_agent_run(run_id: str, *, approved: bool) -> None:
         await graph.ainvoke(Command(resume={"approved": approved}), config)
 
 
+async def _resume_invoice_agent_run(run_id: str, *, approved: bool) -> None:
+    """Same rebuild-fresh-and-resume mechanism as Dev Agent, for Invoice
+    Agent's erp.create_draft_entry interrupt (task 6.3)."""
+    from agents.invoice_agent.graph import build_invoice_agent_graph
+    from agents.invoice_agent.po_lookup import PgPoLookup
+    from core.llm.factory import build_client
+    from fleet_api.db import database_url as api_database_url
+    from fleet_mcp.servers.asyncpg_runner import build_default_runner
+    from fleet_mcp.servers.erp import ErpTool
+    from fleet_mcp.servers.ocr import build_ocr_tool
+    from fleet_mcp.servers.pg_ro import PgReadOnlyTool
+    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
+    llm_client = await build_client()
+    ocr = build_ocr_tool(vision_client=llm_client, tesseract_fn=lambda b: "")
+    erp = ErpTool()
+    po_lookup = PgPoLookup(
+        tool=PgReadOnlyTool(
+            runner=build_default_runner(), allowlisted_tables={"fixture_purchase_orders"}
+        )
+    )
+
+    checkpoint_dsn = api_database_url().replace("postgresql+asyncpg://", "postgresql://")
+    async with AsyncPostgresSaver.from_conn_string(checkpoint_dsn) as checkpointer:
+        graph = build_invoice_agent_graph(
+            llm_client=llm_client, ocr=_OcrToolAdapter(ocr), erp=erp, po_lookup=po_lookup,
+            checkpointer=checkpointer,
+        )
+        config = {"configurable": {"thread_id": run_id}}
+        await graph.ainvoke(Command(resume={"approved": approved}), config)
+
+
+class _OcrToolAdapter:
+    """`build_ocr_tool` returns a bare callable (`image_base64 -> {text, source}`);
+    `InvoiceAgentState`'s OcrLike Protocol expects an `.extract_text(...)`
+    method — this adapts one to the other rather than changing either
+    established shape for the sake of the other."""
+
+    def __init__(self, fn: Any) -> None:
+        self._fn = fn
+
+    async def extract_text(self, image_base64: str) -> dict[str, Any]:
+        return await self._fn(image_base64=image_base64)  # type: ignore[no-any-return]
+
+
+# Keyed by agents.name (TRD §11) — the same identifier already carried on
+# every Approval row's agent_id -> agents.name join. A third interrupt-
+# producing agent registers here with one new entry, no other code change.
+_RESUMERS: dict[str, Callable[..., Awaitable[None]]] = {
+    "dev_agent": _resume_dev_agent_run,
+    "invoice_agent": _resume_invoice_agent_run,
+}
+
+
 @router.post("/{approval_id}/decide", status_code=200)
 async def decide_approval(
     approval_id: int,
@@ -115,12 +173,21 @@ async def decide_approval(
     if body.edited_payload is not None:
         approval.payload = body.edited_payload
 
+    agent_row = await session.get(Agent, approval.agent_id)
+    agent_label = agent_row.name if agent_row is not None else f"id={approval.agent_id}"
+    if agent_row is None or agent_row.name not in _RESUMERS:
+        raise HTTPException(
+            status_code=500,
+            detail=f"no resume handler registered for agent {agent_label!r}",
+        )
+    resume_fn = _RESUMERS[agent_row.name]
+
     approval.status = "approved" if body.decision == "approve" else "rejected"
     approval.decided_by = current.sub
     approval.decided_at = dt.datetime.now(dt.UTC)
     await session.commit()
     await session.refresh(approval)
 
-    await _resume_dev_agent_run(approval.run_id, approved=body.decision == "approve")
+    await resume_fn(approval.run_id, approved=body.decision == "approve")
 
     return ApprovalOut.model_validate(approval)

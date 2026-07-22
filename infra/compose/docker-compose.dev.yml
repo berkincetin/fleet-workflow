@@ -136,6 +136,111 @@ services:
     image: axllent/mailpit:v1.21.8
     ports: ["1025:1025", "8025:8025"]
 
+  # n8n queue mode (task 6.1, TRD §3/§15): main handles the editor UI/API and
+  # enqueues executions; worker(s) pull from the same Redis queue and actually
+  # run workflows — this is what "scales to hundreds of automations" means in
+  # practice (adding workers scales throughput without touching main). Redis
+  # DB 2 keeps the queue isolated from rate-limiting (DB 0) and RAG ingestion
+  # (DB 1). Not reachable directly by design — see n8n-oauth2-proxy below.
+  n8n-main:
+    image: n8nio/n8n:1.71.3
+    environment:
+      EXECUTIONS_MODE: queue
+      QUEUE_BULL_REDIS_HOST: redis
+      QUEUE_BULL_REDIS_PORT: "6379"
+      QUEUE_BULL_REDIS_DB: "2"
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_DATABASE: n8n
+      DB_POSTGRESDB_USER: ${POSTGRES_USER:-fleet}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD:-fleet_dev_pw}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-fleet_dev_n8n_encryption_key}
+      N8N_HOST: localhost
+      N8N_PORT: "5678"
+      N8N_PROTOCOL: http
+      WEBHOOK_URL: http://localhost:5679/
+      N8N_EDITOR_BASE_URL: http://localhost:5679/
+      GENERIC_TIMEZONE: Europe/Istanbul
+    ports: ["5678:5678"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  n8n-worker:
+    image: n8nio/n8n:1.71.3
+    command: ["worker"]
+    environment:
+      EXECUTIONS_MODE: queue
+      QUEUE_BULL_REDIS_HOST: redis
+      QUEUE_BULL_REDIS_PORT: "6379"
+      QUEUE_BULL_REDIS_DB: "2"
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_DATABASE: n8n
+      DB_POSTGRESDB_USER: ${POSTGRES_USER:-fleet}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD:-fleet_dev_pw}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-fleet_dev_n8n_encryption_key}
+      GENERIC_TIMEZONE: Europe/Istanbul
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      n8n-main:
+        condition: service_started
+
+  # SSO gate in front of n8n (TRD §3/§15: n8n's fair-code license forbids
+  # white-label embedding, so it must live on its own reachable surface,
+  # gated by Keycloak rather than folded into Fleet's own auth). A real OIDC
+  # authorization-code flow against the same `fleet` realm every other
+  # component uses; unauthenticated requests get redirected to Keycloak
+  # login, never proxied through to n8n-main. Local dev stands in for
+  # "own subdomain" with a dedicated port, since compose has no DNS.
+  n8n-oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.7.1
+    command:
+      - --http-address=0.0.0.0:4180
+      - --provider=keycloak-oidc
+      # Keycloak stamps the ID token's `iss` claim from the base URL the
+      # browser actually used (localhost:8080), not from any server-side
+      # setting — so oidc-issuer-url (the value oauth2-proxy validates `iss`
+      # against) must match that, even though it also reaches Keycloak over
+      # the compose network for the token/JWKS calls below. OIDC
+      # auto-discovery (the default) would instead resolve login/redeem/jwks
+      # from Keycloak's own internal metadata (keycloak:8080), which the
+      # browser can't reach — skip it and supply each endpoint explicitly.
+      - --oidc-issuer-url=http://localhost:8080/realms/fleet
+      - --skip-oidc-discovery=true
+      - --login-url=http://localhost:8080/realms/fleet/protocol/openid-connect/auth
+      - --redeem-url=http://keycloak:8080/realms/fleet/protocol/openid-connect/token
+      - --oidc-jwks-url=http://keycloak:8080/realms/fleet/protocol/openid-connect/certs
+      - --client-id=n8n
+      - --client-secret=n8n-oauth2-proxy-dev-secret
+      - --redirect-url=http://localhost:5679/oauth2/callback
+      - --upstream=http://n8n-main:5678
+      - --email-domain=*
+      - --skip-provider-button=true
+      # Dev-realm seed users (fleet-realm.json) aren't marked emailVerified —
+      # a demo-data gap, not a real KVKK/production concern (this repo's own
+      # Keycloak, no external federation) — so oauth2-proxy's default
+      # verified-email requirement would reject every seeded user.
+      - --insecure-oidc-allow-unverified-email=true
+      - --cookie-secret=${N8N_PROXY_COOKIE_SECRET:-ZmxlZXRfZGV2X2Nvb2tpZV9zZWNyZXQh}
+      - --cookie-secure=false
+      - --ssl-insecure-skip-verify=true
+    ports: ["5679:4180"]
+    depends_on:
+      keycloak:
+        condition: service_started
+      n8n-main:
+        condition: service_started
+
 volumes:
   pgdata:
   qdrantdata:

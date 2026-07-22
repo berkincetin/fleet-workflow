@@ -297,6 +297,31 @@ class Approval(Base):
     )
 
 
+class ApiKey(Base):
+    """Fleet-issued programmatic credential (TRD §7.1, §11) — hashed, scoped, expiring.
+
+    The raw key is returned to the caller once, at issuance time, and never
+    stored; `hash` is the only persisted form (same principle as a password
+    hash). `revoked_at` is not in TRD §11's literal column list but is needed
+    to satisfy task 6.1's AC ("a revoked key gets 401") without deleting the
+    row and losing the audit trail of who issued/used it.
+    """
+
+    __tablename__ = "api_keys"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    hash: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    scopes: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False, default=list)
+    dept_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"), nullable=True)
+    expires_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    revoked_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class AuditLog(Base):
     __tablename__ = "audit_log"
 

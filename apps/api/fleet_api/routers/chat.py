@@ -7,13 +7,19 @@ persisted message id and trace_id. `POST /v1/messages/{id}/feedback` records a
 thumbs up/down and pushes it as a Langfuse score on that message's trace (§6)
 — the AC is "lands in Langfuse", not just the DB row.
 
-Two reply paths, chosen per-agent by whether `agent.collection_ids` is set:
-- **RAG (Support Copilot and any future KB-backed agent):** fleet_rag's
-  answer_query() — embed -> hybrid retrieve -> generate -> structural grounding
-  check (TRD §9), the same pipeline task 3.3's /v1/rag/query test harness
-  exercises. This is a single non-streaming call (the citation-verification
-  retry loop needs the full answer before it can validate it), emitted as one
-  `token` event with the complete grounded text, then real citations.
+Three reply paths, chosen per-agent:
+- **Analytics (agent.name == "analytics", task 5.2):** agents.analytics.service
+  — NL question -> SQL (reasoning tier) -> fleet_mcp.servers.pg_ro governed
+  execution (allowlist/DML-block/auto-LIMIT). Not streaming or RAG; the SQL
+  and row count are rendered as the reply text so "generated SQL always
+  displayed to user" holds on every answer, refusal, and clarification alike.
+- **RAG (Support Copilot and any future KB-backed agent, agent.collection_ids
+  set):** fleet_rag's answer_query() — embed -> hybrid retrieve -> generate ->
+  structural grounding check (TRD §9), the same pipeline task 3.3's
+  /v1/rag/query test harness exercises. This is a single non-streaming call
+  (the citation-verification retry loop needs the full answer before it can
+  validate it), emitted as one `token` event with the complete grounded text,
+  then real citations.
 - **Plain passthrough (no collections configured):** real upstream token
   streaming via core.llm.client.LLMClient.reasoning_stream (TRD §5 "streaming
   everywhere") — what task 4.3 built and proved the SSE/feedback transport
@@ -160,6 +166,46 @@ async def _assert_agent_may_read_its_collections(session: AsyncSession, agent: A
             )
 
 
+ANALYTICS_AGENT_NAME = "analytics"
+
+
+async def _analytics_reply(
+    *, agent: Agent, user_content: str, llm_client: LLMClient, trace_id: str
+) -> str:
+    """Text-to-SQL reply for the Analytics agent (task 5.2, dept scenario 02).
+
+    Not a RAG path — no collections/citations. Renders the generated SQL and
+    the returned rows as the message text so "generated SQL always displayed
+    to user" (the department scenario's guardrail) holds for every answer,
+    not just successful ones being silently correct.
+    """
+    from agents.analytics.semantic_layer import DEFAULT_SEMANTIC_LAYER
+    from agents.analytics.service import AnalyticsClarification, AnalyticsRefusal, ask_analytics
+    from fleet_mcp.servers.asyncpg_runner import build_default_runner
+    from fleet_mcp.servers.pg_ro import PgReadOnlyTool
+
+    pg_tool = PgReadOnlyTool(
+        runner=build_default_runner(),
+        allowlisted_tables=DEFAULT_SEMANTIC_LAYER.allowlisted_tables(),
+    )
+    try:
+        result = await ask_analytics(
+            question=user_content,
+            semantic_layer=DEFAULT_SEMANTIC_LAYER,
+            llm_client=llm_client,
+            pg_tool=pg_tool,
+            sensitivity=agent.sensitivity,
+            agent_id=str(agent.id),
+            trace_id=trace_id,
+        )
+    except AnalyticsClarification as exc:
+        return str(exc)
+    except AnalyticsRefusal as exc:
+        return f"I can't run that query: {exc}"
+
+    return f"```sql\n{result.sql}\n```\n\n{len(result.rows)} row(s) returned."
+
+
 async def _rag_reply(
     *, agent: Agent, user_content: str, llm_client: LLMClient, trace_id: str
 ) -> tuple[str, list[dict[str, Any]]]:
@@ -226,7 +272,17 @@ async def _stream_reply(
     text = ""
     citations: list[dict[str, Any]] = []
 
-    if agent.collection_ids:
+    if agent.name == ANALYTICS_AGENT_NAME:
+        try:
+            text = await _analytics_reply(
+                agent=agent, user_content=user_content, llm_client=llm_client, trace_id=trace_id
+            )
+        except GatewayError as exc:
+            yield _sse("error", {"detail": str(exc)})
+            await session.commit()
+            return
+        yield _sse("token", {"delta": text})
+    elif agent.collection_ids:
         try:
             text, citations = await _rag_reply(
                 agent=agent, user_content=user_content, llm_client=llm_client, trace_id=trace_id

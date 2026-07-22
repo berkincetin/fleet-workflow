@@ -5,3 +5,9 @@ agents:
   support_copilot:
     dataset: datasets/support_copilot.jsonl
     threshold: 0.90
+  analytics:
+    dataset: datasets/analytics.jsonl
+    threshold: 0.90
+  dev_agent:
+    dataset: datasets/dev_agent.jsonl
+    threshold: 0.90

@@ -20,6 +20,7 @@ dependencies = [
     "minio>=7.2",
     "python-multipart>=0.0.18",
     "fleet-runtime",
+    "fleet-mcp",
 ]
 
 [build-system]
@@ -31,3 +32,4 @@ packages = ["fleet_api"]
 
 [tool.uv.sources]
 fleet-runtime = { workspace = true }
+fleet-mcp = { workspace = true }

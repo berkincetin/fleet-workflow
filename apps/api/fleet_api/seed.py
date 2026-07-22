@@ -99,6 +99,29 @@ async def seed_support_copilot() -> None:
     await engine.dispose()
 
 
+async def seed_analytics_agent() -> None:
+    """Analytics demo agent (task 5.2, department scenario 02). No RAG
+    collections — its "knowledge" is the inline semantic layer in
+    agents.analytics.semantic_layer, not a KB collection. semantic_cache is
+    OFF per the scenario (data freshness matters more than repeat-question
+    cost for ad-hoc analytics)."""
+    engine = get_engine(database_url())
+    async with engine.begin() as conn:
+        dept_id = (
+            await conn.execute(text("SELECT id FROM departments WHERE name = 'Data'"))
+        ).scalar_one()
+        await conn.execute(
+            text(
+                "INSERT INTO agents (name, dept_id, reasoning_model, utility_model, "
+                "sensitivity, semantic_cache, semantic_cache_threshold, max_context_tokens, "
+                "collection_ids) VALUES ('analytics', :d, 'reasoning', 'utility', 'internal', "
+                "false, 0.95, 8000, '{}') ON CONFLICT (name) DO NOTHING"
+            ),
+            {"d": dept_id},
+        )
+    await engine.dispose()
+
+
 async def seed() -> None:
     engine = get_engine(database_url())
     async with engine.begin() as conn:
@@ -147,6 +170,7 @@ async def seed() -> None:
 def main() -> None:
     asyncio.run(seed())
     asyncio.run(seed_support_copilot())
+    asyncio.run(seed_analytics_agent())
 
 
 if __name__ == "__main__":

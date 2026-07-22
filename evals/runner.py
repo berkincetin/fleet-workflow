@@ -203,6 +203,138 @@ async def run_agent_eval(agent_name: str) -> tuple[list[CaseResult], float, floa
     return results, pass_rate, threshold
 
 
+@dataclass(frozen=True)
+class AnalyticsCase:
+    id: str
+    question: str
+    expect_row_count: int | None = None
+    sql_must_reference_table: str | None = None
+    must_refuse: bool = False
+    must_clarify: bool = False
+    must_refuse_or_clarify: bool = False
+
+
+@dataclass(frozen=True)
+class AnalyticsAnswer:
+    sql: str | None = None
+    row_count: int | None = None
+    refused: bool = False
+    clarification: str | None = None
+
+
+def load_analytics_dataset(path: Path) -> list[AnalyticsCase]:
+    cases: list[AnalyticsCase] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        row = json.loads(line)
+        cases.append(
+            AnalyticsCase(
+                id=row["id"],
+                question=row["question"],
+                expect_row_count=row.get("expect_row_count"),
+                sql_must_reference_table=row.get("sql_must_reference_table"),
+                must_refuse=row.get("must_refuse", False),
+                must_clarify=row.get("must_clarify", False),
+                must_refuse_or_clarify=row.get("must_refuse_or_clarify", False),
+            )
+        )
+    return cases
+
+
+def evaluate_analytics_case(case: AnalyticsCase, answer: AnalyticsAnswer) -> CaseResult:
+    if case.must_refuse:
+        if not answer.refused:
+            return CaseResult(id=case.id, passed=False, reason="expected the query to be refused")
+        return CaseResult(id=case.id, passed=True, reason="ok")
+
+    if case.must_clarify:
+        if not answer.clarification:
+            return CaseResult(
+                id=case.id, passed=False, reason="expected a clarifying question, got SQL"
+            )
+        return CaseResult(id=case.id, passed=True, reason="ok")
+
+    if case.must_refuse_or_clarify:
+        # A question naming a non-allowlisted table may be intercepted at
+        # either layer: the SQL generator itself declines to guess a table
+        # outside its semantic-layer glossary (clarification), or pg_ro's
+        # allowlist refuses SQL that did get generated (refusal) — both are
+        # correct outcomes of the guardrail (never a guessed/hallucinated
+        # query over a forbidden table), so either satisfies this case.
+        if not (answer.refused or answer.clarification):
+            return CaseResult(
+                id=case.id, passed=False,
+                reason="expected a refusal or a clarifying question, got SQL",
+            )
+        return CaseResult(id=case.id, passed=True, reason="ok")
+
+    if case.expect_row_count is not None and answer.row_count != case.expect_row_count:
+        return CaseResult(
+            id=case.id, passed=False,
+            reason=f"expected {case.expect_row_count} rows, got {answer.row_count}",
+        )
+
+    if case.sql_must_reference_table is not None:
+        sql = answer.sql or ""
+        if case.sql_must_reference_table not in sql:
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=f"expected SQL to reference {case.sql_must_reference_table!r}",
+            )
+
+    return CaseResult(id=case.id, passed=True, reason="ok")
+
+
+async def _run_analytics_case(case: AnalyticsCase) -> AnalyticsAnswer:
+    """Run one case through the real Analytics agent pipeline (5.2)."""
+    from agents.analytics.semantic_layer import DEFAULT_SEMANTIC_LAYER
+    from agents.analytics.service import AnalyticsClarification, AnalyticsRefusal, ask_analytics
+    from core.llm.factory import build_client
+    from fleet_mcp.servers.asyncpg_runner import build_default_runner
+    from fleet_mcp.servers.pg_ro import PgReadOnlyTool
+
+    llm_client = await build_client()
+    pg_tool = PgReadOnlyTool(
+        runner=build_default_runner(),
+        allowlisted_tables=DEFAULT_SEMANTIC_LAYER.allowlisted_tables(),
+    )
+    try:
+        result = await ask_analytics(
+            question=case.question,
+            semantic_layer=DEFAULT_SEMANTIC_LAYER,
+            llm_client=llm_client,
+            pg_tool=pg_tool,
+        )
+    except AnalyticsClarification as exc:
+        return AnalyticsAnswer(clarification=str(exc))
+    except AnalyticsRefusal:
+        return AnalyticsAnswer(refused=True)
+
+    return AnalyticsAnswer(sql=result.sql, row_count=len(result.rows))
+
+
+async def run_analytics_eval() -> tuple[list[CaseResult], float, float]:
+    """Returns (results, pass_rate, threshold). Same shape as run_agent_eval()
+    but over AnalyticsCase/AnalyticsAnswer instead of the RAG-specific types —
+    Analytics has no collection_ids and doesn't need the agents-table lookup
+    run_agent_eval() does for RAG agents."""
+    config = yaml.safe_load((EVALS_DIR / "config.yaml").read_text(encoding="utf-8"))
+    agent_config = config["agents"]["analytics"]
+    dataset_path = EVALS_DIR / agent_config["dataset"]
+    threshold = float(agent_config["threshold"])
+    cases = load_analytics_dataset(dataset_path)
+
+    results = []
+    for case in cases:
+        answer = await _run_analytics_case(case)
+        results.append(evaluate_analytics_case(case, answer))
+
+    pass_rate = sum(1 for r in results if r.passed) / len(results) if results else 0.0
+    return results, pass_rate, threshold
+
+
 def main() -> None:
     import asyncio
 
@@ -212,7 +344,10 @@ def main() -> None:
     parser.add_argument("--agent", required=True)
     args = parser.parse_args()
 
-    results, pass_rate, threshold = asyncio.run(run_agent_eval(args.agent))
+    if args.agent == "analytics":
+        results, pass_rate, threshold = asyncio.run(run_analytics_eval())
+    else:
+        results, pass_rate, threshold = asyncio.run(run_agent_eval(args.agent))
 
     for r in results:
         status = "PASS" if r.passed else "FAIL"

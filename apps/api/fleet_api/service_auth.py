@@ -13,12 +13,18 @@ import datetime as dt
 from dataclasses import dataclass
 
 from fastapi import Depends, Header
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fleet_api.api_keys import ApiKeyInvalid, ApiKeyRecord, hash_key, validate_record
+from fleet_api.auth import CurrentUser, verify_bearer_token
+from fleet_api.config import Settings, get_settings
 from fleet_api.db import get_session
 from fleet_api.errors import ForbiddenError, UnauthorizedError
 from fleet_api.models import ApiKey
+from fleet_api.rbac import Permission, permissions_for
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+_optional_bearer = HTTPBearer(auto_error=False)
 
 
 @dataclass
@@ -70,5 +76,45 @@ def require_scope(scope: str):
         if scope not in key.scopes:
             raise ForbiddenError(f"api key missing scope: {scope}")
         return key
+
+    return _dep
+
+
+def require_user_or_service_scope(permission: Permission, scope: str):
+    """Dependency factory: allow the request if EITHER a Keycloak bearer
+    token carries `permission` (a logged-in human — e.g. a future admin UI
+    triggering a run directly) OR an `X-Fleet-Api-Key` carries `scope` (a
+    service — n8n's webhook path, task 6.3). Same "route stays reachable by
+    both caller kinds" shape as picking a route prefix wouldn't give without
+    duplicating the graph-wiring logic across two endpoints.
+
+    Tries the bearer token first since it's the common human-triggered case;
+    falls back to the API key only if no valid bearer token was presented,
+    never partially trusting one over the other.
+    """
+
+    async def _dep(
+        credentials: HTTPAuthorizationCredentials | None = Depends(_optional_bearer),  # noqa: B008
+        x_fleet_api_key: str | None = Header(default=None),  # noqa: B008
+        settings: Settings = Depends(get_settings),  # noqa: B008
+        session: AsyncSession = Depends(get_session),  # noqa: B008
+    ) -> CurrentUser | CurrentServiceKey:
+        if credentials is not None and credentials.credentials:
+            user = await verify_bearer_token(credentials.credentials, settings)
+            if permission not in permissions_for(user.roles):
+                raise ForbiddenError(f"missing permission: {permission}")
+            return user
+
+        if x_fleet_api_key:
+            record = await _lookup(session, x_fleet_api_key)
+            try:
+                valid = validate_record(record, now=dt.datetime.now(dt.UTC))
+            except ApiKeyInvalid as exc:
+                raise UnauthorizedError(str(exc)) from exc
+            if scope not in valid.scopes:
+                raise ForbiddenError(f"api key missing scope: {scope}")
+            return CurrentServiceKey(id=valid.id, name=valid.name, scopes=valid.scopes)
+
+        raise UnauthorizedError("missing bearer token or X-Fleet-Api-Key header")
 
     return _dep

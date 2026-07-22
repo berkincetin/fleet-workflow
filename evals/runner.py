@@ -16,6 +16,7 @@ call (tests/unit/test_eval_runner.py); only main()/run_agent_eval() do I/O.
 from __future__ import annotations
 
 import argparse
+import difflib
 import io
 import json
 import os
@@ -110,6 +111,36 @@ def _fold(text: str) -> str:
     lowered = text.lower()
     return "".join(
         c for c in unicodedata.normalize("NFD", lowered) if unicodedata.category(c) != "Mn"
+    )
+
+
+# Turkish characters have no accent-only Unicode decomposition for _fold()'s
+# NFD-strip trick to bridge (ı is its own base letter, not "i" + a combining
+# mark) — a real transliteration table is needed for vendor fuzzy-matching to
+# treat "Yildiz"/"Yıldız" as the same word rather than 1/6 characters apart.
+_TR_ASCII_MAP = str.maketrans("ıİşŞçÇğĞöÖüÜ", "iIsScCgGoOuU")
+
+
+def _tr_ascii_fold(text: str) -> str:
+    return _fold(text.translate(_TR_ASCII_MAP))
+
+
+def _vendor_reasonably_matches(extracted: str, expected: str, *, threshold: float = 0.8) -> bool:
+    """Word-for-word fuzzy match, tolerant of OCR-level diacritic noise (ı/i,
+    ş/s, ç/c, ğ/g) a small local vision model reading rendered text realistically
+    produces — a byte-identical string match is the wrong bar for "field
+    extraction accuracy" here (dept scenario 04). Same word count required
+    (an extraction that drops/adds a word is a real miss, not OCR noise);
+    each corresponding word must be at least `threshold` similar per
+    difflib.SequenceMatcher on the ASCII-transliterated form.
+    """
+    extracted_words = _tr_ascii_fold(extracted).split()
+    expected_words = _tr_ascii_fold(expected).split()
+    if len(extracted_words) != len(expected_words):
+        return False
+    return all(
+        difflib.SequenceMatcher(None, e, x).ratio() >= threshold
+        for e, x in zip(extracted_words, expected_words, strict=True)
     )
 
 
@@ -485,6 +516,212 @@ async def run_dev_agent_eval() -> tuple[list[CaseResult], float, float]:
     return results, pass_rate, threshold
 
 
+@dataclass(frozen=True)
+class InvoiceCase:
+    """One synthetic invoice (task 6.3, dept scenario 04 evals: field
+    extraction accuracy >=95%; mismatch fixture must flag, never auto-draft
+    as clean; duplicate invoice fixture must flag). The invoice image is
+    rendered at run time from vendor/po_number/amount, not stored as a
+    pre-baked file — same "exercise the real image->text pipeline, don't
+    fake around it" spirit as tests/integration/test_invoice_agent_e2e_live.py.
+    """
+
+    id: str
+    vendor: str
+    po_number: str
+    amount: str  # as written on the rendered invoice, e.g. "1250.00"
+    expect_vendor: str
+    expect_po_number: str
+    expect_amount: float
+    expect_validation_ok: bool
+    expect_reason_contains: str | None = None
+
+
+@dataclass(frozen=True)
+class InvoiceAnswer:
+    pending_approval: bool = False
+    blocked_reason: str | None = None
+    extracted_vendor: str | None = None
+    extracted_po_number: str | None = None
+    extracted_amount: float | None = None
+    validation_ok: bool | None = None
+    validation_reasons: list[str] = field(default_factory=list)
+
+
+def load_invoice_dataset(path: Path) -> list[InvoiceCase]:
+    cases: list[InvoiceCase] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        row = json.loads(line)
+        cases.append(
+            InvoiceCase(
+                id=row["id"],
+                vendor=row["vendor"],
+                po_number=row["po_number"],
+                amount=row["amount"],
+                expect_vendor=row["expect_vendor"],
+                expect_po_number=row["expect_po_number"],
+                expect_amount=float(row["expect_amount"]),
+                expect_validation_ok=row["expect_validation_ok"],
+                expect_reason_contains=row.get("expect_reason_contains"),
+            )
+        )
+    return cases
+
+
+def evaluate_invoice_case(case: InvoiceCase, answer: InvoiceAnswer) -> CaseResult:
+    if not answer.pending_approval:
+        return CaseResult(
+            id=case.id, passed=False,
+            reason=f"expected the run to reach pending_approval, got blocked_reason="
+            f"{answer.blocked_reason!r}",
+        )
+
+    # Field extraction accuracy (dept scenario 04: ">= 95% on synthetic invoice set").
+    # Vendor names are OCR'd/transcribed by a small local vision model reading
+    # rendered Turkish text — minor diacritic slips (ı/i, ş/s, ç/c) are real
+    # OCR noise, not extraction failures, so vendor comparison tolerates small
+    # per-word edit distance rather than requiring byte-identical spelling.
+    # po_number/amount stay exact-match — those are unambiguous, no OCR-noise
+    # tolerance is appropriate for a number the model either got right or not.
+    if not _vendor_reasonably_matches(answer.extracted_vendor or "", case.expect_vendor):
+        return CaseResult(
+            id=case.id, passed=False,
+            reason=f"vendor extraction mismatch: got {answer.extracted_vendor!r}, "
+            f"expected {case.expect_vendor!r}",
+        )
+    if answer.extracted_po_number != case.expect_po_number:
+        return CaseResult(
+            id=case.id, passed=False,
+            reason=f"po_number extraction mismatch: got {answer.extracted_po_number!r}, "
+            f"expected {case.expect_po_number!r}",
+        )
+    if answer.extracted_amount is None or abs(answer.extracted_amount - case.expect_amount) > 0.01:
+        return CaseResult(
+            id=case.id, passed=False,
+            reason=f"amount extraction mismatch: got {answer.extracted_amount!r}, "
+            f"expected {case.expect_amount!r}",
+        )
+
+    # Validation outcome: mismatch/duplicate/unknown-PO fixtures must flag
+    # (never silently validate as clean); a genuinely matching invoice must
+    # validate ok (never a false-positive flag either).
+    if answer.validation_ok != case.expect_validation_ok:
+        return CaseResult(
+            id=case.id, passed=False,
+            reason=f"expected validation_ok={case.expect_validation_ok}, "
+            f"got {answer.validation_ok} (reasons={answer.validation_reasons!r})",
+        )
+    if case.expect_reason_contains is not None:
+        wanted = _fold(case.expect_reason_contains)
+        if not any(wanted in _fold(r) for r in answer.validation_reasons):
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=f"expected a validation reason containing "
+                f"{case.expect_reason_contains!r}, got {answer.validation_reasons!r}",
+            )
+
+    return CaseResult(id=case.id, passed=True, reason="ok")
+
+
+def _render_invoice_image_base64(*, vendor: str, po_number: str, amount: str) -> str:
+    import base64
+    import io
+
+    from PIL import Image, ImageDraw
+
+    img = Image.new("RGB", (500, 200), color="white")
+    draw = ImageDraw.Draw(img)
+    draw.text((10, 10), f"Vendor: {vendor}", fill="black")
+    draw.text((10, 50), f"PO Number: {po_number}", fill="black")
+    draw.text((10, 90), f"Total Amount: {amount} TRY", fill="black")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return base64.b64encode(buf.getvalue()).decode("ascii")
+
+
+async def _run_invoice_case(case: InvoiceCase, *, seen_po_numbers: set[str]) -> InvoiceAnswer:
+    """Run one case through the real Invoice Agent graph (6.3) — real
+    gateway client (vision OCR + reasoning extraction), real pg_ro-backed PO
+    lookup against the seeded fixture_purchase_orders view, real mock ERP
+    tool. Never approves, same "stays parked at its interrupt" pattern as
+    Dev Agent evals — no real draft entries created by the eval suite."""
+    from agents.invoice_agent.graph import build_invoice_agent_graph
+    from agents.invoice_agent.po_lookup import PgPoLookup
+    from core.llm.factory import build_client
+    from fleet_mcp.servers.asyncpg_runner import build_default_runner
+    from fleet_mcp.servers.erp import ErpTool
+    from fleet_mcp.servers.ocr import build_ocr_tool
+    from fleet_mcp.servers.pg_ro import PgReadOnlyTool
+    from langgraph.checkpoint.memory import InMemorySaver
+
+    class _OcrAdapter:
+        def __init__(self, fn: object) -> None:
+            self._fn = fn
+
+        async def extract_text(self, image_base64: str) -> dict[str, str]:
+            return await self._fn(image_base64=image_base64)  # type: ignore[operator]
+
+    llm_client = await build_client()
+    ocr = _OcrAdapter(build_ocr_tool(vision_client=llm_client, tesseract_fn=lambda b: ""))
+    erp = ErpTool()
+    po_lookup = PgPoLookup(
+        tool=PgReadOnlyTool(
+            runner=build_default_runner(), allowlisted_tables={"fixture_purchase_orders"}
+        )
+    )
+
+    graph = build_invoice_agent_graph(
+        llm_client=llm_client, ocr=ocr, erp=erp, po_lookup=po_lookup,
+        checkpointer=InMemorySaver(), seen_po_numbers=seen_po_numbers,
+    )
+    image_b64 = _render_invoice_image_base64(
+        vendor=case.vendor, po_number=case.po_number, amount=case.amount
+    )
+    config = {"configurable": {"thread_id": f"eval-{case.id}"}}
+    result = await graph.ainvoke({"image_base64": image_b64}, config)
+
+    if result.get("blocked_reason"):
+        return InvoiceAnswer(blocked_reason=result["blocked_reason"])
+    if "__interrupt__" in result:
+        payload = result["__interrupt__"][0].value
+        fields = payload["args"]
+        validation = payload["validation"]
+        return InvoiceAnswer(
+            pending_approval=True,
+            extracted_vendor=fields.get("vendor"),
+            extracted_po_number=fields.get("po_number"),
+            extracted_amount=fields.get("amount"),
+            validation_ok=validation.get("ok"),
+            validation_reasons=validation.get("reasons", []),
+        )
+    return InvoiceAnswer()
+
+
+async def run_invoice_agent_eval() -> tuple[list[CaseResult], float, float]:
+    """Returns (results, pass_rate, threshold). Cases run in dataset order
+    sharing one `seen_po_numbers` set across the whole batch — the
+    "duplicate invoice fixture" cases are deliberately ordered right after
+    the clean case using the same PO number (see the dataset's
+    `duplicate_of` field, informational only / not read by the runner)."""
+    config = yaml.safe_load((EVALS_DIR / "config.yaml").read_text(encoding="utf-8"))
+    agent_config = config["agents"]["invoice_agent"]
+    dataset_path = EVALS_DIR / agent_config["dataset"]
+    threshold = float(agent_config["threshold"])
+    cases = load_invoice_dataset(dataset_path)
+
+    seen_po_numbers: set[str] = set()
+    results = []
+    for case in cases:
+        answer = await _run_invoice_case(case, seen_po_numbers=seen_po_numbers)
+        results.append(evaluate_invoice_case(case, answer))
+
+    pass_rate = sum(1 for r in results if r.passed) / len(results) if results else 0.0
+    return results, pass_rate, threshold
+
+
 def main() -> None:
     import asyncio
 
@@ -499,6 +736,8 @@ def main() -> None:
         results, pass_rate, threshold = asyncio.run(run_analytics_eval())
     elif args.agent == "dev_agent":
         results, pass_rate, threshold = asyncio.run(run_dev_agent_eval())
+    elif args.agent == "invoice_agent":
+        results, pass_rate, threshold = asyncio.run(run_invoice_agent_eval())
     else:
         results, pass_rate, threshold = asyncio.run(run_agent_eval(args.agent))
 

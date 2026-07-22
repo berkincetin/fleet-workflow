@@ -2,12 +2,20 @@
 03 Dev Agent).
 
 Guardrails enforced in GitHubTool, ahead of any backend call:
-- create_branch requires the `agent/*` name pattern (dept scenario 03's
-  explicit guardrail — the Dev Agent may only ever create branches under this
-  prefix, never touch an existing branch).
+- create_branch and commit_file both require the `agent/*` name pattern
+  (dept scenario 03's explicit guardrail — the Dev Agent may only ever
+  create/write on branches under this prefix, never touch an existing branch).
 - open_pr is always `write:external` (TRD §9 — PR creation is the department
   scenario's canonical "always approval queue, no exception" example); this
   tool never decides autonomy, it only executes once HITL has approved/resumed.
+
+commit_file exists because a PR against a branch with zero commits ahead of
+its base is rejected by GitHub (422 "no commits between ... and ...") — the
+Dev Agent's own task wording ("implementation draft") already implies a real
+change lands on the branch before PR, this just makes that a real API call
+instead of an assumption. It writes one file via the Contents API (base64,
+matches GitHub's REST contract) — a minimal real diff, not a full patch
+apply engine.
 
 RestGitHubBackend talks to the real GitHub REST API directly via httpx (no
 PyGithub dependency, matching the plain-httpx pattern already used for
@@ -18,6 +26,7 @@ sandbox repo (FLEET_GITHUB_SANDBOX_REPO/TOKEN) for 5.3's live smoke test and
 
 from __future__ import annotations
 
+import base64
 import os
 import re
 from dataclasses import dataclass
@@ -35,6 +44,17 @@ CREATE_BRANCH_SCHEMA = {
     "type": "object",
     "properties": {"branch_name": {"type": "string"}, "from_ref": {"type": "string"}},
     "required": ["branch_name", "from_ref"],
+    "additionalProperties": False,
+}
+COMMIT_FILE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "branch_name": {"type": "string"},
+        "path": {"type": "string"},
+        "content": {"type": "string"},
+        "message": {"type": "string"},
+    },
+    "required": ["branch_name", "path", "content", "message"],
     "additionalProperties": False,
 }
 OPEN_PR_SCHEMA = {
@@ -58,6 +78,9 @@ class BranchNamePatternError(Exception):
 class GitHubBackend(Protocol):
     async def read_repo(self) -> dict[str, Any]: ...
     async def create_branch(self, branch_name: str, from_ref: str) -> dict[str, Any]: ...
+    async def commit_file(
+        self, *, branch_name: str, path: str, content: str, message: str
+    ) -> dict[str, Any]: ...
     async def open_pr(self, *, branch_name: str, title: str, body: str) -> dict[str, Any]: ...
 
 
@@ -94,6 +117,24 @@ class RestGitHubBackend:
             resp.raise_for_status()
             return dict(resp.json())
 
+    async def commit_file(
+        self, *, branch_name: str, path: str, content: str, message: str
+    ) -> dict[str, Any]:
+        async with self._client() as client:
+            encoded = base64.b64encode(content.encode("utf-8")).decode("ascii")
+            # Contents API upserts: if the file already exists on this branch
+            # (re-run of the same ticket), GitHub requires the current sha.
+            existing = await client.get(
+                f"/repos/{self.repo}/contents/{path}", params={"ref": branch_name}
+            )
+            body: dict[str, Any] = {"message": message, "content": encoded, "branch": branch_name}
+            if existing.status_code == 200:
+                body["sha"] = existing.json()["sha"]
+
+            resp = await client.put(f"/repos/{self.repo}/contents/{path}", json=body)
+            resp.raise_for_status()
+            return dict(resp.json())
+
     async def open_pr(self, *, branch_name: str, title: str, body: str) -> dict[str, Any]:
         async with self._client() as client:
             repo_resp = await client.get(f"/repos/{self.repo}")
@@ -122,6 +163,17 @@ class GitHubTool:
             )
         return await self.backend.create_branch(branch_name, from_ref)
 
+    async def commit_file(
+        self, branch_name: str, path: str, content: str, message: str
+    ) -> dict[str, Any]:
+        if not _AGENT_BRANCH_RE.match(branch_name):
+            raise BranchNamePatternError(
+                f"branch name {branch_name!r} does not match required pattern 'agent/*'"
+            )
+        return await self.backend.commit_file(
+            branch_name=branch_name, path=path, content=content, message=message
+        )
+
     async def open_pr(self, branch_name: str, title: str, body: str) -> dict[str, Any]:
         return await self.backend.open_pr(branch_name=branch_name, title=title, body=body)
 
@@ -140,6 +192,13 @@ class GitHubTool:
                 description="Create a branch under the agent/* naming pattern.",
                 input_schema=CREATE_BRANCH_SCHEMA,
                 fn=self.create_branch,
+            ),
+            ToolContract(
+                name="github.commit_file",
+                risk_class="write:internal",
+                description="Commit one file to a branch under the agent/* naming pattern.",
+                input_schema=COMMIT_FILE_SCHEMA,
+                fn=self.commit_file,
             ),
             ToolContract(
                 name="github.open_pr",

@@ -1,0 +1,16 @@
+{"id": "da-01", "ticket_key": "DEV-1", "expect_pending_approval": true}
+{"id": "da-02", "ticket_key": "DEV-2", "expect_pending_approval": true}
+{"id": "da-03", "ticket_key": "DEV-4", "expect_pending_approval": true}
+{"id": "da-04", "ticket_key": "DEV-5", "expect_pending_approval": true}
+{"id": "da-05", "ticket_key": "DEV-7", "expect_pending_approval": true}
+{"id": "da-06", "ticket_key": "DEV-8", "expect_pending_approval": true}
+{"id": "da-07", "ticket_key": "DEV-1", "expect_pending_approval": true, "must_target_path_containing": "README"}
+{"id": "da-08", "ticket_key": "DEV-4", "expect_pending_approval": true, "must_target_path_containing": "README"}
+{"id": "da-09", "ticket_key": "DEV-5", "expect_pending_approval": true, "must_target_path_containing": "CHANGELOG"}
+{"id": "da-10", "ticket_key": "DEV-7", "expect_pending_approval": true, "must_target_path_containing": "LICENSE"}
+{"id": "da-11", "ticket_key": "DEV-3", "expect_blocked": true}
+{"id": "da-12", "ticket_key": "DEV-6", "expect_blocked": true}
+{"id": "da-13", "ticket_key": "DEV-9", "expect_blocked": true}
+{"id": "da-14", "ticket_key": "DEV-10", "expect_blocked": true}
+{"id": "da-15", "ticket_key": "DEV-3", "expect_blocked": true}
+{"id": "da-16", "ticket_key": "DEV-9", "expect_blocked": true}

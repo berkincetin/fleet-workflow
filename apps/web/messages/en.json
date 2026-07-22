@@ -35,5 +35,20 @@
     "uploading": "Uploading…",
     "uploadSuccess": "Upload complete — ingestion started.",
     "uploadError": "Upload failed."
+  },
+  "approvals": {
+    "title": "My Approvals",
+    "noPending": "No pending approvals.",
+    "agent": "Agent",
+    "action": "Action",
+    "payload": "Payload",
+    "approve": "Approve",
+    "reject": "Reject",
+    "editPayload": "Edit payload",
+    "save": "Save",
+    "cancel": "Cancel",
+    "decided": "Decision recorded.",
+    "decideError": "Failed to record decision.",
+    "invalidJson": "Payload must be valid JSON."
   }
 }

@@ -24,6 +24,9 @@ export function NavBar() {
           <Link href="/knowledge" className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
             {t("knowledge")}
           </Link>
+          <Link href="/approvals" className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
+            {t("approvals")}
+          </Link>
         </nav>
         <div className="flex items-center gap-3">
           <LocaleSwitcher />

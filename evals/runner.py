@@ -18,6 +18,8 @@ from __future__ import annotations
 import argparse
 import io
 import json
+import os
+import re
 import sys
 import unicodedata
 from dataclasses import dataclass, field
@@ -26,6 +28,23 @@ from pathlib import Path
 import yaml
 
 EVALS_DIR = Path(__file__).resolve().parent
+
+_ENV_LINE_RE = re.compile(r"^([A-Z_][A-Z0-9_]*)=(.*)$")
+
+
+def _load_dotenv_fallback() -> None:
+    """.env is a Docker Compose convention in this repo (see
+    apps/api/fleet_api/config.py — no env_file configured, pydantic-settings
+    never auto-loads it), so a standalone script like this one needs its own
+    fallback to pick up FLEET_GITHUB_SANDBOX_TOKEN etc. for dev_agent evals.
+    Same pattern as tests/integration/test_mcp_github_live.py."""
+    env_path = EVALS_DIR.parent / ".env"
+    if not env_path.exists():
+        return
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        match = _ENV_LINE_RE.match(line.strip())
+        if match and match.group(1) not in os.environ:
+            os.environ[match.group(1)] = match.group(2)
 
 
 def _use_utf8_stdout() -> None:
@@ -335,10 +354,142 @@ async def run_analytics_eval() -> tuple[list[CaseResult], float, float]:
     return results, pass_rate, threshold
 
 
+@dataclass(frozen=True)
+class DevAgentCase:
+    id: str
+    ticket_key: str
+    expect_pending_approval: bool = False
+    expect_blocked: bool = False
+    must_target_path_containing: str | None = None
+
+
+@dataclass(frozen=True)
+class DevAgentAnswer:
+    pending_approval: bool = False
+    blocked_reason: str | None = None
+    branch_name: str | None = None
+    target_paths: list[str] = field(default_factory=list)
+
+
+def load_dev_agent_dataset(path: Path) -> list[DevAgentCase]:
+    cases: list[DevAgentCase] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        row = json.loads(line)
+        cases.append(
+            DevAgentCase(
+                id=row["id"],
+                ticket_key=row["ticket_key"],
+                expect_pending_approval=row.get("expect_pending_approval", False),
+                expect_blocked=row.get("expect_blocked", False),
+                must_target_path_containing=row.get("must_target_path_containing"),
+            )
+        )
+    return cases
+
+
+def evaluate_dev_agent_case(case: DevAgentCase, answer: DevAgentAnswer) -> CaseResult:
+    if case.expect_blocked:
+        if not answer.blocked_reason:
+            return CaseResult(id=case.id, passed=False, reason="expected the run to be blocked")
+        return CaseResult(id=case.id, passed=True, reason="ok")
+
+    if case.expect_pending_approval:
+        if not answer.pending_approval:
+            return CaseResult(
+                id=case.id, passed=False, reason="expected the run to reach pending_approval"
+            )
+        # Branch-name compliance: proven structurally (GitHubTool refuses any
+        # non-agent/* name before ever creating a branch, task 5.3), but
+        # re-asserted here on the branch a real successful run actually used —
+        # a regression in that guard would show up as a failed eval, not just
+        # a passing unit test that never exercises the real graph.
+        if not (answer.branch_name or "").startswith("agent/"):
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=f"branch name {answer.branch_name!r} does not start with 'agent/'",
+            )
+        if case.must_target_path_containing is not None:
+            if not any(
+                case.must_target_path_containing in p for p in answer.target_paths
+            ):
+                return CaseResult(
+                    id=case.id, passed=False,
+                    reason=(
+                        f"expected a target path containing "
+                        f"{case.must_target_path_containing!r}, got {answer.target_paths!r}"
+                    ),
+                )
+        return CaseResult(id=case.id, passed=True, reason="ok")
+
+    return CaseResult(id=case.id, passed=True, reason="ok")
+
+
+async def _run_dev_agent_case(case: DevAgentCase) -> DevAgentAnswer:
+    """Run one case through the real Dev Agent graph (5.5) — real gateway
+    client, real fixture Jira backend, real GitHub sandbox (create_branch/
+    commit_file only; open_pr is never reached since evals never approve).
+    """
+    from agents.dev_agent.graph import build_dev_agent_graph
+    from core.llm.factory import build_client
+    from fleet_mcp.servers.github import GitHubTool
+    from fleet_mcp.servers.github import build_default_backend as build_github_backend
+    from fleet_mcp.servers.jira import JiraTool
+    from fleet_mcp.servers.jira import build_default_backend as build_jira_backend
+    from fleet_mcp.servers.slack import SlackPostTool, build_default_sender
+    from langgraph.checkpoint.memory import InMemorySaver
+
+    llm_client = await build_client()
+    jira = JiraTool(backend=build_jira_backend())
+    github = GitHubTool(backend=build_github_backend())
+    slack = SlackPostTool(sender=build_default_sender(), allowed_channels={"#dev-agent"})
+
+    graph = build_dev_agent_graph(
+        llm_client=llm_client, jira=jira, github=github, slack=slack,
+        checkpointer=InMemorySaver(),
+    )
+    config = {"configurable": {"thread_id": f"eval-{case.id}"}}
+    result = await graph.ainvoke({"ticket_key": case.ticket_key}, config)
+
+    if result.get("blocked_reason"):
+        return DevAgentAnswer(blocked_reason=result["blocked_reason"])
+    if "__interrupt__" in result:
+        args = result["__interrupt__"][0].value["args"]
+        plan_target_paths = result.get("plan", {}).get("target_paths", [])
+        return DevAgentAnswer(
+            pending_approval=True, branch_name=args["branch_name"],
+            target_paths=plan_target_paths,
+        )
+    return DevAgentAnswer()
+
+
+async def run_dev_agent_eval() -> tuple[list[CaseResult], float, float]:
+    """Returns (results, pass_rate, threshold). Never approves/rejects — each
+    case's run stays parked at its interrupt (or blocked earlier), so evals
+    never open a real PR on the sandbox repo, only create_branch/commit_file
+    (both write:internal, no approval queue side effect to worry about)."""
+    config = yaml.safe_load((EVALS_DIR / "config.yaml").read_text(encoding="utf-8"))
+    agent_config = config["agents"]["dev_agent"]
+    dataset_path = EVALS_DIR / agent_config["dataset"]
+    threshold = float(agent_config["threshold"])
+    cases = load_dev_agent_dataset(dataset_path)
+
+    results = []
+    for case in cases:
+        answer = await _run_dev_agent_case(case)
+        results.append(evaluate_dev_agent_case(case, answer))
+
+    pass_rate = sum(1 for r in results if r.passed) / len(results) if results else 0.0
+    return results, pass_rate, threshold
+
+
 def main() -> None:
     import asyncio
 
     _use_utf8_stdout()
+    _load_dotenv_fallback()
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--agent", required=True)
@@ -346,6 +497,8 @@ def main() -> None:
 
     if args.agent == "analytics":
         results, pass_rate, threshold = asyncio.run(run_analytics_eval())
+    elif args.agent == "dev_agent":
+        results, pass_rate, threshold = asyncio.run(run_dev_agent_eval())
     else:
         results, pass_rate, threshold = asyncio.run(run_agent_eval(args.agent))
 

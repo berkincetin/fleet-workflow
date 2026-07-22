@@ -19,6 +19,7 @@ class _FakeBackend:
     def __init__(self) -> None:
         self.created_branches: list[tuple[str, str]] = []
         self.opened_prs: list[dict[str, str]] = []
+        self.committed_files: list[tuple[str, str, str]] = []
         self.repo_info = {"default_branch": "main", "full_name": "org/repo"}
 
     async def read_repo(self) -> dict[str, object]:
@@ -27,6 +28,12 @@ class _FakeBackend:
     async def create_branch(self, branch_name: str, from_ref: str) -> dict[str, object]:
         self.created_branches.append((branch_name, from_ref))
         return {"ref": f"refs/heads/{branch_name}"}
+
+    async def commit_file(
+        self, *, branch_name: str, path: str, content: str, message: str
+    ) -> dict[str, object]:
+        self.committed_files.append((branch_name, path, content))
+        return {"content": {"path": path}, "commit": {"sha": "abc123"}}
 
     async def open_pr(self, *, branch_name: str, title: str, body: str) -> dict[str, object]:
         self.opened_prs.append({"branch": branch_name, "title": title, "body": body})
@@ -69,11 +76,30 @@ async def test_open_pr_always_dispatches_regardless_of_content() -> None:
     ]
 
 
+async def test_commit_file_with_agent_prefix_succeeds() -> None:
+    tool, backend = _tool()
+    result = await tool.commit_file(
+        branch_name="agent/dev-1-fix-typo", path="NOTES.md", content="fix", message="Fix typo"
+    )
+    assert result["commit"]["sha"] == "abc123"
+    assert backend.committed_files == [("agent/dev-1-fix-typo", "NOTES.md", "fix")]
+
+
+async def test_commit_file_without_agent_prefix_is_rejected() -> None:
+    tool, backend = _tool()
+    with pytest.raises(BranchNamePatternError):
+        await tool.commit_file(
+            branch_name="main", path="NOTES.md", content="fix", message="Fix typo"
+        )
+    assert backend.committed_files == []
+
+
 def test_contracts_declare_correct_risk_classes() -> None:
     tool, _ = _tool()
     contracts = {c.name: c.risk_class for c in tool.as_contracts()}
     assert contracts == {
         "github.read_repo": "read",
         "github.create_branch": "write:internal",
+        "github.commit_file": "write:internal",
         "github.open_pr": "write:external",
     }

@@ -122,6 +122,27 @@ async def seed_analytics_agent() -> None:
     await engine.dispose()
 
 
+async def seed_dev_agent() -> None:
+    """Dev Agent demo agent (task 5.5, department scenario 03). No RAG
+    collections; max_context_tokens=24000 per the scenario (code context is
+    larger than a typical chat/analytics turn)."""
+    engine = get_engine(database_url())
+    async with engine.begin() as conn:
+        dept_id = (
+            await conn.execute(text("SELECT id FROM departments WHERE name = 'IT'"))
+        ).scalar_one()
+        await conn.execute(
+            text(
+                "INSERT INTO agents (name, dept_id, reasoning_model, utility_model, "
+                "sensitivity, semantic_cache, semantic_cache_threshold, max_context_tokens, "
+                "collection_ids) VALUES ('dev_agent', :d, 'reasoning', 'utility', 'internal', "
+                "false, 0.95, 24000, '{}') ON CONFLICT (name) DO NOTHING"
+            ),
+            {"d": dept_id},
+        )
+    await engine.dispose()
+
+
 async def seed() -> None:
     engine = get_engine(database_url())
     async with engine.begin() as conn:
@@ -171,6 +192,7 @@ def main() -> None:
     asyncio.run(seed())
     asyncio.run(seed_support_copilot())
     asyncio.run(seed_analytics_agent())
+    asyncio.run(seed_dev_agent())
 
 
 if __name__ == "__main__":

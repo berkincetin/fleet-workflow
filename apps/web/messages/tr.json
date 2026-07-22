@@ -35,5 +35,20 @@
     "uploading": "Yükleniyor…",
     "uploadSuccess": "Yükleme tamamlandı — işleme başladı.",
     "uploadError": "Yükleme başarısız."
+  },
+  "approvals": {
+    "title": "Onaylarım",
+    "noPending": "Bekleyen onay yok.",
+    "agent": "Ajan",
+    "action": "Eylem",
+    "payload": "Veri",
+    "approve": "Onayla",
+    "reject": "Reddet",
+    "editPayload": "Veriyi düzenle",
+    "save": "Kaydet",
+    "cancel": "Vazgeç",
+    "decided": "Karar kaydedildi.",
+    "decideError": "Karar kaydedilemedi.",
+    "invalidJson": "Veri geçerli JSON olmalı."
   }
 }

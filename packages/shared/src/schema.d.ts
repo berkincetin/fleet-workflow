@@ -372,6 +372,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Approvals */
+        get: operations["list_approvals_v1_approvals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/approvals/{approval_id}/decide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decide Approval */
+        post: operations["decide_approval_v1_approvals__approval_id__decide_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dev-agent/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Run */
+        post: operations["start_run_v1_dev_agent_runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -414,6 +465,8 @@ export interface components {
              * @default 8000
              */
             max_context_tokens: number;
+            /** Collection Ids */
+            collection_ids?: number[];
         };
         /** AgentOut */
         AgentOut: {
@@ -439,6 +492,8 @@ export interface components {
             semantic_cache_threshold: number;
             /** Max Context Tokens */
             max_context_tokens: number;
+            /** Collection Ids */
+            collection_ids: number[];
         };
         /** AgentSummaryOut */
         AgentSummaryOut: {
@@ -448,6 +503,29 @@ export interface components {
             name: string;
             /** Status */
             status: string;
+        };
+        /** ApprovalOut */
+        ApprovalOut: {
+            /** Id */
+            id: number;
+            /** Agent Id */
+            agent_id: number;
+            /** Run Id */
+            run_id: string;
+            /** Action */
+            action: string;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+            /** Status */
+            status: string;
+            /** Decided By */
+            decided_by: string | null;
+            /** Decided At */
+            decided_at: string | null;
+            /** Sla At */
+            sla_at: string | null;
         };
         /** Body_upload_document_v1_documents_post */
         Body_upload_document_v1_documents_post: {
@@ -508,6 +586,15 @@ export interface components {
             agent_id: number;
             /** User Id */
             user_id: number;
+        };
+        /** DecisionIn */
+        DecisionIn: {
+            /** Decision */
+            decision: string;
+            /** Edited Payload */
+            edited_payload?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** DocumentOut */
         DocumentOut: {
@@ -619,6 +706,22 @@ export interface components {
         ReadOnlyIn: {
             /** Enabled */
             enabled: boolean;
+        };
+        /** RunIn */
+        RunIn: {
+            /** Ticket Key */
+            ticket_key: string;
+        };
+        /** RunOut */
+        RunOut: {
+            /** Run Id */
+            run_id: string;
+            /** Status */
+            status: string;
+            /** Detail */
+            detail: {
+                [key: string]: unknown;
+            };
         };
         /** ValidationError */
         ValidationError: {
@@ -1470,6 +1573,105 @@ export interface operations {
                     "application/json": {
                         [key: string]: number;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_approvals_v1_approvals_get: {
+        parameters: {
+            query?: {
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_approval_v1_approvals__approval_id__decide_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                approval_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_run_v1_dev_agent_runs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
                 };
             };
             /** @description Validation Error */

@@ -47,6 +47,11 @@ class _FakeGitHubBackend:
     async def create_branch(self, branch_name: str, from_ref: str) -> dict[str, object]:
         return {"ref": f"refs/heads/{branch_name}"}
 
+    async def commit_file(
+        self, *, branch_name: str, path: str, content: str, message: str
+    ) -> dict[str, object]:
+        return {"commit": {"sha": "abc123"}}
+
     async def open_pr(self, *, branch_name: str, title: str, body: str) -> dict[str, object]:
         return {"number": 1}
 
@@ -78,6 +83,7 @@ def test_all_registered_tools_declare_a_valid_risk_class(server: MCPServer) -> N
         "jira.get_issue": "read",
         "github.read_repo": "read",
         "github.create_branch": "write:internal",
+        "github.commit_file": "write:internal",
         "github.open_pr": "write:external",
         "slack.post": "write:internal",
     }

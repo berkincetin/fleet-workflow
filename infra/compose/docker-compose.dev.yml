@@ -242,7 +242,7 @@ services:
       # Keycloak, no external federation) — so oauth2-proxy's default
       # verified-email requirement would reject every seeded user.
       - --insecure-oidc-allow-unverified-email=true
-      - --cookie-secret=${N8N_PROXY_COOKIE_SECRET:-ZmxlZXRfZGV2X2Nvb2tpZV9zZWNyZXQh}
+      - --cookie-secret=${N8N_PROXY_COOKIE_SECRET:-fleet_dev_cookie_secretx}
       - --cookie-secure=false
       - --ssl-insecure-skip-verify=true
     ports: ["5679:4180"]

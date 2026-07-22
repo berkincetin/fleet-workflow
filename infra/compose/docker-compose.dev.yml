@@ -161,6 +161,13 @@ services:
       WEBHOOK_URL: http://localhost:5679/
       N8N_EDITOR_BASE_URL: http://localhost:5679/
       GENERIC_TIMEZONE: Europe/Istanbul
+      # Automations' `$env.*` references (task 6.1/6.2/6.3 workflows) — the
+      # Fleet API key is a per-workflow service credential, not a secret n8n
+      # needs to protect from its own users (same trust level as the DB
+      # password above), so a plain env var is fine for dev; a real
+      # deployment would use n8n's credential store instead.
+      FLEET_API_BASE_URL: ${FLEET_API_BASE_URL_FOR_N8N:-http://host.docker.internal:8000}
+      FLEET_API_KEY: ${N8N_FLEET_API_KEY:-}
     ports: ["5678:5678"]
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -185,6 +192,10 @@ services:
       DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD:-fleet_dev_pw}
       N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-fleet_dev_n8n_encryption_key}
       GENERIC_TIMEZONE: Europe/Istanbul
+      # Executions run on the worker in queue mode, not main — see n8n-main's
+      # FLEET_API_BASE_URL/FLEET_API_KEY comment above for why these exist.
+      FLEET_API_BASE_URL: ${FLEET_API_BASE_URL_FOR_N8N:-http://host.docker.internal:8000}
+      FLEET_API_KEY: ${N8N_FLEET_API_KEY:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

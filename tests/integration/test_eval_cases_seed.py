@@ -21,6 +21,12 @@ from testcontainers.postgres import PostgresContainer
 
 EVALS_DIR = Path(__file__).resolve().parents[2] / "evals"
 
+# evals/ is a plain directory, not an installed package (same convention as
+# tests/unit/test_eval_runner*.py) — add it to sys.path and import its
+# top-level modules by bare name, not as `evals.promote`/`evals.runner`.
+if str(EVALS_DIR) not in sys.path:
+    sys.path.insert(0, str(EVALS_DIR))
+
 
 @pytest.fixture(scope="module")
 def migrated_pg() -> str:
@@ -77,8 +83,8 @@ def test_seed_eval_cases_is_idempotent_and_matches_jsonl_counts(migrated_pg: str
 def test_promote_round_trips_a_user_case_into_jsonl_and_load_dataset(
     migrated_pg: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from evals import promote as promote_module
-    from evals.runner import load_dataset
+    import promote as promote_module
+    from runner import load_dataset
 
     # Isolate this test's write from the real evals/datasets/support_copilot.jsonl.
     fake_evals_dir = tmp_path / "evals"

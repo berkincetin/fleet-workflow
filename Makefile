@@ -1,6 +1,6 @@
 COMPOSE := docker compose --env-file .env -f infra/compose/docker-compose.dev.yml
 
-.PHONY: dev down lint test migrate seed scan openapi client helm-lint k3d-up k3d-down gateway-sync gateway-check api web
+.PHONY: dev down lint test migrate seed scan openapi client helm-lint k3d-up k3d-down gateway-sync gateway-check api web n8n-import
 
 dev: ## boot the full local dev stack
 	$(COMPOSE) up -d
@@ -31,6 +31,11 @@ seed: ## load synthetic data + analytics fixture views
 
 seed-docs: ## ingest Support Copilot demo KB docs into cs-help-center/cs-procedures (run after seed)
 	uv run python -m fleet_rag.seed_docs
+
+n8n-import: ## import + activate the workflows/*.json exports into n8n (run once per fresh stack, task 6.5.4)
+	$(COMPOSE) exec n8n-main n8n import:workflow --separate --input=/import/workflows
+	$(COMPOSE) exec n8n-main n8n update:workflow --all --active=true
+	$(COMPOSE) restart n8n-main n8n-worker
 
 eval: ## run an agent's eval dataset against the live stack; ALL=1 for every agent (make eval AGENT=support_copilot)
 ifdef ALL

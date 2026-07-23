@@ -75,3 +75,10 @@ class KillSwitch:
 
     async def set_global_read_only(self, enabled: bool) -> None:
         await self._redis.set(_GLOBAL_READ_ONLY_KEY, "1" if enabled else "0")
+
+    async def is_global_read_only(self) -> bool:
+        """Current state of the global flag (task 6.5.3 — the Admin UI's
+        kill-switch toggle needs to render its initial state; the `PUT` route
+        that sets it has no matching `GET` today)."""
+        value = await self._redis.get(_GLOBAL_READ_ONLY_KEY)
+        return _is_flag_set(value)

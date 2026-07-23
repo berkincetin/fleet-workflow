@@ -20,10 +20,13 @@
 | [sprint-4-runtime-chat-first-agent.md](implementation-plan/sprint-4-runtime-chat-first-agent.md) | 4.1 runtime core · 4.2 registry+semantic cache · 4.3 chat UI · 4.4 Support Copilot+E2E bootstrap · 4.5 [DEFERRABLE] Agent Builder |
 | [sprint-5-mcp-agents-approvals.md](implementation-plan/sprint-5-mcp-agents-approvals.md) | 5.1 MCP base · 5.2 Analytics agent · 5.3 Jira/GitHub/Slack · 5.4 approval queue · 5.5 Dev Agent |
 | [sprint-6-n8n-automations.md](implementation-plan/sprint-6-n8n-automations.md) | 6.1 n8n queue mode+API keys · 6.2 weekly summary · 6.3 invoice intake |
-| [sprint-7-admin-observability.md](implementation-plan/sprint-7-admin-observability.md) | 7.1 admin users/models/budgets/keys · 7.2 cost dash+audit · 7.3 [DEFERRABLE] health screen · 7.4 Grafana+alerts |
-| [sprint-8-kvkk-lane.md](implementation-plan/sprint-8-kvkk-lane.md) | 8.1 local-lane rehearsal · 8.2 HR CV flow · 8.3 erasure+clearance · 8.4 PII masking |
+| [sprint-6.5-platform-ui-showcase.md](implementation-plan/sprint-6.5-platform-ui-showcase.md) | 6.5.1 docs · 6.5.2 examples backend · 6.5.3 n8n client+workflows router · 6.5.4 compose+import · 6.5.5 roles+shell+i18n · 6.5.6 home+scenarios hub · 6.5.7 automations UI · 6.5.8 examples gallery · 6.5.9 admin (agents/models/keys) · 6.5.10 e2e+polish |
+| [sprint-7-admin-observability.md](implementation-plan/sprint-7-admin-observability.md) | 7.1 users/roles+budgets (models/keys shipped in 6.5) · 7.2 cost dash+audit · 7.3 [DEFERRABLE] health screen · 7.4 Grafana+alerts |
+| [sprint-8-kvkk-lane.md](implementation-plan/sprint-8-kvkk-lane.md) | 8.1 local-lane rehearsal · 8.2 HR CV flow · 8.3 erasure+clearance · 8.4 PII masking · 8.5 HR scenario completion |
 | [sprint-9-hardening.md](implementation-plan/sprint-9-hardening.md) | 9.1 load · 9.2 security · 9.3 [DEFERRABLE] chaos+garak · 9.4 backup/restore drill |
 | [sprint-10-demo-docs.md](implementation-plan/sprint-10-demo-docs.md) | 10.1 fresh-install rehearsal+README · 10.2 docs+release |
+| [sprint-11-wave-1-scenarios.md](implementation-plan/sprint-11-wave-1-scenarios.md) | 11.1 listing quality · 11.2 vehicle intake · 11.3 insights publisher |
+| [sprint-12-wave-2-scenarios.md](implementation-plan/sprint-12-wave-2-scenarios.md) | 12.1 dealer onboarding · 12.2 legal document review |
 | [99-demo-script-and-deferrables.md](implementation-plan/99-demo-script-and-deferrables.md) | 15-min demo script; consolidated deferrable list |
 
 ## Technical Requirements (`docs/TECHNICAL_REQUIREMENTS.md`) — `technical-requirements/`
@@ -50,17 +53,17 @@
 
 | Part | Contents |
 |---|---|
-| [00-wave-plan.md](department-scenarios/00-wave-plan.md) | Wave table (who ships when), spec-field template |
-| [01-support-copilot.md](department-scenarios/01-support-copilot.md) | Customer Service · Wave 0 · task 4.4 |
-| [02-self-service-analytics.md](department-scenarios/02-self-service-analytics.md) | Data · Wave 0 · task 5.2 |
-| [03-dev-agent.md](department-scenarios/03-dev-agent.md) | IT/Engineering · Wave 0 · task 5.5 |
-| [04-invoice-reconciliation.md](department-scenarios/04-invoice-reconciliation.md) | Finance · Wave 0 · task 6.3 |
-| [05-hr-talent-onboarding.md](department-scenarios/05-hr-talent-onboarding.md) | HR · Wave 0 partial (Sprint 8) → 1 · pii lane |
-| [06-listing-quality.md](department-scenarios/06-listing-quality.md) | Listings Ops · Wave 1 · multimodal |
-| [07-vehicle-intake.md](department-scenarios/07-vehicle-intake.md) | Trink sat! · Wave 1 · mixed lane |
-| [08-insights-publisher.md](department-scenarios/08-insights-publisher.md) | Marketing · Wave 1 · n8n cron |
-| [09-dealer-onboarding.md](department-scenarios/09-dealer-onboarding.md) | Corporate Sales · Wave 2 · pii lane |
-| [10-legal-document-review.md](department-scenarios/10-legal-document-review.md) | Legal · Wave 2 · local lane |
+| [00-wave-plan.md](department-scenarios/00-wave-plan.md) | Wave table (who ships when + UI status), spec-field template |
+| [01-support-copilot.md](department-scenarios/01-support-copilot.md) | Customer Service · Wave 0 · task 4.4 · live |
+| [02-self-service-analytics.md](department-scenarios/02-self-service-analytics.md) | Data · Wave 0 · task 5.2 · live |
+| [03-dev-agent.md](department-scenarios/03-dev-agent.md) | IT/Engineering · Wave 0 · task 5.5 · live |
+| [04-invoice-reconciliation.md](department-scenarios/04-invoice-reconciliation.md) | Finance · Wave 0 · task 6.3 · live |
+| [05-hr-talent-onboarding.md](department-scenarios/05-hr-talent-onboarding.md) | HR · Wave 0 partial (Sprint 8) → 1 · pii lane · ships task 8.5 |
+| [06-listing-quality.md](department-scenarios/06-listing-quality.md) | Listings Ops · Wave 1 · multimodal · ships task 11.1 |
+| [07-vehicle-intake.md](department-scenarios/07-vehicle-intake.md) | Trink sat! · Wave 1 · mixed lane · ships task 11.2 |
+| [08-insights-publisher.md](department-scenarios/08-insights-publisher.md) | Marketing · Wave 1 · n8n cron · ships task 11.3 |
+| [09-dealer-onboarding.md](department-scenarios/09-dealer-onboarding.md) | Corporate Sales · Wave 2 · pii lane · ships task 12.1 |
+| [10-legal-document-review.md](department-scenarios/10-legal-document-review.md) | Legal · Wave 2 · local lane · ships task 12.2 |
 | [99-onboarding-checklist.md](department-scenarios/99-onboarding-checklist.md) | Generic 3–5-day onboarding checklist for any new department |
 
 ## Project Overview (`docs/PROJECT_OVERVIEW.md`) — `project-overview/`

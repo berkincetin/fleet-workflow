@@ -17,6 +17,20 @@
     },
     {
       "parameters": {
+        "httpMethod": "POST",
+        "path": "weekly-summary-run",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-manual-run-1",
+      "name": "Manual run (from Fleet UI)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-400, 160],
+      "webhookId": "6f2a9d3e-6b7a-4a0e-9d3f-2f6c7a5b1e02"
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "={{ $env.FLEET_API_BASE_URL }}/v1/service/pg-query",
         "sendHeaders": true,
@@ -84,6 +98,9 @@
   ],
   "connections": {
     "Every Monday 08:00": {
+      "main": [[{ "node": "Query weekly sales (pg_ro)", "type": "main", "index": 0 }]]
+    },
+    "Manual run (from Fleet UI)": {
       "main": [[{ "node": "Query weekly sales (pg_ro)", "type": "main", "index": 0 }]]
     },
     "Query weekly sales (pg_ro)": {

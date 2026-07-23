@@ -141,7 +141,10 @@ services:
   # run workflows — this is what "scales to hundreds of automations" means in
   # practice (adding workers scales throughput without touching main). Redis
   # DB 2 keeps the queue isolated from rate-limiting (DB 0) and RAG ingestion
-  # (DB 1). Not reachable directly by design — see n8n-oauth2-proxy below.
+  # (DB 1). Human editor access goes through n8n-oauth2-proxy (:5679) only;
+  # the loopback-only port below (task 6.5.4) is for the Fleet API's own
+  # workflows router (REST API + webhook triggers) to reach n8n directly from
+  # the host, without going through the SSO gate meant for humans.
   n8n-main:
     image: n8nio/n8n:1.71.3
     environment:
@@ -168,7 +171,13 @@ services:
       # deployment would use n8n's credential store instead.
       FLEET_API_BASE_URL: ${FLEET_API_BASE_URL_FOR_N8N:-http://host.docker.internal:8000}
       FLEET_API_KEY: ${N8N_FLEET_API_KEY:-}
-    ports: ["5678:5678"]
+    ports:
+      # Loopback-only: reachable from the Fleet API (running on the host in
+      # dev) via http://localhost:5678, never from the LAN. Humans still go
+      # through n8n-oauth2-proxy at :5679 only.
+      - "127.0.0.1:5678:5678"
+    volumes:
+      - ../../workflows:/import/workflows:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

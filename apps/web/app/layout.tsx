@@ -2,7 +2,8 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
 import { SessionProvider } from "next-auth/react";
 import { auth } from "@/lib/auth";
-import { NavBar } from "@/components/nav-bar";
+import { AppShell } from "@/components/app-shell";
+import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
 
 export const metadata = {
@@ -23,8 +24,9 @@ export default async function RootLayout({
       <body>
         <NextIntlClientProvider>
           <SessionProvider session={session}>
-            <NavBar />
-            <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
+            <ToastProvider>
+              <AppShell>{children}</AppShell>
+            </ToastProvider>
           </SessionProvider>
         </NextIntlClientProvider>
       </body>

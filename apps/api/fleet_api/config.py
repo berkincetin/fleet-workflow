@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     minio_secure: bool = False
     minio_bucket: str = "fleet-documents"
     ingest_redis_url: str = "redis://localhost:6379/1"
+    # n8n (Sprint 6/6.5) — reached via the loopback port, never the oauth2-proxy
+    # SSO gate (that's for human editor access only). n8n_api_key is created
+    # once in the n8n UI (Settings -> API); there is no headless bootstrap.
+    n8n_base_url: str = "http://localhost:5678"
+    n8n_api_key: str = ""
 
 
 def get_settings() -> Settings:

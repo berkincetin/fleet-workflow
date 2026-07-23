@@ -92,10 +92,35 @@ These items require the user (API keys, hardware, external accounts). They do **
 - **6.3 Automation #2 — invoice intake.** Webhook/manual upload → OCR extract → draft entry → approval queue. Workflow JSONs exported to repo. Eval dataset (≥12 cases per DEPARTMENT_SCENARIOS §Invoice — extraction-type threshold, see §13.4) + runner wiring. *(UI polish is deferrable; the API path + approval flow is the required part.)*
   **AC:** invoice draft appears in approval queue with extracted fields; both workflows re-import cleanly on a fresh stack; `make eval AGENT=invoice_intake` ≥ threshold.
 
+## Sprint 6.5 — Platform UI & Scenario Showcase
+
+Everything built in Sprints 1–6 is API-only or fixture-only for most of what a non-technical user would touch (dev/invoice agent runs, n8n workflows, eval examples, admin CRUD). This sprint integrates all of it into a Turkish-first, plain-language web UI — no new agent capability is built here. It also turns the six not-yet-built department scenarios (HR completion, Listing Quality, Vehicle Intake, Insights Publisher, Dealer Onboarding, Legal Review) into "coming soon" cards backed by real sprint tasks (8.5, Sprint 11, Sprint 12 below), so the showcase is honest about what's live vs planned.
+
+- **6.5.1 Docs restructuring.** Insert this sprint + Sprint 11/12 + task 8.5 into the plan; update TRD §12 (Workflow catalog P2→CORE; add Examples gallery + Home/Department hub); update `docs/split/INDEX.md` and the wave-plan table with target sprint numbers. Original + split parts edited together.
+  **AC:** `docs/split/` mirrors this section; TRD §12 no longer lists Workflow catalog as [P2]; wave-plan table's "ships when" column is filled for all 10 scenarios.
+- **6.5.2 Examples backend.** New `eval_cases` DB table seeded from `evals/datasets/*.jsonl` (source=seed); `GET/POST /v1/examples` (agent-scoped, schema-validated per agent); `evals/promote.py` to export UI-created (source=user) cases back to jsonl for a builder to version. `evals/runner.py` and CI eval gate stay jsonl-driven and untouched.
+  **AC:** seeding is idempotent and matches jsonl line counts per agent; a case created via API appears in `GET /v1/examples`; `make eval AGENT=x` still passes unchanged.
+- **6.5.3 n8n client + workflows router.** `n8n_client.py` (httpx, never raises — connect failure surfaces as `reachable:false`); `GET /v1/workflows` (catalog + live n8n state), `POST /v1/workflows/invoice-intake/run` (image upload → n8n webhook proxy), `POST /v1/workflows/weekly-summary/run`, `POST /v1/workflows/{slug}/activate|deactivate`. Small additions: `GET /v1/dev-agent/tickets` (fixture tickets for a picker UI), `GET /v1/agents/global/read-only` (state for the kill-switch toggle). `make client` regenerates the TS client.
+  **AC:** catalog reflects real n8n state; n8n stopped → API still returns 200 with `reachable:false`; RBAC gates verified (member cannot activate/deactivate).
+- **6.5.4 Compose + workflow import.** n8n loopback port (127.0.0.1:5678) for the Fleet API to reach the REST API directly (oauth2-proxy remains the only human entry at :5679); `workflows/weekly-summary.json` gets a second manual-run webhook trigger; `make n8n-import` target (import + activate both workflows on a fresh stack); `.env`/README document `N8N_API_KEY` (created once in the n8n UI — no headless bootstrap exists).
+  **AC:** fresh `make dev && make n8n-import` leaves both workflows active and callable from the Fleet API.
+- **6.5.5 Session roles + app shell + UI primitives + i18n scaffolding.** Decode Keycloak `realm_access.roles` into the next-auth session (nav gating only — server keeps enforcing RBAC); new sidebar app shell (Ana Sayfa, Sohbet, Senaryolar, Otomasyonlar, Örnekler, Bilgi Bankası, Onaylar, Yönetim); new shadcn-style primitives (dialog, select, tabs, table, textarea, input, toast) on the existing CVA/CSS-var conventions; new i18n namespaces in `tr.json`/`en.json` (Turkish written first, no technical jargon in user-facing copy).
+  **AC:** nav items show/hide per role; TR/EN switch covers all new copy; `tsc`/lint green.
+- **6.5.6 Home dashboard + Department hub.** Redesigned home with big task cards (role-aware); `/scenarios` page with all 10 department scenarios — 4 live + HR partial + 5 "coming soon" with their target sprint badge — deep-linking into chat/automations/examples.
+  **AC:** coming-soon cards show the correct target sprint (8.5 / 11.x / 12.x) and are non-clickable; live cards deep-link correctly.
+- **6.5.7 Automations catalog UI.** `/automations` page: friendly workflow cards, invoice image upload → run → link to the resulting approval, weekly-summary manual run, activate/deactivate toggle (role-gated), plain-language "n8n is down" banner, advanced link to the n8n editor for admins only.
+  **AC:** uploading a sample invoice image from the UI produces a pending approval; approving it resumes the run; stopping n8n shows the down-banner within one refresh.
+- **6.5.8 Examples gallery + clickable HITL demo.** `/examples` page: per-agent tabs, "try it" (chat prefill for support_copilot/analytics; ticket-picker run dialog for dev_agent; image-upload run for invoice_agent), create-new-example form → `POST /v1/examples`. Chat page accepts `agent`+`prefill` query params.
+  **AC:** every one of the 4 live agents has a working try-it path entirely from the UI; a newly created example appears in the gallery immediately.
+- **6.5.9 Admin section (existing APIs only).** `/admin` with agents (CRUD, pause/resume, global read-only toggle), models (registry + smoke test), API keys (issue with scope picker, one-time reveal, revoke) — budgets/users-roles/cost-dashboard stay out (their APIs don't exist until Sprint 7).
+  **AC:** pausing an agent from the UI blocks its runs within 5s; adding a model runs the smoke test from the UI; a revoked key is rejected on its next request.
+- **6.5.10 E2E + polish pass.** Playwright flows for the new surfaces (role-based home, automation states, examples try-it); TR copy review pass; full `make dev` fresh-stack walkthrough of the showcase.
+  **AC:** nightly e2e green; a non-technical user can complete the full showcase (chat, an automation run, an example try-it, an admin action per their role) without touching the terminal.
+
 ## Sprint 7 — Admin & Observability
 
-- **7.1 Admin: users, models, budgets, API keys.** Users/roles screens; models (CRUD + smoke); budgets editor; API key management (issue/revoke, scopes — service from 6.1).
-  **AC:** role change takes effect on next request; model add runs smoke test from UI; key revoked from UI is rejected on next request.
+- **7.1 Admin: users/roles, budgets editor.** Users/roles screens; budgets editor. *(Models CRUD+smoke, and API key management shipped early in 6.5.9 — this task only adds what 6.5 didn't cover.)*
+  **AC:** role change takes effect on next request.
 - **7.2 Cost dashboard, approvals, audit explorer.** Spend by dept/agent/model, burn-down, cache savings; approvals all-dept view; audit explorer (filter + Langfuse deep-link).
   **AC:** audit row deep-links to its trace; dashboard renders with seeded traffic.
 - **7.3 [DEFERRABLE] Admin system-health screen.** Queues/workers/providers. Grafana suffices in the meantime.
@@ -113,6 +138,8 @@ These items require the user (API keys, hardware, external accounts). They do **
   **AC:** erasure removes subject data, audit preserved pseudonymized.
 - **8.4 PII masking verification.** Masking verified in logs/traces.
   **AC:** detected identifiers appear masked in Loki and Langfuse for a seeded PII conversation.
+- **8.5 HR Talent & Onboarding scenario completion.** Wrap the 8.2 CV mini-flow into a full `hr_agent` per DEPARTMENT_SCENARIOS §5: role-match shortlist draft (write:internal, dept_admin approval), `hr-policies` cloud-lane Q&A alongside the `hr-cvs` pii-lane CV parse; eval dataset (≥15 cases per spec — extraction accuracy, protected-attribute schema-exclusion, onboarding Q&A grounding); flip the HR scenario card from "partial" to live in `/scenarios`.
+  **AC:** `make eval AGENT=hr_agent` ≥ threshold; a synthetic CV produces a structured profile with protected attributes excluded; HR scenario card is live end-to-end from the UI.
 
 ## Sprint 9 — Hardening
 
@@ -131,6 +158,26 @@ These items require the user (API keys, hardware, external accounts). They do **
   **AC:** clean machine → running demo in ≤30 min following README.
 - **10.2 Docs + release.** Runbooks (restore, on-call basics); demo script (below) dry-run; screenshots/GIFs for the deck; tag v0.1.0. A tag-triggered GitHub Actions release pipeline (TRD §14) runs the full check suite and builds the release images.
   **AC:** the tag pipeline runs all CI jobs green on the `v0.1.0` tag; dry-run completes within 15 min.
+
+## Sprint 11 — Wave 1 Scenarios
+
+Post-MVP onboarding of the three Wave 1 department scenarios (docs/split/department-scenarios/06-08), following the generic checklist in `department-scenarios/99-onboarding-checklist.md`. Each flips its `/scenarios` card from "coming soon" to live on completion.
+
+- **11.1 Listing Quality (Listings Ops).** `listing_quality` agent — vision Gemini Flash, reasoning Claude Sonnet (escalations only), utility Gemini Flash, sensitivity internal, semantic_cache off. Tools: `listings.get_new`/`listings.flag` (INTEGRATION-POINT mock listing API + synthetic listing generator), `pg_ro.query` price-index view. n8n workflow: new-listing webhook → agent → flag/pass, plus nightly batch re-check job. Flag-only guardrail (agent never unpublishes). Eval dataset ≥20 (photo/description mismatch, blurred-plate detection, clean-listing false-positive control ≥85% precision).
+  **AC:** shadow mode 2 weeks (flags logged, not shown) verified in a scripted run; `make eval AGENT=listing_quality` ≥ threshold; scenario card live.
+- **11.2 Vehicle Intake (Trink sat!).** `vehicle_intake` agent — vision Gemini Flash (photos non-PII after plate-mask step), local OCR for expertise PDFs (owner PII) → redact → cloud reasoning on redacted brief, sensitivity confidential, no write tools. Tools: `ocr.extract` (local), `pg_ro.query` comparables/price-index views. Eval dataset ≥15 (chassis/km/damage-table extraction, price-band sanity vs fixture comparables, missing-report → "incomplete" with no invented values).
+  **AC:** `make eval AGENT=vehicle_intake` ≥ threshold; missing-report fixture never invents values; scenario card live.
+- **11.3 Insights Publisher (Marketing).** `insights_publisher` agent — reasoning Claude Sonnet, utility Gemini Flash, sensitivity internal, semantic_cache off. Knowledge: `mkt-brand` (brand-voice guide, past reports). Tools: `pg_ro.query` index views (read), `cms.publish`+`social.post` (**write:external → approval**, INTEGRATION-POINT mock CMS/social). n8n workflow: cron monthly 1st 08:00 → data pull → draft → approval → publish; failure → Slack alert. Guardrail: every numeric claim must match an attached query result. Eval dataset ≥10 (numbers-match assertion, brand-voice rubric judge ≥4/5, no-invented-statistics test).
+  **AC:** monthly cron produces a draft with grounded numbers pending approval; `make eval AGENT=insights_publisher` ≥ threshold; scenario card live.
+
+## Sprint 12 — Wave 2 Scenarios
+
+Post-MVP onboarding of the two Wave 2 department scenarios (docs/split/department-scenarios/09-10), both requiring the local KVKK lane from Sprint 8.
+
+- **12.1 Dealer Onboarding (Corporate Sales).** `dealer_onboarding` agent — pii lane for documents (local OCR + local extraction for tax no/IBAN), cloud utility allowed for non-PII orchestration text, sensitivity pii. Tools: `ocr.extract` (local), `crm.get_application` (read, INTEGRATION-POINT), `email.send` (**write:external → approval** initially, supervised auto-send for the missing-doc template after eval history), `crm.update_status` (write:internal). Eval dataset ≥12 (certificate field extraction, name-mismatch fixture → flag, TR formal-tone email template correctness).
+  **AC:** approval-gated outbound email verified for the first month's rollout mode; `make eval AGENT=dealer_onboarding` ≥ threshold; scenario card live.
+- **12.2 Legal Document Review (Legal).** `legal_review` agent — local lane (local 14B for clause extraction; contracts are confidential; cloud only if Legal clears a specific model), sensitivity confidential, semantic_cache off, no tools (read/analyze only). Knowledge: `legal-playbooks` (confidential, local embeddings — clause standards, KVKK checklist, anonymized past redlines). Eval dataset ≥12 (planted risky-clause fixtures caught with citation, clean-contract false-alarm control, output schema clause/risk-level/playbook-ref validated).
+  **AC:** planted-clause fixtures are all caught with a playbook citation; `make eval AGENT=legal_review` ≥ threshold; scenario card live.
 
 ---
 

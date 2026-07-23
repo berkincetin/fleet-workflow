@@ -1,0 +1,29 @@
+# Implementation Plan · Sprint 6.5 — Platform UI & Scenario Showcase
+
+<!-- Derived from docs/IMPLEMENTATION_PLAN.md. The original is canonical.
+     Any change here must also be applied to docs/IMPLEMENTATION_PLAN.md in the same PR. -->
+
+## Sprint 6.5 — Platform UI & Scenario Showcase
+
+Everything built in Sprints 1–6 is API-only or fixture-only for most of what a non-technical user would touch (dev/invoice agent runs, n8n workflows, eval examples, admin CRUD). This sprint integrates all of it into a Turkish-first, plain-language web UI — no new agent capability is built here. It also turns the six not-yet-built department scenarios (HR completion, Listing Quality, Vehicle Intake, Insights Publisher, Dealer Onboarding, Legal Review) into "coming soon" cards backed by real sprint tasks (8.5, Sprint 11, Sprint 12), so the showcase is honest about what's live vs planned.
+
+- **6.5.1 Docs restructuring.** Insert this sprint + Sprint 11/12 + task 8.5 into the plan; update TRD §12 (Workflow catalog P2→CORE; add Examples gallery + Home/Department hub); update `docs/split/INDEX.md` and the wave-plan table with target sprint numbers. Original + split parts edited together.
+  **AC:** `docs/split/` mirrors this section; TRD §12 no longer lists Workflow catalog as [P2]; wave-plan table's "ships when" column is filled for all 10 scenarios.
+- **6.5.2 Examples backend.** New `eval_cases` DB table seeded from `evals/datasets/*.jsonl` (source=seed); `GET/POST /v1/examples` (agent-scoped, schema-validated per agent); `evals/promote.py` to export UI-created (source=user) cases back to jsonl for a builder to version. `evals/runner.py` and CI eval gate stay jsonl-driven and untouched.
+  **AC:** seeding is idempotent and matches jsonl line counts per agent; a case created via API appears in `GET /v1/examples`; `make eval AGENT=x` still passes unchanged.
+- **6.5.3 n8n client + workflows router.** `n8n_client.py` (httpx, never raises — connect failure surfaces as `reachable:false`); `GET /v1/workflows` (catalog + live n8n state), `POST /v1/workflows/invoice-intake/run` (image upload → n8n webhook proxy), `POST /v1/workflows/weekly-summary/run`, `POST /v1/workflows/{slug}/activate|deactivate`. Small additions: `GET /v1/dev-agent/tickets` (fixture tickets for a picker UI), `GET /v1/agents/global/read-only` (state for the kill-switch toggle). `make client` regenerates the TS client.
+  **AC:** catalog reflects real n8n state; n8n stopped → API still returns 200 with `reachable:false`; RBAC gates verified (member cannot activate/deactivate).
+- **6.5.4 Compose + workflow import.** n8n loopback port (127.0.0.1:5678) for the Fleet API to reach the REST API directly (oauth2-proxy remains the only human entry at :5679); `workflows/weekly-summary.json` gets a second manual-run webhook trigger; `make n8n-import` target (import + activate both workflows on a fresh stack); `.env`/README document `N8N_API_KEY` (created once in the n8n UI — no headless bootstrap exists).
+  **AC:** fresh `make dev && make n8n-import` leaves both workflows active and callable from the Fleet API.
+- **6.5.5 Session roles + app shell + UI primitives + i18n scaffolding.** Decode Keycloak `realm_access.roles` into the next-auth session (nav gating only — server keeps enforcing RBAC); new sidebar app shell (Ana Sayfa, Sohbet, Senaryolar, Otomasyonlar, Örnekler, Bilgi Bankası, Onaylar, Yönetim); new shadcn-style primitives (dialog, select, tabs, table, textarea, input, toast) on the existing CVA/CSS-var conventions; new i18n namespaces in `tr.json`/`en.json` (Turkish written first, no technical jargon in user-facing copy).
+  **AC:** nav items show/hide per role; TR/EN switch covers all new copy; `tsc`/lint green.
+- **6.5.6 Home dashboard + Department hub.** Redesigned home with big task cards (role-aware); `/scenarios` page with all 10 department scenarios — 4 live + HR partial + 5 "coming soon" with their target sprint badge — deep-linking into chat/automations/examples.
+  **AC:** coming-soon cards show the correct target sprint (8.5 / 11.x / 12.x) and are non-clickable; live cards deep-link correctly.
+- **6.5.7 Automations catalog UI.** `/automations` page: friendly workflow cards, invoice image upload → run → link to the resulting approval, weekly-summary manual run, activate/deactivate toggle (role-gated), plain-language "n8n is down" banner, advanced link to the n8n editor for admins only.
+  **AC:** uploading a sample invoice image from the UI produces a pending approval; approving it resumes the run; stopping n8n shows the down-banner within one refresh.
+- **6.5.8 Examples gallery + clickable HITL demo.** `/examples` page: per-agent tabs, "try it" (chat prefill for support_copilot/analytics; ticket-picker run dialog for dev_agent; image-upload run for invoice_agent), create-new-example form → `POST /v1/examples`. Chat page accepts `agent`+`prefill` query params.
+  **AC:** every one of the 4 live agents has a working try-it path entirely from the UI; a newly created example appears in the gallery immediately.
+- **6.5.9 Admin section (existing APIs only).** `/admin` with agents (CRUD, pause/resume, global read-only toggle), models (registry + smoke test), API keys (issue with scope picker, one-time reveal, revoke) — budgets/users-roles/cost-dashboard stay out (their APIs don't exist until Sprint 7).
+  **AC:** pausing an agent from the UI blocks its runs within 5s; adding a model runs the smoke test from the UI; a revoked key is rejected on its next request.
+- **6.5.10 E2E + polish pass.** Playwright flows for the new surfaces (role-based home, automation states, examples try-it); TR copy review pass; full `make dev` fresh-stack walkthrough of the showcase.
+  **AC:** nightly e2e green; a non-technical user can complete the full showcase (chat, an automation run, an example try-it, an admin action per their role) without touching the terminal.

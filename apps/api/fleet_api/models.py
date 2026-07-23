@@ -15,6 +15,7 @@ from sqlalchemy import (
     Integer,
     Numeric,
     String,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -317,6 +318,32 @@ class ApiKey(Base):
     expires_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
     revoked_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class EvalCase(Base):
+    """Examples-gallery case (task 6.5.2, TRD §11 deferred eval_datasets shape).
+
+    Seeded verbatim from evals/datasets/<agent>.jsonl (source="seed"); a case
+    created via the Examples UI is source="user". `payload` mirrors whatever
+    shape that agent's jsonl already uses (EvalCase/AnalyticsCase/DevAgentCase/
+    InvoiceCase in evals/runner.py) — deliberately untyped here so this table
+    never needs its own migration when an agent's case schema changes.
+    """
+
+    __tablename__ = "eval_cases"
+    __table_args__ = (
+        UniqueConstraint("agent_name", "case_id", name="uq_eval_cases_agent_case"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    agent_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    case_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="seed")
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

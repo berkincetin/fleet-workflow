@@ -172,6 +172,20 @@ class ReadOnlyIn(BaseModel):
     enabled: bool
 
 
+class ReadOnlyOut(BaseModel):
+    enabled: bool
+
+
+@router.get("/global/read-only")
+async def get_global_read_only(
+    _: object = Depends(require_permission(Permission.MANAGE_PLATFORM)),  # noqa: B008
+    killswitch: KillSwitch = Depends(get_killswitch),  # noqa: B008
+) -> ReadOnlyOut:
+    """Current state of the global kill switch (task 6.5.3) — lets the Admin
+    UI render the toggle's initial position without assuming it's off."""
+    return ReadOnlyOut(enabled=await killswitch.is_global_read_only())
+
+
 @router.put("/global/read-only", status_code=204)
 async def set_global_read_only(
     body: ReadOnlyIn,

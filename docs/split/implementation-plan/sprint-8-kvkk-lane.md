@@ -13,3 +13,5 @@
   **AC:** erasure removes subject data, audit preserved pseudonymized.
 - **8.4 PII masking verification.** Masking verified in logs/traces.
   **AC:** detected identifiers appear masked in Loki and Langfuse for a seeded PII conversation.
+- **8.5 HR Talent & Onboarding scenario completion.** Wrap the 8.2 CV mini-flow into a full `hr_agent` per DEPARTMENT_SCENARIOS §5: role-match shortlist draft (write:internal, dept_admin approval), `hr-policies` cloud-lane Q&A alongside the `hr-cvs` pii-lane CV parse; eval dataset (≥15 cases per spec — extraction accuracy, protected-attribute schema-exclusion, onboarding Q&A grounding); flip the HR scenario card from "partial" to live in `/scenarios`.
+  **AC:** `make eval AGENT=hr_agent` ≥ threshold; a synthetic CV produces a structured profile with protected attributes excluded; HR scenario card is live end-to-end from the UI.

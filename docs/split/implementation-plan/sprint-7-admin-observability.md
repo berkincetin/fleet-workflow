@@ -5,8 +5,8 @@
 
 ## Sprint 7 — Admin & Observability
 
-- **7.1 Admin: users, models, budgets, API keys.** Users/roles screens; models (CRUD + smoke); budgets editor; API key management (issue/revoke, scopes — service from 6.1).
-  **AC:** role change takes effect on next request; model add runs smoke test from UI; key revoked from UI is rejected on next request.
+- **7.1 Admin: users/roles, budgets editor.** Users/roles screens; budgets editor. *(Models CRUD+smoke, and API key management shipped early in 6.5.9 — this task only adds what 6.5 didn't cover.)*
+  **AC:** role change takes effect on next request.
 - **7.2 Cost dashboard, approvals, audit explorer.** Spend by dept/agent/model, burn-down, cache savings; approvals all-dept view; audit explorer (filter + Langfuse deep-link).
   **AC:** audit row deep-links to its trace; dashboard renders with seeded traffic.
 - **7.3 [DEFERRABLE] Admin system-health screen.** Queues/workers/providers. Grafana suffices in the meantime.

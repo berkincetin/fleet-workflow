@@ -40,6 +40,28 @@ class RunOut(BaseModel):
     detail: dict[str, Any]
 
 
+class TicketOut(BaseModel):
+    key: str
+    summary: str
+    labels: list[str]
+
+
+@router.get("/tickets")
+async def list_tickets(
+    _: object = Depends(require_permission(Permission.MANAGE_AGENTS)),  # noqa: B008
+) -> list[TicketOut]:
+    """Fixture tickets for a run-dialog picker (task 6.5.3, examples gallery
+    try-it flow) — sourced from the same DEMO_FIXTURE_TICKETS the fixture Jira
+    backend and dev_agent evals use, so the picker never drifts from what a
+    run actually resolves against."""
+    from fleet_mcp.servers.jira import DEMO_FIXTURE_TICKETS
+
+    return [
+        TicketOut(key=t["key"], summary=t["summary"], labels=t["labels"])
+        for t in DEMO_FIXTURE_TICKETS.values()
+    ]
+
+
 @router.post("/runs", status_code=201)
 async def start_run(
     body: RunIn,

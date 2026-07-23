@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import json
+from pathlib import Path
 
 from fleet_api.db import database_url, get_engine
 from sqlalchemy import text
+
+# evals/ lives at the repo root, three levels above apps/api/fleet_api/.
+_EVALS_DIR = Path(__file__).resolve().parents[3] / "evals"
 
 _DEPARTMENTS = ["Customer Service", "Data", "Finance", "HR", "IT"]
 
@@ -197,6 +202,36 @@ async def seed_invoice_agent() -> None:
     await engine.dispose()
 
 
+async def seed_eval_cases() -> None:
+    """Import evals/datasets/*.jsonl into `eval_cases` (source='seed'), task
+    6.5.2. Idempotent on (agent_name, case_id) via ON CONFLICT DO NOTHING —
+    the jsonl files stay the CI eval source of truth; this only mirrors them
+    into the DB so the Examples gallery has something to list without
+    reaching into the repo's filesystem from a request handler."""
+    engine = get_engine(database_url())
+    async with engine.begin() as conn:
+        for jsonl_path in sorted(_EVALS_DIR.glob("datasets/*.jsonl")):
+            agent_name = jsonl_path.stem
+            for line in jsonl_path.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                row = json.loads(line)
+                await conn.execute(
+                    text(
+                        "INSERT INTO eval_cases (agent_name, case_id, payload, source) "
+                        "VALUES (:agent_name, :case_id, :payload, 'seed') "
+                        "ON CONFLICT (agent_name, case_id) DO NOTHING"
+                    ),
+                    {
+                        "agent_name": agent_name,
+                        "case_id": row["id"],
+                        "payload": json.dumps(row),
+                    },
+                )
+    await engine.dispose()
+
+
 async def seed() -> None:
     engine = get_engine(database_url())
     async with engine.begin() as conn:
@@ -253,6 +288,7 @@ def main() -> None:
     asyncio.run(seed_analytics_agent())
     asyncio.run(seed_dev_agent())
     asyncio.run(seed_invoice_agent())
+    asyncio.run(seed_eval_cases())
 
 
 if __name__ == "__main__":

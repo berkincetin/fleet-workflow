@@ -198,7 +198,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Get Global Read Only
+         * @description Current state of the global kill switch (task 6.5.3) — lets the Admin
+         *     UI render the toggle's initial position without assuming it's off.
+         */
+        get: operations["get_global_read_only_v1_admin_agents_global_read_only_get"];
         /**
          * Set Global Read Only
          * @description Global kill switch (§9): blocks every write:* tool call platform-wide.
@@ -406,6 +411,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/dev-agent/tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Tickets
+         * @description Fixture tickets for a run-dialog picker (task 6.5.3, examples gallery
+         *     try-it flow) — sourced from the same DEMO_FIXTURE_TICKETS the fixture Jira
+         *     backend and dev_agent evals use, so the picker never drifts from what a
+         *     run actually resolves against.
+         */
+        get: operations["list_tickets_v1_dev_agent_tickets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/dev-agent/runs": {
         parameters: {
             query?: never;
@@ -417,6 +445,195 @@ export interface paths {
         put?: never;
         /** Start Run */
         post: operations["start_run_v1_dev_agent_runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/api-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Api Keys */
+        get: operations["list_api_keys_v1_admin_api_keys_get"];
+        put?: never;
+        /** Issue Api Key */
+        post: operations["issue_api_key_v1_admin_api_keys_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/api-keys/{key_id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke Api Key */
+        post: operations["revoke_api_key_v1_admin_api_keys__key_id__revoke_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/service/pg-query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pg Query */
+        post: operations["pg_query_v1_service_pg_query_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/service/slack-post": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Slack Post */
+        post: operations["slack_post_v1_service_slack_post_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/invoice-agent/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Run */
+        post: operations["start_run_v1_invoice_agent_runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/examples": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Examples */
+        get: operations["list_examples_v1_examples_get"];
+        put?: never;
+        /** Create Example */
+        post: operations["create_example_v1_examples_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Catalog */
+        get: operations["list_catalog_v1_workflows_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflows/invoice-intake/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run Invoice Intake */
+        post: operations["run_invoice_intake_v1_workflows_invoice_intake_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflows/weekly-summary/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run Weekly Summary */
+        post: operations["run_weekly_summary_v1_workflows_weekly_summary_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflows/{slug}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Activate Workflow */
+        post: operations["activate_workflow_v1_workflows__slug__activate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflows/{slug}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Deactivate Workflow */
+        post: operations["deactivate_workflow_v1_workflows__slug__deactivate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -504,6 +721,56 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** ApiKeyIn */
+        ApiKeyIn: {
+            /** Name */
+            name: string;
+            /** Scopes */
+            scopes?: string[];
+            /** Dept Id */
+            dept_id?: number | null;
+            /** Expires In Days */
+            expires_in_days?: number | null;
+        };
+        /**
+         * ApiKeyIssued
+         * @description Issuance response only — carries the one-time raw key.
+         */
+        ApiKeyIssued: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Scopes */
+            scopes: string[];
+            /** Dept Id */
+            dept_id: number | null;
+            /** Expires At */
+            expires_at: string | null;
+            /** Revoked At */
+            revoked_at: string | null;
+            /** Created By */
+            created_by: string | null;
+            /** Raw Key */
+            raw_key: string;
+        };
+        /** ApiKeyOut */
+        ApiKeyOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Scopes */
+            scopes: string[];
+            /** Dept Id */
+            dept_id: number | null;
+            /** Expires At */
+            expires_at: string | null;
+            /** Revoked At */
+            revoked_at: string | null;
+            /** Created By */
+            created_by: string | null;
+        };
         /** ApprovalOut */
         ApprovalOut: {
             /** Id */
@@ -526,6 +793,11 @@ export interface components {
             decided_at: string | null;
             /** Sla At */
             sla_at: string | null;
+        };
+        /** Body_run_invoice_intake_v1_workflows_invoice_intake_run_post */
+        Body_run_invoice_intake_v1_workflows_invoice_intake_run_post: {
+            /** File */
+            file: string;
         };
         /** Body_upload_document_v1_documents_post */
         Body_upload_document_v1_documents_post: {
@@ -611,6 +883,37 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** ExampleIn */
+        ExampleIn: {
+            /** Agent Name */
+            agent_name: string;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+        };
+        /** ExampleOut */
+        ExampleOut: {
+            /** Id */
+            id: number;
+            /** Agent Name */
+            agent_name: string;
+            /** Case Id */
+            case_id: string;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+            /** Source */
+            source: string;
+            /** Created By */
+            created_by: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** FeedbackIn */
         FeedbackIn: {
             /** Score */
@@ -679,6 +982,20 @@ export interface components {
             /** Smoke Latency Ms */
             smoke_latency_ms: number | null;
         };
+        /** PgQueryIn */
+        PgQueryIn: {
+            /** Sql */
+            sql: string;
+        };
+        /** PgQueryOut */
+        PgQueryOut: {
+            /** Rows */
+            rows: {
+                [key: string]: unknown;
+            }[];
+            /** Row Count */
+            row_count: number;
+        };
         /** QueryIn */
         QueryIn: {
             /** Collection Id */
@@ -707,10 +1024,10 @@ export interface components {
             /** Enabled */
             enabled: boolean;
         };
-        /** RunIn */
-        RunIn: {
-            /** Ticket Key */
-            ticket_key: string;
+        /** ReadOnlyOut */
+        ReadOnlyOut: {
+            /** Enabled */
+            enabled: boolean;
         };
         /** RunOut */
         RunOut: {
@@ -722,6 +1039,29 @@ export interface components {
             detail: {
                 [key: string]: unknown;
             };
+        };
+        /** RunResultOut */
+        RunResultOut: {
+            /** Status */
+            status: string;
+            /** Detail */
+            detail?: string | null;
+        };
+        /** SlackPostIn */
+        SlackPostIn: {
+            /** Channel */
+            channel: string;
+            /** Text */
+            text: string;
+        };
+        /** TicketOut */
+        TicketOut: {
+            /** Key */
+            key: string;
+            /** Summary */
+            summary: string;
+            /** Labels */
+            labels: string[];
         };
         /** ValidationError */
         ValidationError: {
@@ -735,6 +1075,36 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** WorkflowOut */
+        WorkflowOut: {
+            /** Slug */
+            slug: string;
+            /** Kind */
+            kind: string;
+            /** Reachable */
+            reachable: boolean;
+            /**
+             * Auth Error
+             * @default false
+             */
+            auth_error: boolean;
+            /** Active */
+            active?: boolean | null;
+            /** Last Run */
+            last_run?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /** RunIn */
+        fleet_api__routers__dev_agent__RunIn: {
+            /** Ticket Key */
+            ticket_key: string;
+        };
+        /** RunIn */
+        fleet_api__routers__invoice_agent__RunIn: {
+            /** Image Base64 */
+            image_base64: string;
         };
     };
     responses: never;
@@ -1148,6 +1518,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_global_read_only_v1_admin_agents_global_read_only_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadOnlyOut"];
                 };
             };
         };
@@ -1652,6 +2042,26 @@ export interface operations {
             };
         };
     };
+    list_tickets_v1_dev_agent_tickets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketOut"][];
+                };
+            };
+        };
+    };
     start_run_v1_dev_agent_runs_post: {
         parameters: {
             query?: never;
@@ -1661,7 +2071,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["RunIn"];
+                "application/json": components["schemas"]["fleet_api__routers__dev_agent__RunIn"];
             };
         };
         responses: {
@@ -1672,6 +2082,390 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_api_keys_v1_admin_api_keys_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyOut"][];
+                };
+            };
+        };
+    };
+    issue_api_key_v1_admin_api_keys_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApiKeyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyIssued"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_api_key_v1_admin_api_keys__key_id__revoke_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pg_query_v1_service_pg_query_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-fleet-api-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PgQueryIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PgQueryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    slack_post_v1_service_slack_post_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-fleet-api-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SlackPostIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_run_v1_invoice_agent_runs_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-fleet-api-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["fleet_api__routers__invoice_agent__RunIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_examples_v1_examples_get: {
+        parameters: {
+            query?: {
+                agent?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExampleOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_example_v1_examples_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExampleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExampleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_catalog_v1_workflows_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowOut"][];
+                };
+            };
+        };
+    };
+    run_invoice_intake_v1_workflows_invoice_intake_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_run_invoice_intake_v1_workflows_invoice_intake_run_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunResultOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_weekly_summary_v1_workflows_weekly_summary_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunResultOut"];
+                };
+            };
+        };
+    };
+    activate_workflow_v1_workflows__slug__activate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunResultOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deactivate_workflow_v1_workflows__slug__deactivate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunResultOut"];
                 };
             };
             /** @description Validation Error */

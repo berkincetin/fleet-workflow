@@ -22,13 +22,26 @@ type ChatMessage = {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_FLEET_API_BASE_URL ?? "http://localhost:8000";
 
-export function ChatWindow({ agents }: { agents: AgentSummary[] }) {
+export function ChatWindow({
+  agents,
+  initialAgentName,
+  initialPrefill,
+}: {
+  agents: AgentSummary[];
+  /** Preselects an agent by name (task 6.5.8's Examples "try it" deep link). */
+  initialAgentName?: string;
+  /** Prefills the composer so a try-it example is one click from sending. */
+  initialPrefill?: string;
+}) {
   const t = useTranslations("chat");
   const { data: session } = useSession();
-  const [agentId, setAgentId] = useState<number | null>(agents[0]?.id ?? null);
+  const preselected = initialAgentName
+    ? agents.find((a) => a.name === initialAgentName)
+    : undefined;
+  const [agentId, setAgentId] = useState<number | null>(preselected?.id ?? agents[0]?.id ?? null);
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(initialPrefill ?? "");
   const [busy, setBusy] = useState(false);
 
   async function ensureConversation(): Promise<number> {

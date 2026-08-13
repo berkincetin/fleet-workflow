@@ -37,6 +37,17 @@ def _app_session_factory() -> async_sessionmaker[AsyncSession]:
     return session_factory(get_engine())
 
 
+def reset_engine_cache() -> None:
+    """Drop the cached engine/session factory so the next `get_session()`
+    call builds a fresh one bound to the current event loop.
+
+    Only needed in test suites that create multiple event loops within one
+    process (e.g. instantiating `TestClient(create_app())` more than once
+    per module) — a real server process has exactly one loop for its
+    lifetime, so this is never called in production."""
+    _app_session_factory.cache_clear()
+
+
 async def get_session() -> AsyncIterator[AsyncSession]:
     """FastAPI dependency yielding a request-scoped async session."""
     async with _app_session_factory()() as session:

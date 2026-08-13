@@ -197,7 +197,15 @@ def _client(base: str, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     )
     monkeypatch.setenv("FLEET_OIDC_AUDIENCE", "account")
     from fleet_api.app import create_app
+    from fleet_api.db import reset_engine_cache
 
+    # get_current_user (task 7.1) now opens a DB session on every
+    # authenticated request. db.py's engine is cached process-wide for a
+    # real server's single event loop; this test module creates a new
+    # TestClient (and thus a new event loop) per test function, so the
+    # cache must be dropped each time or a pooled connection from a prior
+    # test's already-closed loop gets reused here.
+    reset_engine_cache()
     return TestClient(create_app())
 
 

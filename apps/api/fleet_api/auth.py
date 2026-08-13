@@ -8,9 +8,12 @@ import httpx
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fleet_api.config import Settings, get_settings
+from fleet_api.db import get_session
 from fleet_api.errors import UnauthorizedError
+from fleet_api.users import get_or_create_user, load_roles, seed_roles_from_jwt
 from jose import jwt
 from jose.exceptions import JWTError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -63,11 +66,23 @@ async def verify_bearer_token(token: str, settings: Settings) -> CurrentUser:
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),  # noqa: B008
     settings: Settings = Depends(get_settings),  # noqa: B008
+    session: AsyncSession = Depends(get_session),  # noqa: B008
 ) -> CurrentUser:
-    """Verify the bearer token and return the current user, or raise 401."""
+    """Verify the bearer token, then resolve permissions against the DB
+    `roles` table rather than the token's own claims (task 7.1). Keycloak
+    stays the identity provider; a first login copies its realm roles into
+    the DB once (`seed_roles_from_jwt`), and every request after that reads
+    live from `roles` — so an admin's role edit takes effect on the caller's
+    very next request instead of waiting on token refresh.
+    """
     if credentials is None or not credentials.credentials:
         raise UnauthorizedError("missing bearer token")
-    return await verify_bearer_token(credentials.credentials, settings)
+    jwt_user = await verify_bearer_token(credentials.credentials, settings)
+    db_user = await get_or_create_user(session, kc_sub=jwt_user.sub)
+    await seed_roles_from_jwt(session, db_user, jwt_user.roles)
+    await session.commit()
+    db_roles = await load_roles(session, db_user)
+    return CurrentUser(sub=jwt_user.sub, roles=db_roles)
 
 
 async def try_current_user_sub(auth_header: str | None, settings: Settings) -> str | None:

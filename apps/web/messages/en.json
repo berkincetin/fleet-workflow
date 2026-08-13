@@ -171,6 +171,20 @@
     "scopes": "Scopes",
     "expiresAt": "Expires",
     "confirm": "Are you sure?",
-    "deleteAgent": "Delete"
+    "deleteAgent": "Delete",
+    "users": "Users",
+    "usersTitle": "Users & Roles",
+    "department": "Department",
+    "noDepartment": "No department",
+    "roles": "Roles",
+    "addRole": "Add role",
+    "removeRole": "Remove",
+    "roleNames": {
+      "member": "Member",
+      "builder": "Builder",
+      "approver": "Approver",
+      "dept_admin": "Department Admin",
+      "platform_admin": "Platform Admin"
+    }
   }
 }

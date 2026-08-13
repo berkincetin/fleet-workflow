@@ -171,6 +171,20 @@
     "scopes": "Kapsamlar",
     "expiresAt": "Son kullanım",
     "confirm": "Onaylıyor musunuz?",
-    "deleteAgent": "Sil"
+    "deleteAgent": "Sil",
+    "users": "Kullanıcılar",
+    "usersTitle": "Kullanıcılar ve Roller",
+    "department": "Departman",
+    "noDepartment": "Departman yok",
+    "roles": "Roller",
+    "addRole": "Rol ekle",
+    "removeRole": "Kaldır",
+    "roleNames": {
+      "member": "Üye",
+      "builder": "Geliştirici",
+      "approver": "Onaylayıcı",
+      "dept_admin": "Departman Yöneticisi",
+      "platform_admin": "Platform Yöneticisi"
+    }
   }
 }

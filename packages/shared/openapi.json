@@ -2412,6 +2412,158 @@
           }
         }
       }
+    },
+    "/v1/admin/cost/summary": {
+      "get": {
+        "tags": [
+          "admin:observability"
+        ],
+        "summary": "Cost Summary",
+        "operationId": "cost_summary_v1_admin_cost_summary_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 365,
+              "minimum": 1,
+              "default": 30,
+              "title": "Days"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostSummaryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/audit": {
+      "get": {
+        "tags": [
+          "admin:observability"
+        ],
+        "summary": "List Audit",
+        "operationId": "list_audit_v1_admin_audit_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "actor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Actor"
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action"
+            }
+          },
+          {
+            "name": "entity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AuditRowOut"
+                  },
+                  "title": "Response List Audit V1 Admin Audit Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2877,6 +3029,88 @@
         ],
         "title": "ApprovalOut"
       },
+      "AuditRowOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "ts": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ts"
+          },
+          "actor": {
+            "type": "string",
+            "title": "Actor"
+          },
+          "actor_type": {
+            "type": "string",
+            "title": "Actor Type"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "entity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity"
+          },
+          "entity_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Id"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Id"
+          },
+          "langfuse_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Langfuse Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "ts",
+          "actor",
+          "actor_type",
+          "action",
+          "entity",
+          "entity_id",
+          "trace_id",
+          "langfuse_url"
+        ],
+        "title": "AuditRowOut"
+      },
       "Body_run_invoice_intake_v1_workflows_invoice_intake_run_post": {
         "properties": {
           "file": {
@@ -2991,6 +3225,24 @@
           "soft_pct"
         ],
         "title": "BudgetOut"
+      },
+      "BurnDownPoint": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "total_usd": {
+            "type": "number",
+            "title": "Total Usd"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "total_usd"
+        ],
+        "title": "BurnDownPoint"
       },
       "CitationOut": {
         "properties": {
@@ -3143,6 +3395,56 @@
           "user_id"
         ],
         "title": "ConversationOut"
+      },
+      "CostSummaryOut": {
+        "properties": {
+          "total_usd": {
+            "type": "number",
+            "title": "Total Usd"
+          },
+          "by_dept": {
+            "items": {
+              "$ref": "#/components/schemas/SpendByKey"
+            },
+            "type": "array",
+            "title": "By Dept"
+          },
+          "by_agent": {
+            "items": {
+              "$ref": "#/components/schemas/SpendByKey"
+            },
+            "type": "array",
+            "title": "By Agent"
+          },
+          "by_model": {
+            "items": {
+              "$ref": "#/components/schemas/SpendByKey"
+            },
+            "type": "array",
+            "title": "By Model"
+          },
+          "burn_down": {
+            "items": {
+              "$ref": "#/components/schemas/BurnDownPoint"
+            },
+            "type": "array",
+            "title": "Burn Down"
+          },
+          "cache_hit_ratio": {
+            "type": "number",
+            "title": "Cache Hit Ratio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_usd",
+          "by_dept",
+          "by_agent",
+          "by_model",
+          "burn_down",
+          "cache_hit_ratio"
+        ],
+        "title": "CostSummaryOut"
       },
       "DecisionIn": {
         "properties": {
@@ -3768,6 +4070,24 @@
           "text"
         ],
         "title": "SlackPostIn"
+      },
+      "SpendByKey": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "total_usd": {
+            "type": "number",
+            "title": "Total Usd"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "total_usd"
+        ],
+        "title": "SpendByKey"
       },
       "TicketOut": {
         "properties": {

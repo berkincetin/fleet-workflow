@@ -761,6 +761,40 @@ export interface paths {
         patch: operations["update_budget_v1_admin_budgets__budget_id__patch"];
         trace?: never;
     };
+    "/v1/admin/cost/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cost Summary */
+        get: operations["cost_summary_v1_admin_cost_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Audit */
+        get: operations["list_audit_v1_admin_audit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -915,6 +949,30 @@ export interface components {
             /** Sla At */
             sla_at: string | null;
         };
+        /** AuditRowOut */
+        AuditRowOut: {
+            /** Id */
+            id: number;
+            /**
+             * Ts
+             * Format: date-time
+             */
+            ts: string;
+            /** Actor */
+            actor: string;
+            /** Actor Type */
+            actor_type: string;
+            /** Action */
+            action: string;
+            /** Entity */
+            entity: string | null;
+            /** Entity Id */
+            entity_id: string | null;
+            /** Trace Id */
+            trace_id: string | null;
+            /** Langfuse Url */
+            langfuse_url: string | null;
+        };
         /** Body_run_invoice_intake_v1_workflows_invoice_intake_run_post */
         Body_run_invoice_intake_v1_workflows_invoice_intake_run_post: {
             /** File */
@@ -958,6 +1016,13 @@ export interface components {
             limit_usd: number;
             /** Soft Pct */
             soft_pct: number;
+        };
+        /** BurnDownPoint */
+        BurnDownPoint: {
+            /** Date */
+            date: string;
+            /** Total Usd */
+            total_usd: number;
         };
         /** CitationOut */
         CitationOut: {
@@ -1013,6 +1078,21 @@ export interface components {
             agent_id: number;
             /** User Id */
             user_id: number;
+        };
+        /** CostSummaryOut */
+        CostSummaryOut: {
+            /** Total Usd */
+            total_usd: number;
+            /** By Dept */
+            by_dept: components["schemas"]["SpendByKey"][];
+            /** By Agent */
+            by_agent: components["schemas"]["SpendByKey"][];
+            /** By Model */
+            by_model: components["schemas"]["SpendByKey"][];
+            /** Burn Down */
+            burn_down: components["schemas"]["BurnDownPoint"][];
+            /** Cache Hit Ratio */
+            cache_hit_ratio: number;
         };
         /** DecisionIn */
         DecisionIn: {
@@ -1236,6 +1316,13 @@ export interface components {
             channel: string;
             /** Text */
             text: string;
+        };
+        /** SpendByKey */
+        SpendByKey: {
+            /** Key */
+            key: string;
+            /** Total Usd */
+            total_usd: number;
         };
         /** TicketOut */
         TicketOut: {
@@ -2921,6 +3008,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BudgetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cost_summary_v1_admin_cost_summary_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostSummaryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_audit_v1_admin_audit_get: {
+        parameters: {
+            query?: {
+                actor?: string | null;
+                action?: string | null;
+                entity?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditRowOut"][];
                 };
             };
             /** @description Validation Error */

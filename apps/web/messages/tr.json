@@ -205,6 +205,21 @@
     "budgetPeriod": {
       "monthly": "Aylık",
       "daily": "Günlük"
-    }
+    },
+    "cost": "Maliyet",
+    "audit": "Denetim",
+    "costNoData": "Henüz veri yok.",
+    "totalSpend": "Toplam Harcama (30 gün)",
+    "cacheHitRatio": "Önbellek İsabet Oranı",
+    "burnDown": "Günlük Harcama",
+    "spendByDept": "Departmana Göre",
+    "spendByAgent": "Ajana Göre",
+    "spendByModel": "Modele Göre",
+    "auditTitle": "Denetim Kayıtları",
+    "auditActor": "Aktör",
+    "auditAction": "Eylem",
+    "auditSearch": "Ara",
+    "auditTime": "Zaman",
+    "auditTrace": "İz Kaydı"
   }
 }

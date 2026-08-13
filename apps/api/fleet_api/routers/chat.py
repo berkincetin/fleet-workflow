@@ -47,8 +47,9 @@ from fastapi.responses import StreamingResponse
 from fleet_api.auth import CurrentUser, get_current_user
 from fleet_api.config import Settings, get_settings
 from fleet_api.db import get_session
-from fleet_api.models import Agent, Collection, Conversation, Feedback, Message, User
+from fleet_api.models import Agent, Collection, Conversation, Feedback, Message
 from fleet_api.rbac import Permission, require_permission
+from fleet_api.users import get_or_create_user
 from pydantic import BaseModel
 from redis.asyncio import Redis
 from sqlalchemy import select
@@ -67,20 +68,6 @@ def get_langfuse_scorer(settings: Settings = Depends(get_settings)) -> LangfuseS
         public_key=settings.langfuse_public_key,
         secret_key=settings.langfuse_secret_key,
     )
-
-
-async def _get_or_create_user(session: AsyncSession, current: CurrentUser) -> User:
-    """First-login provisioning: a verified Keycloak principal always gets an
-    internal users row, rather than requiring every user to be pre-seeded."""
-    row = (
-        await session.execute(select(User).where(User.kc_sub == current.sub))
-    ).scalar_one_or_none()
-    if row is not None:
-        return row
-    row = User(kc_sub=current.sub, email_hash="", display_name=current.sub)
-    session.add(row)
-    await session.flush()
-    return row
 
 
 class AgentSummaryOut(BaseModel):
@@ -127,7 +114,7 @@ async def create_conversation(
     if agent is None:
         raise HTTPException(status_code=404, detail="agent not found")
 
-    user = await _get_or_create_user(session, current)
+    user = await get_or_create_user(session, kc_sub=current.sub)
     row = Conversation(agent_id=agent.id, user_id=user.id)
     session.add(row)
     await session.commit()
@@ -339,7 +326,7 @@ async def send_message(
     if conversation is None:
         raise HTTPException(status_code=404, detail="conversation not found")
 
-    user = await _get_or_create_user(session, current)
+    user = await get_or_create_user(session, kc_sub=current.sub)
     if conversation.user_id != user.id:
         raise HTTPException(status_code=403, detail="not your conversation")
 

@@ -1,0 +1,115 @@
+rule_files:
+  - alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  # Task 7.4's AC: a budget soft-limit crossing fires an alert. This is the
+  # rule directly wired to core.llm.client._check_budget's counter increment
+  # (tests/unit/test_llm_client_metrics.py proves that half); this proves
+  # the alert-rule half — Prometheus actually fires given that counter
+  # shape, before Alertmanager ever gets involved.
+  - interval: 1m
+    input_series:
+      - series: 'fleet_budget_soft_limit_total{scope="dept:finance"}'
+        values: "0 0 0 1 1"
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: BudgetSoftLimitExceeded
+        exp_alerts: []
+      - eval_time: 4m
+        alertname: BudgetSoftLimitExceeded
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              scope: "dept:finance"
+            exp_annotations:
+              summary: "Budget scope dept:finance crossed its soft limit"
+              description: "dept:finance had a call flagged budget_soft_exceeded in the last 5m."
+
+  - interval: 1m
+    input_series:
+      - series: 'fleet_http_requests_total{method="GET",path="/v1/chat",status="200"}'
+        values: "0+10x10"
+      - series: 'fleet_http_requests_total{method="GET",path="/v1/chat",status="500"}'
+        values: "0+1x10"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: HighErrorRate
+        exp_alerts:
+          - exp_labels:
+              severity: serious
+            exp_annotations:
+              summary: "Fleet API 5xx rate above 5%"
+              description: "5xx / total request rate has been over 5% for 5 minutes."
+
+  - interval: 1m
+    input_series:
+      - series: 'fleet_http_request_duration_seconds_bucket{path="/v1/chat",le="0.5"}'
+        values: "0+0x10"
+      - series: 'fleet_http_request_duration_seconds_bucket{path="/v1/chat",le="1"}'
+        values: "0+0x10"
+      - series: 'fleet_http_request_duration_seconds_bucket{path="/v1/chat",le="2"}'
+        values: "0+0x10"
+      - series: 'fleet_http_request_duration_seconds_bucket{path="/v1/chat",le="5"}'
+        values: "0+10x10"
+      - series: 'fleet_http_request_duration_seconds_bucket{path="/v1/chat",le="+Inf"}'
+        values: "0+10x10"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: HighLatencyP95
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              path: "/v1/chat"
+            exp_annotations:
+              summary: "p95 latency above 2s on /v1/chat"
+              description: "Route /v1/chat's p95 request duration has exceeded 2s for 5 minutes."
+
+  - interval: 1m
+    input_series:
+      - series: 'fleet_queue_depth{queue="ingest"}'
+        values: "150+0x15"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: IngestQueueBacklog
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: IngestQueueBacklog
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              queue: "ingest"
+            exp_annotations:
+              summary: "Ingest queue backlog over 100 jobs"
+              description: "arq ingest queue depth has stayed above 100 for 10 minutes — a worker may be stuck or under-provisioned."
+
+  - interval: 1m
+    input_series:
+      - series: 'fleet_dept_daily_spend_usd{dept_id="3"}'
+        values: "50+0x5"
+      - series: 'fleet_dept_avg_daily_spend_7d_usd{dept_id="3"}'
+        values: "10+0x5"
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: DeptCostAnomaly
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              dept_id: "3"
+            exp_annotations:
+              summary: "Department 3 spend is 3x its 7-day average"
+              description: "Today's spend for dept 3 ($50) is more than 3x its trailing 7-day daily average."
+
+  # Negative case: an anomaly-shaped ratio on a dept with negligible baseline
+  # spend must NOT page anyone (the > 1 floor on the average).
+  - interval: 1m
+    input_series:
+      - series: 'fleet_dept_daily_spend_usd{dept_id="4"}'
+        values: "0.40+0x5"
+      - series: 'fleet_dept_avg_daily_spend_7d_usd{dept_id="4"}'
+        values: "0.10+0x5"
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: DeptCostAnomaly
+        exp_alerts: []

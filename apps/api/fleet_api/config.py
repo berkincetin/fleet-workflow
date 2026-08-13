@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     langfuse_base_url: str = "http://localhost:3001"
     langfuse_public_key: str = "pk-lf-fleet-dev"
     langfuse_secret_key: str = "sk-lf-fleet-dev"
+    # Matches LANGFUSE_INIT_PROJECT_ID in infra/compose/docker-compose.dev.yml
+    # — needed to build a trace deep-link (task 7.2), not just call the API.
+    langfuse_project_id: str = "fleet-dev"
     # RAG ingestion (Sprint 3)
     minio_endpoint: str = "localhost:9000"
     minio_root_user: str = "fleet"

@@ -107,7 +107,10 @@ services:
     image: prom/prometheus:v3.0.1
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
     ports: ["9090:9090"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   grafana:
     image: grafana/grafana:11.4.0
@@ -126,10 +129,23 @@ services:
       - ./loki/loki-config.yml:/etc/loki/loki-config.yml:ro
     ports: ["3100:3100"]
 
+  # Alertmanager has no native ${VAR} expansion for its config file (verified
+  # against the real v0.28.0 binary, task 7.4) and refuses to start on a
+  # truly empty api_url ("unsupported scheme for URL"), so the mounted file
+  # is a template with a __SLACK_WEBHOOK_URL__ token, substituted at startup
+  # via sed into a real config with either FLEET_SLACK_WEBHOOK_URL or a
+  # syntactically-valid-but-inert placeholder (never blocks `make dev`).
   alertmanager:
     image: prom/alertmanager:v0.28.0
     volumes:
-      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml.template:ro
+    environment:
+      FLEET_SLACK_WEBHOOK_URL: ${FLEET_SLACK_WEBHOOK_URL:-https://hooks.slack.com/services/PLACEHOLDER}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        sed "s#__SLACK_WEBHOOK_URL__#$$FLEET_SLACK_WEBHOOK_URL#" /etc/alertmanager/alertmanager.yml.template > /tmp/alertmanager.yml &&
+        exec alertmanager --config.file=/tmp/alertmanager.yml --storage.path=/alertmanager
     ports: ["9093:9093"]
 
   mailpit:

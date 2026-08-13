@@ -1,0 +1,57 @@
+groups:
+  - name: fleet-platform
+    rules:
+      # TRD §5: soft limit (80%) -> Slack+UI warning. Fires on the first call
+      # that crosses a budget's soft limit within the window; the counter is
+      # incremented in core.metrics from core.llm.client._check_budget.
+      - alert: BudgetSoftLimitExceeded
+        expr: increase(fleet_budget_soft_limit_total[5m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "Budget scope {{ $labels.scope }} crossed its soft limit"
+          description: "{{ $labels.scope }} had a call flagged budget_soft_exceeded in the last 5m."
+
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(fleet_http_requests_total{status=~"5.."}[5m]))
+            / sum(rate(fleet_http_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: serious
+        annotations:
+          summary: "Fleet API 5xx rate above 5%"
+          description: "5xx / total request rate has been over 5% for 5 minutes."
+
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(0.95, sum(rate(fleet_http_request_duration_seconds_bucket[5m])) by (le, path)) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 latency above 2s on {{ $labels.path }}"
+          description: "Route {{ $labels.path }}'s p95 request duration has exceeded 2s for 5 minutes."
+
+      - alert: IngestQueueBacklog
+        expr: fleet_queue_depth{queue="ingest"} > 100
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Ingest queue backlog over 100 jobs"
+          description: "arq ingest queue depth has stayed above 100 for 10 minutes — a worker may be stuck or under-provisioned."
+
+      # TRD §5 cost anomaly: dept daily spend > 3x its 7-day average. The
+      # `> 1` floor on the average excludes depts with a negligible baseline
+      # (e.g. $0.10 -> $0.40 is technically 4x but not an anomaly worth
+      # paging anyone about).
+      - alert: DeptCostAnomaly
+        expr: |
+          fleet_dept_daily_spend_usd > (3 * fleet_dept_avg_daily_spend_7d_usd)
+            and fleet_dept_avg_daily_spend_7d_usd > 1
+        labels:
+          severity: warning
+        annotations:
+          summary: "Department {{ $labels.dept_id }} spend is 3x its 7-day average"
+          description: "Today's spend for dept {{ $labels.dept_id }} (${{ $value }}) is more than 3x its trailing 7-day daily average."

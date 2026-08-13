@@ -38,10 +38,11 @@
   ],
   "roles": {
     "realm": [
-      { "name": "admin" },
+      { "name": "platform_admin" },
+      { "name": "dept_admin" },
       { "name": "builder" },
       { "name": "approver" },
-      { "name": "user" }
+      { "name": "member" }
     ]
   },
   "users": [
@@ -52,7 +53,16 @@
       "firstName": "Admin",
       "lastName": "User",
       "credentials": [{ "type": "password", "value": "admin", "temporary": false }],
-      "realmRoles": ["admin", "user"]
+      "realmRoles": ["platform_admin", "member"]
+    },
+    {
+      "username": "deptadmin",
+      "enabled": true,
+      "email": "deptadmin@fleet.local",
+      "firstName": "Department",
+      "lastName": "Admin",
+      "credentials": [{ "type": "password", "value": "deptadmin", "temporary": false }],
+      "realmRoles": ["dept_admin", "member"]
     },
     {
       "username": "builder",
@@ -61,7 +71,7 @@
       "firstName": "Builder",
       "lastName": "User",
       "credentials": [{ "type": "password", "value": "builder", "temporary": false }],
-      "realmRoles": ["builder", "user"]
+      "realmRoles": ["builder", "member"]
     },
     {
       "username": "approver",
@@ -70,7 +80,7 @@
       "firstName": "Approver",
       "lastName": "User",
       "credentials": [{ "type": "password", "value": "approver", "temporary": false }],
-      "realmRoles": ["approver", "user"]
+      "realmRoles": ["approver", "member"]
     },
     {
       "username": "user1",
@@ -79,7 +89,7 @@
       "firstName": "Regular",
       "lastName": "One",
       "credentials": [{ "type": "password", "value": "user1", "temporary": false }],
-      "realmRoles": ["user"]
+      "realmRoles": ["member"]
     },
     {
       "username": "user2",
@@ -88,7 +98,7 @@
       "firstName": "Regular",
       "lastName": "Two",
       "credentials": [{ "type": "password", "value": "user2", "temporary": false }],
-      "realmRoles": ["user"]
+      "realmRoles": ["member"]
     }
   ]
 }

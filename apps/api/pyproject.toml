@@ -21,6 +21,7 @@ dependencies = [
     "python-multipart>=0.0.18",
     "fleet-runtime",
     "fleet-mcp",
+    "prometheus-client>=0.21",
 ]
 
 [build-system]

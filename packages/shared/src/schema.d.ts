@@ -44,6 +44,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Metrics */
+        get: operations["metrics_metrics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/whoami": {
         parameters: {
             query?: never;
@@ -640,6 +657,161 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Users */
+        get: operations["list_users_v1_admin_users_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/users/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update User Dept */
+        patch: operations["update_user_dept_v1_admin_users__user_id__patch"];
+        trace?: never;
+    };
+    "/v1/admin/users/{user_id}/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Role */
+        post: operations["add_role_v1_admin_users__user_id__roles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/users/{user_id}/roles/{role_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Role */
+        delete: operations["remove_role_v1_admin_users__user_id__roles__role_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/departments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Departments */
+        get: operations["list_departments_v1_admin_departments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/budgets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Budgets */
+        get: operations["list_budgets_v1_admin_budgets_get"];
+        put?: never;
+        /** Create Budget */
+        post: operations["create_budget_v1_admin_budgets_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/budgets/{budget_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Budget */
+        delete: operations["delete_budget_v1_admin_budgets__budget_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Budget */
+        patch: operations["update_budget_v1_admin_budgets__budget_id__patch"];
+        trace?: never;
+    };
+    "/v1/admin/cost/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cost Summary */
+        get: operations["cost_summary_v1_admin_cost_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Audit */
+        get: operations["list_audit_v1_admin_audit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -794,6 +966,30 @@ export interface components {
             /** Sla At */
             sla_at: string | null;
         };
+        /** AuditRowOut */
+        AuditRowOut: {
+            /** Id */
+            id: number;
+            /**
+             * Ts
+             * Format: date-time
+             */
+            ts: string;
+            /** Actor */
+            actor: string;
+            /** Actor Type */
+            actor_type: string;
+            /** Action */
+            action: string;
+            /** Entity */
+            entity: string | null;
+            /** Entity Id */
+            entity_id: string | null;
+            /** Trace Id */
+            trace_id: string | null;
+            /** Langfuse Url */
+            langfuse_url: string | null;
+        };
         /** Body_run_invoice_intake_v1_workflows_invoice_intake_run_post */
         Body_run_invoice_intake_v1_workflows_invoice_intake_run_post: {
             /** File */
@@ -803,6 +999,62 @@ export interface components {
         Body_upload_document_v1_documents_post: {
             /** File */
             file: string;
+        };
+        /** BudgetIn */
+        BudgetIn: {
+            /** Scope Type */
+            scope_type: string;
+            /** Scope Id */
+            scope_id?: string | null;
+            /**
+             * Period
+             * @default monthly
+             */
+            period: string;
+            /** Limit Usd */
+            limit_usd: number;
+            /**
+             * Soft Pct
+             * @default 80
+             */
+            soft_pct: number;
+        };
+        /** BudgetOut */
+        BudgetOut: {
+            /** Id */
+            id: number;
+            /** Scope Type */
+            scope_type: string;
+            /** Scope Id */
+            scope_id: string | null;
+            /** Period */
+            period: string;
+            /** Limit Usd */
+            limit_usd: number;
+            /** Soft Pct */
+            soft_pct: number;
+            /**
+             * Spent Usd
+             * @default 0
+             */
+            spent_usd: number;
+            /**
+             * Soft Exceeded
+             * @default false
+             */
+            soft_exceeded: boolean;
+            /**
+             * Hard Exceeded
+             * @default false
+             */
+            hard_exceeded: boolean;
+        };
+        /** BurnDownPoint */
+        BurnDownPoint: {
+            /** Date */
+            date: string;
+            /** Total Usd */
+            total_usd: number;
         };
         /** CitationOut */
         CitationOut: {
@@ -859,6 +1111,21 @@ export interface components {
             /** User Id */
             user_id: number;
         };
+        /** CostSummaryOut */
+        CostSummaryOut: {
+            /** Total Usd */
+            total_usd: number;
+            /** By Dept */
+            by_dept: components["schemas"]["SpendByKey"][];
+            /** By Agent */
+            by_agent: components["schemas"]["SpendByKey"][];
+            /** By Model */
+            by_model: components["schemas"]["SpendByKey"][];
+            /** Burn Down */
+            burn_down: components["schemas"]["BurnDownPoint"][];
+            /** Cache Hit Ratio */
+            cache_hit_ratio: number;
+        };
         /** DecisionIn */
         DecisionIn: {
             /** Decision */
@@ -867,6 +1134,18 @@ export interface components {
             edited_payload?: {
                 [key: string]: unknown;
             } | null;
+        };
+        /** DepartmentOut */
+        DepartmentOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+        };
+        /** DeptIn */
+        DeptIn: {
+            /** Dept Id */
+            dept_id: number | null;
         };
         /** DocumentOut */
         DocumentOut: {
@@ -1029,6 +1308,22 @@ export interface components {
             /** Enabled */
             enabled: boolean;
         };
+        /** RoleIn */
+        RoleIn: {
+            /** Role */
+            role: string;
+            /** Dept Id */
+            dept_id?: number | null;
+        };
+        /** RoleOut */
+        RoleOut: {
+            /** Id */
+            id: number;
+            /** Role */
+            role: string;
+            /** Dept Id */
+            dept_id: number | null;
+        };
         /** RunOut */
         RunOut: {
             /** Run Id */
@@ -1054,6 +1349,13 @@ export interface components {
             /** Text */
             text: string;
         };
+        /** SpendByKey */
+        SpendByKey: {
+            /** Key */
+            key: string;
+            /** Total Usd */
+            total_usd: number;
+        };
         /** TicketOut */
         TicketOut: {
             /** Key */
@@ -1062,6 +1364,21 @@ export interface components {
             summary: string;
             /** Labels */
             labels: string[];
+        };
+        /** UserOut */
+        UserOut: {
+            /** Id */
+            id: number;
+            /** Kc Sub */
+            kc_sub: string;
+            /** Display Name */
+            display_name: string;
+            /** Status */
+            status: string;
+            /** Dept Id */
+            dept_id: number | null;
+            /** Roles */
+            roles: components["schemas"]["RoleOut"][];
         };
         /** ValidationError */
         ValidationError: {
@@ -1155,6 +1472,26 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+        };
+    };
+    metrics_metrics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };
@@ -2466,6 +2803,328 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RunResultOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_users_v1_admin_users_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"][];
+                };
+            };
+        };
+    };
+    update_user_dept_v1_admin_users__user_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeptIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_role_v1_admin_users__user_id__roles_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_role_v1_admin_users__user_id__roles__role_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+                role_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_departments_v1_admin_departments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepartmentOut"][];
+                };
+            };
+        };
+    };
+    list_budgets_v1_admin_budgets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetOut"][];
+                };
+            };
+        };
+    };
+    create_budget_v1_admin_budgets_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BudgetIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_budget_v1_admin_budgets__budget_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                budget_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_budget_v1_admin_budgets__budget_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                budget_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BudgetIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cost_summary_v1_admin_cost_summary_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostSummaryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_audit_v1_admin_audit_get: {
+        parameters: {
+            query?: {
+                actor?: string | null;
+                action?: string | null;
+                entity?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditRowOut"][];
                 };
             };
             /** @description Validation Error */

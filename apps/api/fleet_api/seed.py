@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import asyncio
+import datetime as dt
 import json
 from pathlib import Path
 
 from fleet_api.db import database_url, get_engine
 from sqlalchemy import text
+
+_DEMO_AGENTS = ["support_copilot", "analytics", "dev_agent", "invoice_agent"]
+_DEMO_MODELS = ["utility", "reasoning", "utility-fallback-1"]
 
 # evals/ lives at the repo root, three levels above apps/api/fleet_api/.
 _EVALS_DIR = Path(__file__).resolve().parents[3] / "evals"
@@ -232,6 +236,66 @@ async def seed_eval_cases() -> None:
     await engine.dispose()
 
 
+async def seed_observability_demo() -> None:
+    """Deterministic spend_ledger + audit_log rows spanning the last 14 days
+    so the Cost dashboard and Audit explorer (task 7.2) render immediately on
+    a fresh install, without needing a prior live chat/automation session.
+    Idempotent via a 'demo-seed-' trace_id marker — neither table has a
+    natural unique key to ON CONFLICT against, since both are append-only."""
+    engine = get_engine(database_url())
+    async with engine.begin() as conn:
+        marker = await conn.execute(
+            text("SELECT 1 FROM spend_ledger WHERE trace_id LIKE 'demo-seed-%' LIMIT 1")
+        )
+        if marker.first() is not None:
+            return
+        dept_ids = [
+            row[0]
+            for row in (await conn.execute(text("SELECT id FROM departments ORDER BY id"))).all()
+        ]
+        if not dept_ids:
+            return
+        now = dt.datetime.now(dt.UTC)
+        for i in range(60):
+            dept_id = dept_ids[i % len(dept_ids)]
+            agent = _DEMO_AGENTS[i % len(_DEMO_AGENTS)]
+            model = _DEMO_MODELS[i % len(_DEMO_MODELS)]
+            tok_in = 400 + (i * 17) % 600
+            tok_out = 150 + (i * 11) % 300
+            tok_cached = tok_in // 3 if i % 3 == 0 else 0
+            cost = round(tok_in * 0.0003 + tok_out * 0.0006, 6)
+            trace_id = f"demo-seed-{i}"
+            ts = now - dt.timedelta(days=i % 14, hours=i % 24)
+            await conn.execute(
+                text(
+                    "INSERT INTO spend_ledger (ts, model, agent_id, user_id, dept_id, "
+                    "tok_in, tok_out, tok_cached, cost_usd, trace_id) "
+                    "VALUES (:ts, :model, :agent_id, :user_id, :dept_id, :tok_in, :tok_out, "
+                    ":tok_cached, :cost_usd, :trace_id)"
+                ),
+                {
+                    "ts": ts, "model": model, "agent_id": agent, "user_id": "demo-user",
+                    "dept_id": str(dept_id), "tok_in": tok_in, "tok_out": tok_out,
+                    "tok_cached": tok_cached, "cost_usd": cost, "trace_id": trace_id,
+                },
+            )
+            if i % 4 == 0:
+                await conn.execute(
+                    text(
+                        "INSERT INTO audit_log (ts, actor, actor_type, action, entity, "
+                        "entity_id, trace_id) "
+                        "VALUES (:ts, 'demo-user', 'user', :action, 'http_request', "
+                        "'200', :trace_id)"
+                    ),
+                    {
+                        "ts": ts,
+                        "action": f"POST /v1/conversations/{i}/messages",
+                        "trace_id": trace_id,
+                    },
+                )
+    await engine.dispose()
+
+
 async def seed() -> None:
     engine = get_engine(database_url())
     async with engine.begin() as conn:
@@ -289,6 +353,7 @@ def main() -> None:
     asyncio.run(seed_dev_agent())
     asyncio.run(seed_invoice_agent())
     asyncio.run(seed_eval_cases())
+    asyncio.run(seed_observability_demo())
 
 
 if __name__ == "__main__":

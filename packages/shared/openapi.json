@@ -57,6 +57,25 @@
         }
       }
     },
+    "/metrics": {
+      "get": {
+        "tags": [
+          "metrics"
+        ],
+        "summary": "Metrics",
+        "operationId": "metrics_metrics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/whoami": {
       "get": {
         "tags": [
@@ -2020,6 +2039,550 @@
           }
         }
       }
+    },
+    "/v1/admin/users": {
+      "get": {
+        "tags": [
+          "admin:users"
+        ],
+        "summary": "List Users",
+        "operationId": "list_users_v1_admin_users_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/UserOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Users V1 Admin Users Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/users/{user_id}": {
+      "patch": {
+        "tags": [
+          "admin:users"
+        ],
+        "summary": "Update User Dept",
+        "operationId": "update_user_dept_v1_admin_users__user_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeptIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/users/{user_id}/roles": {
+      "post": {
+        "tags": [
+          "admin:users"
+        ],
+        "summary": "Add Role",
+        "operationId": "add_role_v1_admin_users__user_id__roles_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/users/{user_id}/roles/{role_id}": {
+      "delete": {
+        "tags": [
+          "admin:users"
+        ],
+        "summary": "Remove Role",
+        "operationId": "remove_role_v1_admin_users__user_id__roles__role_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Role Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/departments": {
+      "get": {
+        "tags": [
+          "admin:users"
+        ],
+        "summary": "List Departments",
+        "operationId": "list_departments_v1_admin_departments_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DepartmentOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Departments V1 Admin Departments Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/budgets": {
+      "get": {
+        "tags": [
+          "admin:budgets"
+        ],
+        "summary": "List Budgets",
+        "operationId": "list_budgets_v1_admin_budgets_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BudgetOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Budgets V1 Admin Budgets Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "admin:budgets"
+        ],
+        "summary": "Create Budget",
+        "operationId": "create_budget_v1_admin_budgets_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BudgetIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/budgets/{budget_id}": {
+      "patch": {
+        "tags": [
+          "admin:budgets"
+        ],
+        "summary": "Update Budget",
+        "operationId": "update_budget_v1_admin_budgets__budget_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "budget_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Budget Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BudgetIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin:budgets"
+        ],
+        "summary": "Delete Budget",
+        "operationId": "delete_budget_v1_admin_budgets__budget_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "budget_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Budget Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/cost/summary": {
+      "get": {
+        "tags": [
+          "admin:observability"
+        ],
+        "summary": "Cost Summary",
+        "operationId": "cost_summary_v1_admin_cost_summary_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 365,
+              "minimum": 1,
+              "default": 30,
+              "title": "Days"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostSummaryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/audit": {
+      "get": {
+        "tags": [
+          "admin:observability"
+        ],
+        "summary": "List Audit",
+        "operationId": "list_audit_v1_admin_audit_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "actor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Actor"
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action"
+            }
+          },
+          {
+            "name": "entity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AuditRowOut"
+                  },
+                  "title": "Response List Audit V1 Admin Audit Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2485,6 +3048,88 @@
         ],
         "title": "ApprovalOut"
       },
+      "AuditRowOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "ts": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ts"
+          },
+          "actor": {
+            "type": "string",
+            "title": "Actor"
+          },
+          "actor_type": {
+            "type": "string",
+            "title": "Actor Type"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "entity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity"
+          },
+          "entity_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Id"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Id"
+          },
+          "langfuse_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Langfuse Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "ts",
+          "actor",
+          "actor_type",
+          "action",
+          "entity",
+          "entity_id",
+          "trace_id",
+          "langfuse_url"
+        ],
+        "title": "AuditRowOut"
+      },
       "Body_run_invoice_intake_v1_workflows_invoice_intake_run_post": {
         "properties": {
           "file": {
@@ -2512,6 +3157,126 @@
           "file"
         ],
         "title": "Body_upload_document_v1_documents_post"
+      },
+      "BudgetIn": {
+        "properties": {
+          "scope_type": {
+            "type": "string",
+            "title": "Scope Type"
+          },
+          "scope_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope Id"
+          },
+          "period": {
+            "type": "string",
+            "title": "Period",
+            "default": "monthly"
+          },
+          "limit_usd": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Limit Usd"
+          },
+          "soft_pct": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Soft Pct",
+            "default": 80
+          }
+        },
+        "type": "object",
+        "required": [
+          "scope_type",
+          "limit_usd"
+        ],
+        "title": "BudgetIn"
+      },
+      "BudgetOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "scope_type": {
+            "type": "string",
+            "title": "Scope Type"
+          },
+          "scope_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope Id"
+          },
+          "period": {
+            "type": "string",
+            "title": "Period"
+          },
+          "limit_usd": {
+            "type": "number",
+            "title": "Limit Usd"
+          },
+          "soft_pct": {
+            "type": "integer",
+            "title": "Soft Pct"
+          },
+          "spent_usd": {
+            "type": "number",
+            "title": "Spent Usd",
+            "default": 0.0
+          },
+          "soft_exceeded": {
+            "type": "boolean",
+            "title": "Soft Exceeded",
+            "default": false
+          },
+          "hard_exceeded": {
+            "type": "boolean",
+            "title": "Hard Exceeded",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "scope_type",
+          "scope_id",
+          "period",
+          "limit_usd",
+          "soft_pct"
+        ],
+        "title": "BudgetOut"
+      },
+      "BurnDownPoint": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "total_usd": {
+            "type": "number",
+            "title": "Total Usd"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "total_usd"
+        ],
+        "title": "BurnDownPoint"
       },
       "CitationOut": {
         "properties": {
@@ -2665,6 +3430,56 @@
         ],
         "title": "ConversationOut"
       },
+      "CostSummaryOut": {
+        "properties": {
+          "total_usd": {
+            "type": "number",
+            "title": "Total Usd"
+          },
+          "by_dept": {
+            "items": {
+              "$ref": "#/components/schemas/SpendByKey"
+            },
+            "type": "array",
+            "title": "By Dept"
+          },
+          "by_agent": {
+            "items": {
+              "$ref": "#/components/schemas/SpendByKey"
+            },
+            "type": "array",
+            "title": "By Agent"
+          },
+          "by_model": {
+            "items": {
+              "$ref": "#/components/schemas/SpendByKey"
+            },
+            "type": "array",
+            "title": "By Model"
+          },
+          "burn_down": {
+            "items": {
+              "$ref": "#/components/schemas/BurnDownPoint"
+            },
+            "type": "array",
+            "title": "Burn Down"
+          },
+          "cache_hit_ratio": {
+            "type": "number",
+            "title": "Cache Hit Ratio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_usd",
+          "by_dept",
+          "by_agent",
+          "by_model",
+          "burn_down",
+          "cache_hit_ratio"
+        ],
+        "title": "CostSummaryOut"
+      },
       "DecisionIn": {
         "properties": {
           "decision": {
@@ -2689,6 +3504,44 @@
           "decision"
         ],
         "title": "DecisionIn"
+      },
+      "DepartmentOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "DepartmentOut"
+      },
+      "DeptIn": {
+        "properties": {
+          "dept_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dept Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dept_id"
+        ],
+        "title": "DeptIn"
       },
       "DocumentOut": {
         "properties": {
@@ -3132,6 +3985,60 @@
         ],
         "title": "ReadOnlyOut"
       },
+      "RoleIn": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "dept_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dept Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role"
+        ],
+        "title": "RoleIn"
+      },
+      "RoleOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "dept_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dept Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "role",
+          "dept_id"
+        ],
+        "title": "RoleOut"
+      },
       "RunOut": {
         "properties": {
           "run_id": {
@@ -3198,6 +4105,24 @@
         ],
         "title": "SlackPostIn"
       },
+      "SpendByKey": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "total_usd": {
+            "type": "number",
+            "title": "Total Usd"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "total_usd"
+        ],
+        "title": "SpendByKey"
+      },
       "TicketOut": {
         "properties": {
           "key": {
@@ -3223,6 +4148,54 @@
           "labels"
         ],
         "title": "TicketOut"
+      },
+      "UserOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "kc_sub": {
+            "type": "string",
+            "title": "Kc Sub"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "dept_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dept Id"
+          },
+          "roles": {
+            "items": {
+              "$ref": "#/components/schemas/RoleOut"
+            },
+            "type": "array",
+            "title": "Roles"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kc_sub",
+          "display_name",
+          "status",
+          "dept_id",
+          "roles"
+        ],
+        "title": "UserOut"
       },
       "ValidationError": {
         "properties": {

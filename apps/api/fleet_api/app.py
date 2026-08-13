@@ -9,6 +9,7 @@ from fleet_api.errors import install_error_handlers
 from fleet_api.middleware import (
     AuditMiddleware,
     RateLimitMiddleware,
+    RequestMetricsMiddleware,
     TraceIdMiddleware,
 )
 from fleet_api.otel import configure_tracing
@@ -16,6 +17,7 @@ from fleet_api.routers import (
     agents_admin,
     api_keys_admin,
     approvals,
+    budgets_admin,
     chat,
     collections,
     dev_agent,
@@ -23,9 +25,12 @@ from fleet_api.routers import (
     examples,
     health,
     invoice_agent,
+    metrics,
     models_admin,
+    observability_admin,
     rag_query,
     service,
+    users_admin,
     whoami,
     workflows,
 )
@@ -40,6 +45,7 @@ def create_app(*, with_middleware: bool = True) -> FastAPI:
     app = FastAPI(title="Fleet API", version="0.1.0")
     install_error_handlers(app)
     app.include_router(health.router)
+    app.include_router(metrics.router)
     app.include_router(whoami.router)
     app.include_router(models_admin.router)
     app.include_router(agents_admin.router)
@@ -54,6 +60,10 @@ def create_app(*, with_middleware: bool = True) -> FastAPI:
     app.include_router(invoice_agent.router)
     app.include_router(examples.router)
     app.include_router(workflows.router)
+    app.include_router(users_admin.router)
+    app.include_router(users_admin.departments_router)
+    app.include_router(budgets_admin.router)
+    app.include_router(observability_admin.router)
 
     if with_middleware:
         settings = get_settings()
@@ -66,6 +76,9 @@ def create_app(*, with_middleware: bool = True) -> FastAPI:
             redis_url=settings.redis_url,
             limit_per_minute=settings.rate_limit_per_minute,
         )
+        # Wraps RateLimitMiddleware so a 429 is still counted, not just 2xx/4xx
+        # from the router.
+        app.add_middleware(RequestMetricsMiddleware)
         app.add_middleware(AuditMiddleware)
         app.add_middleware(TraceIdMiddleware)
         app.add_middleware(

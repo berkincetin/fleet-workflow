@@ -30,6 +30,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <Link href="/admin/users" className="px-1 pb-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
               {t("users")}
             </Link>
+            <Link href="/admin/budgets" className="px-1 pb-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
+              {t("budgets")}
+            </Link>
           </>
         )}
       </nav>

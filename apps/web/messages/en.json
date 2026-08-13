@@ -185,6 +185,26 @@
       "approver": "Approver",
       "dept_admin": "Department Admin",
       "platform_admin": "Platform Admin"
+    },
+    "delete": "Delete",
+    "budgets": "Budgets",
+    "budgetsTitle": "Budget Management",
+    "budgetScopeCol": "Scope",
+    "budgetPeriodCol": "Period",
+    "budgetScopeId": "Scope ID",
+    "limitUsd": "Limit (USD)",
+    "softPct": "Soft limit %",
+    "createBudget": "Create budget",
+    "budgetCreateError": "Could not create budget — one may already exist for this scope and period.",
+    "budgetScope": {
+      "global": "Global",
+      "dept": "Department",
+      "agent": "Agent",
+      "user": "User"
+    },
+    "budgetPeriod": {
+      "monthly": "Monthly",
+      "daily": "Daily"
     }
   }
 }

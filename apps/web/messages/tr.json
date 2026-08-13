@@ -185,6 +185,26 @@
       "approver": "Onaylayıcı",
       "dept_admin": "Departman Yöneticisi",
       "platform_admin": "Platform Yöneticisi"
+    },
+    "delete": "Sil",
+    "budgets": "Bütçeler",
+    "budgetsTitle": "Bütçe Yönetimi",
+    "budgetScopeCol": "Kapsam",
+    "budgetPeriodCol": "Dönem",
+    "budgetScopeId": "Kapsam Kimliği",
+    "limitUsd": "Limit (USD)",
+    "softPct": "Yumuşak Limit %",
+    "createBudget": "Bütçe oluştur",
+    "budgetCreateError": "Bütçe oluşturulamadı — bu kapsam ve dönem için zaten bir bütçe olabilir.",
+    "budgetScope": {
+      "global": "Genel",
+      "dept": "Departman",
+      "agent": "Ajan",
+      "user": "Kullanıcı"
+    },
+    "budgetPeriod": {
+      "monthly": "Aylık",
+      "daily": "Günlük"
     }
   }
 }

@@ -580,3 +580,17 @@ Notes / deviations:
 - `require_permission` in `rbac.py` is **unchanged** — the DB-backed switch lives entirely inside `auth.get_current_user`, so every existing router/test that overrides `get_current_user` directly (the established pattern in `test_dev_agent_tickets.py`, `test_examples_router.py`, `test_workflows_router.py`) keeps working with zero changes, since overriding it bypasses the new DB logic entirely just like it always bypassed the JWT-decode logic.
 - User/role management stayed MANAGE_PLATFORM-only (no dept_admin self-service scoping) per CLAUDE.md's "simplest version that proves the platform pattern" — matches the existing models/API-keys admin routers' gate, and TRD §7.1's matrix doesn't require dept-scoped user editing for MVP.
 - Budgets editor (7.1b) is a separate task, next in this session.
+
+## 2026-08-13 — 7.1b Budgets editor — DONE
+
+Built: `apps/api/fleet_api/routers/budgets_admin.py` (new) — CRUD (`POST/GET/PATCH/DELETE /v1/admin/budgets`) over the `budgets` table task 2.4 already built and enforces (`core.llm.budget.DbBudgetChecker`); this only exposes admin control, matching the Sprint 2 report's explicit note "Budget admin CRUD UI is task 7.1, not 2.4." MANAGE_PLATFORM-gated. Validation: `scope_type` in {global,dept,agent,user}, `period` in {daily,monthly}, global scope forbids a `scope_id` and every other scope requires one; duplicate (scope_type, scope_id, period) rejected with 409 (mirrors the DB-level `uq_budget_scope` unique constraint from migration 0003, checked with a pre-query rather than catching the driver's IntegrityError, matching this codebase's existing admin-router style). Web: `/admin/budgets` tab (create form, inline limit/soft-% edit on blur, delete), wired into nav + `messages/{tr,en}.json`.
+
+Verified:
+- Unit: `tests/unit/test_budgets_admin_router.py` (4: member 403, unknown scope_type/period-mismatch validation all rejected before touching the DB) — **375 total unit tests pass**.
+- Integration (real Postgres testcontainer): `tests/integration/test_budgets_admin_router_live.py` (3: create→list→update→delete round trip, duplicate-scope 409 against the real unique constraint, global-scope has no scope_id).
+- `ruff check` clean, `mypy apps` unchanged at the same 14 pre-existing errors.
+- Web: `tsc --noEmit` clean, `eslint` clean, `next build` succeeds (16 routes, including `/admin/budgets`).
+
+Issues: none.
+
+Notes: continuing the same TestClient-as-context-manager pattern from 7.1a's fix for any integration test issuing 2+ calls per test function.

@@ -2243,6 +2243,175 @@
           }
         ]
       }
+    },
+    "/v1/admin/budgets": {
+      "get": {
+        "tags": [
+          "admin:budgets"
+        ],
+        "summary": "List Budgets",
+        "operationId": "list_budgets_v1_admin_budgets_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BudgetOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Budgets V1 Admin Budgets Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "admin:budgets"
+        ],
+        "summary": "Create Budget",
+        "operationId": "create_budget_v1_admin_budgets_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BudgetIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/budgets/{budget_id}": {
+      "patch": {
+        "tags": [
+          "admin:budgets"
+        ],
+        "summary": "Update Budget",
+        "operationId": "update_budget_v1_admin_budgets__budget_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "budget_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Budget Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BudgetIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin:budgets"
+        ],
+        "summary": "Delete Budget",
+        "operationId": "delete_budget_v1_admin_budgets__budget_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "budget_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Budget Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2735,6 +2904,93 @@
           "file"
         ],
         "title": "Body_upload_document_v1_documents_post"
+      },
+      "BudgetIn": {
+        "properties": {
+          "scope_type": {
+            "type": "string",
+            "title": "Scope Type"
+          },
+          "scope_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope Id"
+          },
+          "period": {
+            "type": "string",
+            "title": "Period",
+            "default": "monthly"
+          },
+          "limit_usd": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Limit Usd"
+          },
+          "soft_pct": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Soft Pct",
+            "default": 80
+          }
+        },
+        "type": "object",
+        "required": [
+          "scope_type",
+          "limit_usd"
+        ],
+        "title": "BudgetIn"
+      },
+      "BudgetOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "scope_type": {
+            "type": "string",
+            "title": "Scope Type"
+          },
+          "scope_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope Id"
+          },
+          "period": {
+            "type": "string",
+            "title": "Period"
+          },
+          "limit_usd": {
+            "type": "number",
+            "title": "Limit Usd"
+          },
+          "soft_pct": {
+            "type": "integer",
+            "title": "Soft Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "scope_type",
+          "scope_id",
+          "period",
+          "limit_usd",
+          "soft_pct"
+        ],
+        "title": "BudgetOut"
       },
       "CitationOut": {
         "properties": {

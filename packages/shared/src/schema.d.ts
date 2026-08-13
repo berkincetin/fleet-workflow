@@ -725,6 +725,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/budgets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Budgets */
+        get: operations["list_budgets_v1_admin_budgets_get"];
+        put?: never;
+        /** Create Budget */
+        post: operations["create_budget_v1_admin_budgets_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/budgets/{budget_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Budget */
+        delete: operations["delete_budget_v1_admin_budgets__budget_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Budget */
+        patch: operations["update_budget_v1_admin_budgets__budget_id__patch"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -888,6 +924,40 @@ export interface components {
         Body_upload_document_v1_documents_post: {
             /** File */
             file: string;
+        };
+        /** BudgetIn */
+        BudgetIn: {
+            /** Scope Type */
+            scope_type: string;
+            /** Scope Id */
+            scope_id?: string | null;
+            /**
+             * Period
+             * @default monthly
+             */
+            period: string;
+            /** Limit Usd */
+            limit_usd: number;
+            /**
+             * Soft Pct
+             * @default 80
+             */
+            soft_pct: number;
+        };
+        /** BudgetOut */
+        BudgetOut: {
+            /** Id */
+            id: number;
+            /** Scope Type */
+            scope_type: string;
+            /** Scope Id */
+            scope_id: string | null;
+            /** Period */
+            period: string;
+            /** Limit Usd */
+            limit_usd: number;
+            /** Soft Pct */
+            soft_pct: number;
         };
         /** CitationOut */
         CitationOut: {
@@ -2743,6 +2813,123 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DepartmentOut"][];
+                };
+            };
+        };
+    };
+    list_budgets_v1_admin_budgets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetOut"][];
+                };
+            };
+        };
+    };
+    create_budget_v1_admin_budgets_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BudgetIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_budget_v1_admin_budgets__budget_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                budget_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_budget_v1_admin_budgets__budget_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                budget_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BudgetIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

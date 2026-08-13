@@ -16,6 +16,7 @@ from fleet_api.routers import (
     agents_admin,
     api_keys_admin,
     approvals,
+    budgets_admin,
     chat,
     collections,
     dev_agent,
@@ -57,6 +58,7 @@ def create_app(*, with_middleware: bool = True) -> FastAPI:
     app.include_router(workflows.router)
     app.include_router(users_admin.router)
     app.include_router(users_admin.departments_router)
+    app.include_router(budgets_admin.router)
 
     if with_middleware:
         settings = get_settings()

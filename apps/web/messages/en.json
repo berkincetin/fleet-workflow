@@ -206,6 +206,10 @@
       "monthly": "Monthly",
       "daily": "Daily"
     },
+    "budgetSpent": "Spent",
+    "budgetSoftExceeded": "Soft limit exceeded",
+    "budgetHardExceeded": "Limit exceeded",
+    "budgetWarningBanner": "Budgets over their soft or hard limit:",
     "cost": "Cost",
     "audit": "Audit",
     "costNoData": "No data yet.",

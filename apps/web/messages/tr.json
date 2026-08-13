@@ -206,6 +206,10 @@
       "monthly": "Aylık",
       "daily": "Günlük"
     },
+    "budgetSpent": "Harcanan",
+    "budgetSoftExceeded": "Yumuşak limit aşıldı",
+    "budgetHardExceeded": "Limit aşıldı",
+    "budgetWarningBanner": "Yumuşak veya sert limiti aşan bütçeler:",
     "cost": "Maliyet",
     "audit": "Denetim",
     "costNoData": "Henüz veri yok.",

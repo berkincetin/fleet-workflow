@@ -1,4 +1,28 @@
 route:
-  receiver: "devnull"
+  receiver: "slack"
+  group_by: ["alertname"]
+  group_wait: 10s
+  group_interval: 5m
+  repeat_interval: 4h
+
 receivers:
-  - name: "devnull"
+  - name: "slack"
+    slack_configs:
+      # Same webhook the Slack MCP tool posts through (FLEET_SLACK_WEBHOOK_URL,
+      # apps/mcp/fleet_mcp/servers/slack.py) — one Fleet-wide incoming webhook,
+      # not a separate Alertmanager-only credential. __SLACK_WEBHOOK_URL__ is
+      # substituted at container startup by docker-compose.dev.yml's
+      # alertmanager entrypoint (Alertmanager has no native ${VAR} expansion
+      # for its config file, confirmed against the real v0.28.0 binary — it
+      # also refuses to start on a truly empty api_url, "unsupported scheme
+      # for URL", so an unset FLEET_SLACK_WEBHOOK_URL falls back to a
+      # syntactically valid but inert placeholder rather than breaking
+      # `make dev` for anyone without a real Slack webhook, same
+      # # INTEGRATION-POINT convention as Jira/GitHub).
+      - api_url: "__SLACK_WEBHOOK_URL__"
+        channel: "#fleet-alerts"
+        send_resolved: true
+        title: '{{ .CommonAnnotations.summary }}'
+        text: '{{ .CommonAnnotations.description }}'
+
+inhibit_rules: []

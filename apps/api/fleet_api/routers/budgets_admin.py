@@ -9,8 +9,10 @@ as models/API-key/user admin.
 
 from __future__ import annotations
 
+from core.llm.budget import check_budget
 from fastapi import APIRouter, Depends, HTTPException
-from fleet_api.db import get_session
+from fleet_api.db import get_engine, get_session
+from fleet_api.db import session_factory as build_session_factory
 from fleet_api.models import Budget
 from fleet_api.rbac import Permission, require_permission
 from pydantic import BaseModel, Field
@@ -38,6 +40,11 @@ class BudgetOut(BaseModel):
     period: str
     limit_usd: float
     soft_pct: int
+    # Current-period spend against this budget (task 7.4's "UI warning" half
+    # of the soft-limit AC) — computed fresh on every list, not stored.
+    spent_usd: float = 0.0
+    soft_exceeded: bool = False
+    hard_exceeded: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -87,7 +94,20 @@ async def list_budgets(
     session: AsyncSession = Depends(get_session),  # noqa: B008
 ) -> list[BudgetOut]:
     rows = (await session.execute(select(Budget).order_by(Budget.id))).scalars().all()
-    return [BudgetOut.model_validate(r) for r in rows]
+    session_factory_ = build_session_factory(get_engine())
+    out = []
+    for r in rows:
+        status = await check_budget(session_factory_, scope_type=r.scope_type, scope_id=r.scope_id)
+        out.append(
+            BudgetOut(
+                id=r.id, scope_type=r.scope_type, scope_id=r.scope_id, period=r.period,
+                limit_usd=r.limit_usd, soft_pct=r.soft_pct,
+                spent_usd=round(status.spent_usd, 2),
+                soft_exceeded=status.soft_exceeded,
+                hard_exceeded=status.hard_exceeded,
+            )
+        )
+    return out
 
 
 @router.patch("/{budget_id}")

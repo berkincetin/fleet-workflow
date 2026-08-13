@@ -1,0 +1,68 @@
+{
+  "title": "Fleet Cost & Budgets",
+  "uid": "fleet-cost-budgets",
+  "tags": ["fleet"],
+  "timezone": "browser",
+  "editable": true,
+  "schemaVersion": 39,
+  "time": { "from": "now-7d", "to": "now" },
+  "refresh": "1m",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Budget soft-limit crossings (5m)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "increase(fleet_budget_soft_limit_total[5m])",
+          "legendFormat": "{{scope}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Dept daily spend vs 7-day average",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" }, "overrides": [] },
+      "targets": [
+        {
+          "expr": "fleet_dept_daily_spend_usd",
+          "legendFormat": "dept {{dept_id}} today"
+        },
+        {
+          "expr": "fleet_dept_avg_daily_spend_7d_usd",
+          "legendFormat": "dept {{dept_id}} 7d avg"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Cost anomaly ratio (today / 7d avg)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 3 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "fleet_dept_daily_spend_usd / fleet_dept_avg_daily_spend_7d_usd",
+          "legendFormat": "dept {{dept_id}}"
+        }
+      ]
+    }
+  ]
+}

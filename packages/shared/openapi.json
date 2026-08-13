@@ -57,6 +57,25 @@
         }
       }
     },
+    "/metrics": {
+      "get": {
+        "tags": [
+          "metrics"
+        ],
+        "summary": "Metrics",
+        "operationId": "metrics_metrics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/whoami": {
       "get": {
         "tags": [
@@ -3213,6 +3232,21 @@
           "soft_pct": {
             "type": "integer",
             "title": "Soft Pct"
+          },
+          "spent_usd": {
+            "type": "number",
+            "title": "Spent Usd",
+            "default": 0.0
+          },
+          "soft_exceeded": {
+            "type": "boolean",
+            "title": "Soft Exceeded",
+            "default": false
+          },
+          "hard_exceeded": {
+            "type": "boolean",
+            "title": "Hard Exceeded",
+            "default": false
           }
         },
         "type": "object",

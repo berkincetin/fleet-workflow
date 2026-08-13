@@ -1,4 +1,5 @@
-"""Cross-cutting ASGI middleware: trace-id, append-only audit, and rate limiting."""
+"""Cross-cutting ASGI middleware: trace-id, append-only audit, rate limiting,
+and request metrics."""
 
 from __future__ import annotations
 
@@ -9,6 +10,7 @@ from fleet_api.audit import write_audit
 from fleet_api.auth import try_current_user_sub
 from fleet_api.config import get_settings
 from fleet_api.db import get_engine
+from fleet_api.metrics import HTTP_REQUEST_DURATION_SECONDS, HTTP_REQUESTS_TOTAL
 from fleet_api.otel import new_trace_id
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -81,3 +83,22 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 content={"error": {"code": "rate_limited", "message": "too many requests"}},
             )
         return await call_next(request)
+
+
+class RequestMetricsMiddleware(BaseHTTPMiddleware):
+    """Records fleet_http_requests_total / fleet_http_request_duration_seconds
+    (task 7.4) for every request, labeled by the matched route's path
+    *template* (request.scope["route"].path) rather than the resolved path —
+    see metrics.py's docstring for why that distinction matters."""
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        start = time.monotonic()
+        response = await call_next(request)
+        duration = time.monotonic() - start
+        route = request.scope.get("route")
+        path = route.path if route is not None else "unmatched"
+        HTTP_REQUESTS_TOTAL.labels(
+            method=request.method, path=path, status=str(response.status_code)
+        ).inc()
+        HTTP_REQUEST_DURATION_SECONDS.labels(method=request.method, path=path).observe(duration)
+        return response

@@ -23,6 +23,7 @@ from typing import Any, Protocol
 from core.llm.budget import BudgetStatus
 from core.llm.cost import compute_cost, parse_usage
 from core.llm.routing import Sensitivity, select_model
+from core.metrics import BUDGET_SOFT_LIMIT_TOTAL
 
 
 class Transport(Protocol):
@@ -108,6 +109,17 @@ class LLMClient:
         self._ledger = ledger
         self._budget_checker = budget_checker
 
+    async def _check_budget(self, meta: dict[str, Any]) -> BudgetStatus | None:
+        """Shared by every call-site: pre-check, count a soft-limit crossing
+        for the Alertmanager rule (task 7.4), then hard-stop if exceeded."""
+        if self._budget_checker is None:
+            return None
+        budget = await self._budget_checker(meta)
+        if budget.soft_exceeded:
+            BUDGET_SOFT_LIMIT_TOTAL.labels(scope=budget.scope).inc()
+        budget.raise_if_exceeded()
+        return budget
+
     async def reasoning(
         self,
         messages: list[dict[str, Any]],
@@ -148,10 +160,7 @@ class LLMClient:
         )
         name = model["name"]
 
-        budget: BudgetStatus | None = None
-        if self._budget_checker is not None:
-            budget = await self._budget_checker(meta)
-            budget.raise_if_exceeded()
+        await self._check_budget(meta)
 
         try:
             chunks = await self._transport.stream_complete(model=name, messages=messages, **meta)
@@ -211,10 +220,7 @@ class LLMClient:
         )
         name = model["name"]
 
-        budget: BudgetStatus | None = None
-        if self._budget_checker is not None:
-            budget = await self._budget_checker(meta)
-            budget.raise_if_exceeded()
+        await self._check_budget(meta)
 
         try:
             body = await self._transport.embed(model=name, input=texts, **meta)
@@ -270,10 +276,7 @@ class LLMClient:
         # 2. Budget pre-check (CLAUDE.md rule 6). A hard stop (100%) raises
         #    BudgetExceeded before any call; a soft limit (80%) is flagged on the
         #    response. No checker → no enforcement.
-        budget: BudgetStatus | None = None
-        if self._budget_checker is not None:
-            budget = await self._budget_checker(meta)
-            budget.raise_if_exceeded()
+        budget = await self._check_budget(meta)
 
         # 3. Call the proxy (it owns retries + the fallback chain, §4.4). Forward
         #    trace_id/agent_id/user_id/dept_id so the proxy's Langfuse callback

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
 import { browserFleetClient } from "@/lib/fleet-client-browser";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -81,6 +82,23 @@ export function BudgetsAdmin({ initialBudgets }: { initialBudgets: BudgetOut[] }
       <CardContent className="flex flex-col gap-4">
         {error && <p className="text-sm text-red-600">{error}</p>}
 
+        {budgets.some((b) => b.soft_exceeded || b.hard_exceeded) && (
+          <div className="rounded-md border border-amber-500/40 bg-amber-50 p-3 text-sm dark:bg-amber-950">
+            <p className="font-medium">{t("budgetWarningBanner")}</p>
+            <ul className="mt-1 list-inside list-disc">
+              {budgets
+                .filter((b) => b.soft_exceeded || b.hard_exceeded)
+                .map((b) => (
+                  <li key={b.id}>
+                    {t(`budgetScope.${b.scope_type}` as never)}
+                    {b.scope_id ? ` (${b.scope_id})` : ""} — ${b.spent_usd.toFixed(2)} / $
+                    {b.limit_usd.toFixed(2)}
+                  </li>
+                ))}
+            </ul>
+          </div>
+        )}
+
         <div className="flex flex-wrap items-end gap-2">
           <Select value={scopeType} onValueChange={setScopeType}>
             <SelectTrigger className="w-32">
@@ -140,6 +158,7 @@ export function BudgetsAdmin({ initialBudgets }: { initialBudgets: BudgetOut[] }
               <TableHead>{t("budgetPeriodCol")}</TableHead>
               <TableHead>{t("limitUsd")}</TableHead>
               <TableHead>{t("softPct")}</TableHead>
+              <TableHead>{t("budgetSpent")}</TableHead>
               <TableHead></TableHead>
             </TableRow>
           </TableHeader>
@@ -173,6 +192,16 @@ export function BudgetsAdmin({ initialBudgets }: { initialBudgets: BudgetOut[] }
                         updateLimit(budget, budget.limit_usd, v);
                     }}
                   />
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <span className="tabular-nums">${budget.spent_usd.toFixed(2)}</span>
+                    {budget.hard_exceeded ? (
+                      <Badge variant="error">{t("budgetHardExceeded")}</Badge>
+                    ) : budget.soft_exceeded ? (
+                      <Badge variant="pending">{t("budgetSoftExceeded")}</Badge>
+                    ) : null}
+                  </div>
                 </TableCell>
                 <TableCell className="flex justify-end">
                   <Button size="sm" variant="outline" onClick={() => deleteBudget(budget)}>

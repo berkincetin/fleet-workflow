@@ -44,6 +44,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Metrics */
+        get: operations["metrics_metrics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/whoami": {
         parameters: {
             query?: never;
@@ -1016,6 +1033,21 @@ export interface components {
             limit_usd: number;
             /** Soft Pct */
             soft_pct: number;
+            /**
+             * Spent Usd
+             * @default 0
+             */
+            spent_usd: number;
+            /**
+             * Soft Exceeded
+             * @default false
+             */
+            soft_exceeded: boolean;
+            /**
+             * Hard Exceeded
+             * @default false
+             */
+            hard_exceeded: boolean;
         };
         /** BurnDownPoint */
         BurnDownPoint: {
@@ -1440,6 +1472,26 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+        };
+    };
+    metrics_metrics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };

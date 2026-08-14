@@ -40,3 +40,22 @@ async def test_ocr_tool_falls_back_to_tesseract_on_vision_failure() -> None:
     result = await tool(image_base64=base64.b64encode(b"fake").decode("ascii"))
     assert result["text"] == "tesseract text"
     assert result["source"] == "tesseract"
+
+
+async def test_ocr_tool_skips_cloud_vision_for_confidential_sensitivity() -> None:
+    """Invoice/CV OCR (dept scenarios 04/05) must bind sensitivity="confidential"/
+    "pii" and never let a raw sensitive image reach the cloud vision-LLM."""
+    import base64
+
+    class _ShouldNotBeCalledVisionClient:
+        async def reasoning(self, messages: list[dict[str, object]], **kwargs: object) -> object:
+            raise AssertionError("vision-LLM must not be called for confidential sensitivity")
+
+    tool = build_ocr_tool(
+        vision_client=_ShouldNotBeCalledVisionClient(),
+        tesseract_fn=lambda b: "tesseract text",
+        sensitivity="confidential",
+    )
+    result = await tool(image_base64=base64.b64encode(b"fake").decode("ascii"))
+    assert result["text"] == "tesseract text"
+    assert result["source"] == "tesseract"

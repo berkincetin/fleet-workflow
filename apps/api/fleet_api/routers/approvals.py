@@ -110,10 +110,13 @@ async def _resume_invoice_agent_run(run_id: str, *, approved: bool) -> None:
     from fleet_mcp.servers.erp import ErpTool
     from fleet_mcp.servers.ocr import build_ocr_tool
     from fleet_mcp.servers.pg_ro import PgReadOnlyTool
+    from fleet_rag.ingest.ocr import tesseract_ocr
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
     llm_client = await build_client()
-    ocr = build_ocr_tool(vision_client=llm_client, tesseract_fn=lambda b: "")
+    ocr = build_ocr_tool(
+        vision_client=llm_client, tesseract_fn=tesseract_ocr, sensitivity="confidential"
+    )
     erp = ErpTool()
     po_lookup = PgPoLookup(
         tool=PgReadOnlyTool(

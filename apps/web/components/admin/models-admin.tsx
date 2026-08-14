@@ -17,6 +17,31 @@ type ModelOut = components["schemas"]["ModelOut"];
 const badgeVariant = (status: string): "success" | "pending" | "error" =>
   status === "ok" ? "success" : status === "pending" ? "pending" : "error";
 
+// Ordered public < internal < confidential < pii (TRD §8/§4.2) — escalating
+// visual weight (neutral -> green -> amber -> red) so a scan of the table
+// makes the clearance ordering, and which models are local-only, obvious.
+const clearanceVariant = (
+  clearance: string,
+): "default" | "success" | "pending" | "error" => {
+  switch (clearance) {
+    case "internal":
+      return "success";
+    case "confidential":
+      return "pending";
+    case "pii":
+      return "error";
+    default:
+      return "default";
+  }
+};
+
+const clearanceLabelKey: Record<string, string> = {
+  public: "clearancePublic",
+  internal: "clearanceInternal",
+  confidential: "clearanceConfidential",
+  pii: "clearancePii",
+};
+
 export function ModelsAdmin({ initialModels }: { initialModels: ModelOut[] }) {
   const t = useTranslations("admin");
   const { data: session } = useSession();
@@ -73,6 +98,7 @@ export function ModelsAdmin({ initialModels }: { initialModels: ModelOut[] }) {
           <TableHeader>
             <TableRow>
               <TableHead>{t("name")}</TableHead>
+              <TableHead>{t("clearance")}</TableHead>
               <TableHead>{t("smokeStatus")}</TableHead>
             </TableRow>
           </TableHeader>
@@ -80,6 +106,11 @@ export function ModelsAdmin({ initialModels }: { initialModels: ModelOut[] }) {
             {models.map((m) => (
               <TableRow key={m.id}>
                 <TableCell>{m.name}</TableCell>
+                <TableCell>
+                  <Badge variant={clearanceVariant(m.sensitivity_clearance)}>
+                    {t(clearanceLabelKey[m.sensitivity_clearance] ?? "clearanceInternal")}
+                  </Badge>
+                </TableCell>
                 <TableCell>
                   <Badge variant={badgeVariant(m.smoke_status)}>{m.smoke_status}</Badge>
                   {m.smoke_latency_ms != null && (
@@ -92,6 +123,7 @@ export function ModelsAdmin({ initialModels }: { initialModels: ModelOut[] }) {
             ))}
           </TableBody>
         </Table>
+        <p className="text-xs text-[var(--muted-foreground)]">{t("clearanceLegend")}</p>
       </CardContent>
     </Card>
   );

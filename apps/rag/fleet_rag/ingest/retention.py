@@ -40,6 +40,36 @@ class PurgeReport:
     purged_document_ids: list[int]
 
 
+async def delete_document_fully(
+    session_factory: async_sessionmaker[Any],
+    *,
+    document_id: int,
+    collection_id: int,
+    uri: str,
+    object_store: ObjectStore,
+    vector_store: VectorStore,
+    bucket: str,
+) -> None:
+    """Delete one document's Qdrant vectors, MinIO object, chunk rows, and the
+    document row itself — vectors/blob first so a mid-delete crash never
+    leaves a DB row pointing at already-deleted data. Shared by the retention
+    purge (expiry-driven) and the erasure endpoint (subject-driven, task 8.3)."""
+    vector_store.delete_by_document(f"fleet_{collection_id}", document_id=document_id)
+    try:
+        object_store.remove_object(bucket, uri)
+    except Exception:
+        pass  # object already gone is not fatal
+
+    async with session_factory() as session:
+        await session.execute(
+            text("DELETE FROM chunks WHERE document_id = :doc"), {"doc": document_id}
+        )
+        await session.execute(
+            text("DELETE FROM documents WHERE id = :doc"), {"doc": document_id}
+        )
+        await session.commit()
+
+
 async def purge_expired(
     session_factory: async_sessionmaker[Any],
     *,
@@ -68,20 +98,11 @@ async def purge_expired(
         if not is_expired(created_at=created_at, retention_days=retention_days, now=now):
             continue
 
-        vector_store.delete_by_document(f"fleet_{collection_id}", document_id=document_id)
-        try:
-            object_store.remove_object(bucket, uri)
-        except Exception:
-            pass  # object already gone is not fatal to the purge
-
-        async with session_factory() as session:
-            await session.execute(
-                text("DELETE FROM chunks WHERE document_id = :doc"), {"doc": document_id}
-            )
-            await session.execute(
-                text("DELETE FROM documents WHERE id = :doc"), {"doc": document_id}
-            )
-            await session.commit()
+        await delete_document_fully(
+            session_factory,
+            document_id=document_id, collection_id=collection_id, uri=uri,
+            object_store=object_store, vector_store=vector_store, bucket=bucket,
+        )
         purged.append(document_id)
 
     return PurgeReport(purged_document_ids=purged)

@@ -627,19 +627,13 @@ def evaluate_invoice_case(case: InvoiceCase, answer: InvoiceAnswer) -> CaseResul
 
 
 def _render_invoice_image_base64(*, vendor: str, po_number: str, amount: str) -> str:
-    import base64
-    import io
+    # runner.py always runs as a script (`python evals/runner.py`), so sys.path[0]
+    # is evals/ itself, not the repo root — a bare module import, not `evals.x`.
+    from synthetic_images import render_document_image_base64
 
-    from PIL import Image, ImageDraw
-
-    img = Image.new("RGB", (500, 200), color="white")
-    draw = ImageDraw.Draw(img)
-    draw.text((10, 10), f"Vendor: {vendor}", fill="black")
-    draw.text((10, 50), f"PO Number: {po_number}", fill="black")
-    draw.text((10, 90), f"Total Amount: {amount} TRY", fill="black")
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    return base64.b64encode(buf.getvalue()).decode("ascii")
+    return render_document_image_base64(
+        [f"Vendor: {vendor}", f"PO Number: {po_number}", f"Total Amount: {amount} TRY"]
+    )
 
 
 async def _run_invoice_case(case: InvoiceCase, *, seen_po_numbers: set[str]) -> InvoiceAnswer:
@@ -655,6 +649,7 @@ async def _run_invoice_case(case: InvoiceCase, *, seen_po_numbers: set[str]) -> 
     from fleet_mcp.servers.erp import ErpTool
     from fleet_mcp.servers.ocr import build_ocr_tool
     from fleet_mcp.servers.pg_ro import PgReadOnlyTool
+    from fleet_rag.ingest.ocr import tesseract_ocr
     from langgraph.checkpoint.memory import InMemorySaver
 
     class _OcrAdapter:
@@ -665,7 +660,11 @@ async def _run_invoice_case(case: InvoiceCase, *, seen_po_numbers: set[str]) -> 
             return await self._fn(image_base64=image_base64)  # type: ignore[operator]
 
     llm_client = await build_client()
-    ocr = _OcrAdapter(build_ocr_tool(vision_client=llm_client, tesseract_fn=lambda b: ""))
+    ocr = _OcrAdapter(
+        build_ocr_tool(
+            vision_client=llm_client, tesseract_fn=tesseract_ocr, sensitivity="confidential"
+        )
+    )
     erp = ErpTool()
     po_lookup = PgPoLookup(
         tool=PgReadOnlyTool(

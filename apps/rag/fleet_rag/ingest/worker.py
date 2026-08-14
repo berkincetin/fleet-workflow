@@ -8,7 +8,6 @@ provider SDK calls); tesseract is the local fallback (ocr.py).
 
 from __future__ import annotations
 
-import io
 import os
 from typing import Any
 
@@ -16,7 +15,7 @@ from arq import cron
 from arq.connections import RedisSettings
 from core.llm.client import LLMClient
 from core.llm.factory import build_client
-from fleet_rag.ingest.ocr import OcrResult, ocr_image
+from fleet_rag.ingest.ocr import OcrResult, ocr_image, tesseract_ocr
 from fleet_rag.ingest.pipeline import run_ingestion
 from fleet_rag.store.minio_store import minio_client_from_env
 from fleet_rag.store.qdrant_store import (
@@ -31,15 +30,6 @@ from fleet_rag.store.qdrant_store import (
 from qdrant_client import QdrantClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker
-
-
-def _tesseract_ocr(image_bytes: bytes) -> str:
-    import pytesseract
-    from PIL import Image
-
-    image = Image.open(io.BytesIO(image_bytes))
-    text: str = pytesseract.image_to_string(image, lang="tur+eng")
-    return text
 
 
 class _QdrantSinkAdapter:
@@ -131,7 +121,10 @@ async def ingest_document(
 
     async def _ocr_fn(image_bytes: bytes) -> str:
         result: OcrResult = await ocr_image(
-            image_bytes, vision_client=llm_client, tesseract_fn=_tesseract_ocr
+            image_bytes,
+            vision_client=llm_client,
+            tesseract_fn=tesseract_ocr,
+            sensitivity=sensitivity,
         )
         return str(result.text)
 

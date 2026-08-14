@@ -30,6 +30,7 @@ from fleet_api.routers import (
     observability_admin,
     rag_query,
     service,
+    subjects,
     users_admin,
     whoami,
     workflows,
@@ -64,6 +65,7 @@ def create_app(*, with_middleware: bool = True) -> FastAPI:
     app.include_router(users_admin.departments_router)
     app.include_router(budgets_admin.router)
     app.include_router(observability_admin.router)
+    app.include_router(subjects.router)
 
     if with_middleware:
         settings = get_settings()

@@ -71,12 +71,17 @@ async def build_client(
     master_key = litellm_master_key or os.environ.get(
         "FLEET_LITELLM_MASTER_KEY", "sk-fleet-dev-master"
     )
+    # CPU-only local-lane inference (no GPU — task 8.1's rehearsal finding) can
+    # take well over the 60s default for a 7B model's full JSON response;
+    # overridable per-environment rather than raising the default outright,
+    # since a genuinely stuck cloud call shouldn't hang this long either.
+    timeout = float(os.environ.get("FLEET_LITELLM_TIMEOUT", "60"))
 
     engine = create_async_engine(database_url, pool_pre_ping=True)
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
     models = await load_active_models(session_factory)
-    transport = ProxyTransport(base_url=base_url, master_key=master_key)
+    transport = ProxyTransport(base_url=base_url, master_key=master_key, timeout=timeout)
     ledger = SpendLedger(session_factory)
     budget_checker = DbBudgetChecker(session_factory)
     return LLMClient(

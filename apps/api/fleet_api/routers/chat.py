@@ -33,21 +33,25 @@ reverse).
 
 from __future__ import annotations
 
+import asyncio
 import json
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Coroutine
 from typing import Any
 
 from core.killswitch import KillSwitch
-from core.langfuse_client import LangfuseScorer
+from core.langfuse_client import LangfuseRedactor, LangfuseScorer
 from core.llm.client import GatewayError, LLMClient
 from core.llm.factory import build_client
+from core.logging import get_logger
+from core.pii_scrub import scrub
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from fleet_api.auth import CurrentUser, get_current_user
 from fleet_api.config import Settings, get_settings
 from fleet_api.db import get_session
 from fleet_api.models import Agent, Collection, Conversation, Feedback, Message
+from fleet_api.privacy import subject_hash
 from fleet_api.rbac import Permission, require_permission
 from fleet_api.users import get_or_create_user
 from pydantic import BaseModel
@@ -56,6 +60,19 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/v1", tags=["chat"])
+chat_logger = get_logger("fleet.chat")
+
+# Fire-and-forget background tasks (Langfuse redaction, task 8.4) need a
+# strong reference held somewhere or the event loop may garbage-collect them
+# mid-flight (asyncio only holds a weak reference to a bare create_task()
+# result) — this set is that reference; each task removes itself on completion.
+_background_tasks: set[asyncio.Task[None]] = set()
+
+
+def _spawn_background(coro: Coroutine[Any, Any, None]) -> None:
+    task = asyncio.create_task(coro)
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
 
 
 def get_killswitch(settings: Settings = Depends(get_settings)) -> KillSwitch:  # noqa: B008
@@ -64,6 +81,14 @@ def get_killswitch(settings: Settings = Depends(get_settings)) -> KillSwitch:  #
 
 def get_langfuse_scorer(settings: Settings = Depends(get_settings)) -> LangfuseScorer:  # noqa: B008
     return LangfuseScorer(
+        base_url=settings.langfuse_base_url,
+        public_key=settings.langfuse_public_key,
+        secret_key=settings.langfuse_secret_key,
+    )
+
+
+def get_langfuse_redactor(settings: Settings = Depends(get_settings)) -> LangfuseRedactor:  # noqa: B008
+    return LangfuseRedactor(
         base_url=settings.langfuse_base_url,
         public_key=settings.langfuse_public_key,
         secret_key=settings.langfuse_secret_key,
@@ -115,7 +140,9 @@ async def create_conversation(
         raise HTTPException(status_code=404, detail="agent not found")
 
     user = await get_or_create_user(session, kc_sub=current.sub)
-    row = Conversation(agent_id=agent.id, user_id=user.id)
+    row = Conversation(
+        agent_id=agent.id, user_id=user.id, subject_hash=subject_hash(current.sub)
+    )
     session.add(row)
     await session.commit()
     await session.refresh(row)
@@ -249,8 +276,22 @@ async def _stream_reply(
     agent: Agent,
     user_content: str,
     llm_client: LLMClient,
+    langfuse_redactor: LangfuseRedactor,
 ) -> AsyncIterator[str]:
     trace_id = str(uuid.uuid4())
+
+    # TRD §8: "Chat inputs scanned lightweight; detected identifiers masked in
+    # logs/traces always" — independent of the agent's sensitivity tier. A
+    # masked copy goes to our own structured log; the unredacted content still
+    # goes to the model itself (it needs the real content to answer), but a
+    # PII-bearing turn also gets litellm's own redaction switch so Langfuse
+    # never receives the raw prompt/response for it.
+    pii = scrub(user_content)
+    chat_logger.info(
+        "chat.message.received",
+        extra={"fields": {"conversation_id": conversation.id, "role": "user", "content": pii.text}},
+    )
+    redact_langfuse = pii.found
 
     user_message = Message(conv_id=conversation.id, role="user", content=user_content)
     session.add(user_message)
@@ -288,6 +329,7 @@ async def _stream_reply(
                 agent_id=str(agent.id),
                 user_id=str(conversation.user_id),
                 trace_id=trace_id,
+                redact_langfuse=redact_langfuse,
             ):
                 text += delta
                 yield _sse("token", {"delta": delta})
@@ -309,6 +351,13 @@ async def _stream_reply(
     await session.commit()
     await session.refresh(assistant_message)
 
+    if redact_langfuse:
+        # Fire-and-forget: Langfuse ingestion is async and litellm's own
+        # callback has almost certainly already written the raw trace by the
+        # time we get control back here, so this best-effort overwrite runs
+        # after it without adding latency to the SSE response (task 8.4).
+        _spawn_background(langfuse_redactor.redact_trace(trace_id=trace_id))
+
     yield _sse("done", {"message_id": assistant_message.id, "trace_id": trace_id})
 
 
@@ -321,6 +370,7 @@ async def send_message(
     _: object = Depends(require_permission(Permission.CHAT)),  # noqa: B008
     session: AsyncSession = Depends(get_session),  # noqa: B008
     killswitch: KillSwitch = Depends(get_killswitch),  # noqa: B008
+    langfuse_redactor: LangfuseRedactor = Depends(get_langfuse_redactor),  # noqa: B008
 ) -> StreamingResponse:
     conversation = await session.get(Conversation, conversation_id)
     if conversation is None:
@@ -348,6 +398,7 @@ async def send_message(
             agent=agent,
             user_content=body.content,
             llm_client=llm_client,
+            langfuse_redactor=langfuse_redactor,
         ),
         media_type="text/event-stream",
     )

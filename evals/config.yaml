@@ -14,3 +14,6 @@ agents:
   invoice_agent:
     dataset: datasets/invoice_agent.jsonl
     threshold: 0.90
+  hr_agent:
+    dataset: datasets/hr_agent.jsonl
+    threshold: 0.90

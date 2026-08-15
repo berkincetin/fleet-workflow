@@ -34,6 +34,7 @@ export function CreateExampleDialog({
   const [vendor, setVendor] = useState("");
   const [poNumber, setPoNumber] = useState("");
   const [amount, setAmount] = useState("");
+  const [candidateName, setCandidateName] = useState("");
 
   function buildPayload(): Record<string, unknown> {
     const id = `user-${Date.now()}`;
@@ -42,6 +43,9 @@ export function CreateExampleDialog({
     }
     if (agentName === "dev_agent") {
       return { id, ticket_key: ticketKey };
+    }
+    if (agentName === "hr_agent") {
+      return { id, candidate_name: candidateName };
     }
     return {
       id,
@@ -73,6 +77,7 @@ export function CreateExampleDialog({
     setVendor("");
     setPoNumber("");
     setAmount("");
+    setCandidateName("");
     onCreated();
   }
 
@@ -98,6 +103,12 @@ export function CreateExampleDialog({
             <label className="flex flex-col gap-1 text-sm">
               {t("ticketKey")}
               <Input value={ticketKey} onChange={(e) => setTicketKey(e.target.value)} />
+            </label>
+          )}
+          {agentName === "hr_agent" && (
+            <label className="flex flex-col gap-1 text-sm">
+              {t("candidateName")}
+              <Input value={candidateName} onChange={(e) => setCandidateName(e.target.value)} />
             </label>
           )}
           {agentName === "invoice_agent" && (

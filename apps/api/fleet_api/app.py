@@ -24,6 +24,7 @@ from fleet_api.routers import (
     documents,
     examples,
     health,
+    hr_agent,
     invoice_agent,
     metrics,
     models_admin,
@@ -59,6 +60,7 @@ def create_app(*, with_middleware: bool = True) -> FastAPI:
     app.include_router(api_keys_admin.router)
     app.include_router(service.router)
     app.include_router(invoice_agent.router)
+    app.include_router(hr_agent.router)
     app.include_router(examples.router)
     app.include_router(workflows.router)
     app.include_router(users_admin.router)

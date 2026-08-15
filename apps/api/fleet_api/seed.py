@@ -10,7 +10,9 @@ from pathlib import Path
 from fleet_api.db import database_url, get_engine
 from sqlalchemy import text
 
-_DEMO_AGENTS = ["support_copilot", "analytics", "dev_agent", "invoice_agent"]
+_DEMO_AGENTS = [
+    "support_copilot", "analytics", "dev_agent", "invoice_agent", "hr_agent", "hr_onboarding",
+]
 _DEMO_MODELS = ["utility", "reasoning", "utility-fallback-1"]
 
 # evals/ lives at the repo root, three levels above apps/api/fleet_api/.
@@ -206,6 +208,65 @@ async def seed_invoice_agent() -> None:
     await engine.dispose()
 
 
+async def seed_hr_agents() -> None:
+    """HR Talent & Onboarding demo agents (task 8.5, department scenario 05):
+    `hr_agent` (LangGraph, CV -> profile -> role match -> shortlist draft
+    approval — pii lane, sensitivity=pii, no RAG collection: its "knowledge"
+    is the uploaded CV itself, same "no collection_ids" shape as invoice_agent)
+    and `hr_onboarding` (plain RAG chat agent over `hr-policies`, internal,
+    semantic_cache ON per the scenario spec — policy answers are stable and
+    worth caching, unlike a distinct-per-document agent like invoice/analytics).
+    `hr-cvs` (pii, retention 365 days, allow-local-only — CVs never leave the
+    local lane, including embeddings) exists so a future direct-upload CV
+    intake path has a collection to ingest into; `hr_agent`'s own run path
+    (routers/hr_agent.py) takes the image directly, not via this collection."""
+    engine = get_engine(database_url())
+    async with engine.begin() as conn:
+        dept_id = (
+            await conn.execute(text("SELECT id FROM departments WHERE name = 'HR'"))
+        ).scalar_one()
+
+        await conn.execute(
+            text(
+                "INSERT INTO collections (name, dept_id, sensitivity, retention_days, "
+                "pii_policy) VALUES ('hr-cvs', :d, 'pii', 365, 'allow-local-only') "
+                "ON CONFLICT (name) DO NOTHING"
+            ),
+            {"d": dept_id},
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO collections (name, dept_id, sensitivity, retention_days, "
+                "pii_policy) VALUES ('hr-policies', :d, 'internal', NULL, 'redact') "
+                "ON CONFLICT (name) DO NOTHING"
+            ),
+            {"d": dept_id},
+        )
+        hr_policies_id = (
+            await conn.execute(text("SELECT id FROM collections WHERE name = 'hr-policies'"))
+        ).scalar_one()
+
+        await conn.execute(
+            text(
+                "INSERT INTO agents (name, dept_id, reasoning_model, utility_model, "
+                "sensitivity, semantic_cache, semantic_cache_threshold, max_context_tokens, "
+                "collection_ids) VALUES ('hr_agent', :d, 'reasoning', 'utility', 'pii', "
+                "false, 0.95, 8000, '{}') ON CONFLICT (name) DO NOTHING"
+            ),
+            {"d": dept_id},
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO agents (name, dept_id, reasoning_model, utility_model, "
+                "sensitivity, semantic_cache, semantic_cache_threshold, max_context_tokens, "
+                "collection_ids) VALUES ('hr_onboarding', :d, 'reasoning', 'utility', "
+                "'internal', true, 0.95, 8000, :cids) ON CONFLICT (name) DO NOTHING"
+            ),
+            {"d": dept_id, "cids": [hr_policies_id]},
+        )
+    await engine.dispose()
+
+
 async def seed_eval_cases() -> None:
     """Import evals/datasets/*.jsonl into `eval_cases` (source='seed'), task
     6.5.2. Idempotent on (agent_name, case_id) via ON CONFLICT DO NOTHING —
@@ -352,6 +413,7 @@ def main() -> None:
     asyncio.run(seed_analytics_agent())
     asyncio.run(seed_dev_agent())
     asyncio.run(seed_invoice_agent())
+    asyncio.run(seed_hr_agents())
     asyncio.run(seed_eval_cases())
     asyncio.run(seed_observability_demo())
 

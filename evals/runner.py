@@ -25,6 +25,7 @@ import sys
 import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -721,6 +722,184 @@ async def run_invoice_agent_eval() -> tuple[list[CaseResult], float, float]:
     return results, pass_rate, threshold
 
 
+@dataclass(frozen=True)
+class HrAgentCase:
+    """One row of evals/datasets/hr_agent.jsonl (task 8.5, dept scenario 05).
+    `case_type` picks which of the three evals-in-one-dataset shapes this row
+    is: "extraction" (CV -> profile field accuracy), "schema_exclusion"
+    (protected attributes must never appear in the extracted profile even
+    though they're on the raw CV text), "qa_grounding" (hr_onboarding RAG
+    agent over hr-policies)."""
+
+    id: str
+    case_type: str
+    cv_lines: list[str] = field(default_factory=list)
+    expect_full_name: str | None = None
+    expect_email: str | None = None
+    expect_phone: str | None = None
+    expect_education_contains: str | None = None
+    expect_experience_contains: str | None = None
+    expect_skill: str | None = None
+    birthdate_value: str | None = None
+    gender_value: str | None = None
+    question: str | None = None
+    must_contain: list[str] = field(default_factory=list)
+    must_cite: bool = False
+
+
+def load_hr_agent_dataset(path: Path) -> list[HrAgentCase]:
+    cases: list[HrAgentCase] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        row = json.loads(line)
+        cases.append(
+            HrAgentCase(
+                id=row["id"],
+                case_type=row["case_type"],
+                cv_lines=row.get("cv_lines", []),
+                expect_full_name=row.get("expect_full_name"),
+                expect_email=row.get("expect_email"),
+                expect_phone=row.get("expect_phone"),
+                expect_education_contains=row.get("expect_education_contains"),
+                expect_experience_contains=row.get("expect_experience_contains"),
+                expect_skill=row.get("expect_skill"),
+                birthdate_value=row.get("birthdate_value"),
+                gender_value=row.get("gender_value"),
+                question=row.get("question"),
+                must_contain=row.get("must_contain", []),
+                must_cite=row.get("must_cite", False),
+            )
+        )
+    return cases
+
+
+async def _extract_cv_profile_for_case(case: HrAgentCase, *, llm_client: object) -> object:
+    # runner.py always runs as a script — see _render_invoice_image_base64's
+    # note on why this is a bare import, not `evals.synthetic_images`.
+    import base64
+
+    from agents.hr_agent.extractor import extract_cv_profile
+    from fleet_rag.ingest.ocr import tesseract_ocr
+    from synthetic_images import render_document_image_base64
+
+    image_bytes = base64.b64decode(render_document_image_base64(case.cv_lines))
+    ocr_text = tesseract_ocr(image_bytes)
+    return await extract_cv_profile(ocr_text=ocr_text, llm_client=llm_client)  # type: ignore[arg-type]
+
+
+def _evaluate_hr_extraction_case(case: HrAgentCase, profile: Any) -> CaseResult:
+    # full_name/email/phone are single discrete values -> fuzzy exact-match
+    # (same OCR-diacritic tolerance as the invoice eval's vendor check).
+    # education/experience/skills are "does the extracted text contain this
+    # keyword" checks (the CV line has more words than the expected keyword),
+    # so they need substring containment, not a same-word-count match.
+    exact_checks = [
+        ("full_name", case.expect_full_name, profile.full_name),
+        ("email", case.expect_email, profile.email),
+        ("phone", case.expect_phone, profile.phone),
+    ]
+    for name, expected, actual in exact_checks:
+        if expected is None:
+            continue
+        if not _vendor_reasonably_matches(actual, expected):
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=f"{name}: expected ~{expected!r}, got {actual!r}",
+            )
+
+    contains_checks = [
+        ("education", case.expect_education_contains, " ".join(profile.education)),
+        ("experience", case.expect_experience_contains, " ".join(profile.experience)),
+        ("skills", case.expect_skill, " ".join(profile.skills)),
+    ]
+    for name, expected, actual in contains_checks:
+        if expected is None:
+            continue
+        if _tr_ascii_fold(expected) not in _tr_ascii_fold(actual):
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=f"{name}: expected to contain {expected!r}, got {actual!r}",
+            )
+    return CaseResult(id=case.id, passed=True, reason="ok")
+
+
+def _evaluate_hr_schema_exclusion_case(case: HrAgentCase, profile: Any) -> CaseResult:
+    profile_dump = _fold(
+        f"{profile.full_name} {profile.email} {profile.phone} "
+        f"{' '.join(profile.education)} {' '.join(profile.experience)} "
+        f"{' '.join(profile.skills)}"
+    )
+    for label, value in (("birthdate", case.birthdate_value), ("gender", case.gender_value)):
+        if value and _fold(value) in profile_dump:
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=f"protected attribute {label}={value!r} leaked into the extracted profile",
+            )
+    return CaseResult(id=case.id, passed=True, reason="ok")
+
+
+async def run_hr_agent_eval() -> tuple[list[CaseResult], float, float]:
+    """Returns (results, pass_rate, threshold). extraction/schema_exclusion
+    cases exercise the real local-only OCR+extraction pipeline (task 8.2's
+    fix); qa_grounding cases exercise the real hr_onboarding RAG agent
+    (reusing _run_case/evaluate_case — the same generic RAG path support_copilot
+    and analytics-adjacent agents already use)."""
+    import os
+
+    from core.llm.factory import build_client
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    config = yaml.safe_load((EVALS_DIR / "config.yaml").read_text(encoding="utf-8"))
+    agent_config = config["agents"]["hr_agent"]
+    dataset_path = EVALS_DIR / agent_config["dataset"]
+    threshold = float(agent_config["threshold"])
+    cases = load_hr_agent_dataset(dataset_path)
+
+    database_url = os.environ.get(
+        "FLEET_DATABASE_URL", "postgresql+asyncpg://fleet:fleet_dev_pw@localhost:5432/fleet"
+    )
+    engine = create_async_engine(database_url)
+    async with engine.connect() as conn:
+        row = (
+            await conn.execute(
+                text("SELECT id, collection_ids FROM agents WHERE name = 'hr_onboarding'")
+            )
+        ).first()
+    await engine.dispose()
+    if row is None:
+        raise RuntimeError("hr_onboarding agent not seeded — run `make seed` first")
+    onboarding_agent_id, onboarding_collection_ids = int(row[0]), list(row[1])
+
+    llm_client = await build_client()
+    results: list[CaseResult] = []
+    for case in cases:
+        if case.case_type == "extraction":
+            profile = await _extract_cv_profile_for_case(case, llm_client=llm_client)
+            results.append(_evaluate_hr_extraction_case(case, profile))
+        elif case.case_type == "schema_exclusion":
+            profile = await _extract_cv_profile_for_case(case, llm_client=llm_client)
+            results.append(_evaluate_hr_schema_exclusion_case(case, profile))
+        elif case.case_type == "qa_grounding":
+            qa_case = EvalCase(
+                id=case.id, question=case.question or "", must_contain=case.must_contain,
+                must_cite=case.must_cite,
+            )
+            answer = await _run_case(
+                qa_case, agent_id=onboarding_agent_id, collection_ids=onboarding_collection_ids
+            )
+            results.append(evaluate_case(qa_case, answer))
+        else:
+            results.append(
+                CaseResult(id=case.id, passed=False, reason=f"unknown case_type {case.case_type!r}")
+            )
+
+    pass_rate = sum(1 for r in results if r.passed) / len(results) if results else 0.0
+    return results, pass_rate, threshold
+
+
 def main() -> None:
     import asyncio
 
@@ -737,6 +916,8 @@ def main() -> None:
         results, pass_rate, threshold = asyncio.run(run_dev_agent_eval())
     elif args.agent == "invoice_agent":
         results, pass_rate, threshold = asyncio.run(run_invoice_agent_eval())
+    elif args.agent == "hr_agent":
+        results, pass_rate, threshold = asyncio.run(run_hr_agent_eval())
     else:
         results, pass_rate, threshold = asyncio.run(run_agent_eval(args.agent))
 

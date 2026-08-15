@@ -1,10 +1,11 @@
-"""Seed the Support Copilot demo KB (task 4.4): upload evals/fixtures/support_copilot/*
-into the cs-help-center / cs-procedures collections and ingest them for real
-(the same MinIO -> pipeline -> Qdrant path a real upload takes), so the demo
-path and the eval dataset both have real grounded content to cite.
+"""Seed demo KBs (task 4.4 Support Copilot + task 8.5 HR Onboarding): upload
+evals/fixtures/{support_copilot,hr_onboarding}/* into their collections and
+ingest them for real (the same MinIO -> pipeline -> Qdrant path a real upload
+takes), so the demo path and the eval dataset both have real grounded content
+to cite.
 
 Run via `make seed-docs` after `make seed` and `make migrate` (needs the
-support_copilot agent's collections to already exist) and the dev stack up.
+target collections to already exist) and the dev stack up.
 """
 
 from __future__ import annotations
@@ -24,7 +25,7 @@ from fleet_rag.store.qdrant_store import qdrant_client_from_env
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-FIXTURES_DIR = Path(__file__).resolve().parents[2].parent / "evals" / "fixtures" / "support_copilot"
+FIXTURES_ROOT = Path(__file__).resolve().parents[2].parent / "evals" / "fixtures"
 BUCKET = "fleet-documents"
 
 
@@ -75,15 +76,20 @@ async def seed_docs() -> None:
     qdrant_sink = _QdrantSinkAdapter(qdrant_client_from_env())
 
     # cs-help-center: general FAQ content. cs-procedures: internal SOP docs
-    # (matches the department scenario's two-collection KB split).
+    # (matches the department scenario's two-collection KB split). hr-policies:
+    # onboarding/leave policy docs (task 8.5, dept scenario 05's hr_onboarding
+    # agent) — same internal/redact shape as the CS docs, a different dept.
     targets = {
-        "trink-sat-process.txt": "cs-help-center",
-        "membership-and-payments.txt": "cs-help-center",
-        "listing-quality-sop.txt": "cs-procedures",
+        "support_copilot/trink-sat-process.txt": "cs-help-center",
+        "support_copilot/membership-and-payments.txt": "cs-help-center",
+        "support_copilot/listing-quality-sop.txt": "cs-procedures",
+        "hr_onboarding/onboarding-process.txt": "hr-policies",
+        "hr_onboarding/leave-and-benefits-policy.txt": "hr-policies",
     }
 
-    for filename, collection_name in targets.items():
-        path = FIXTURES_DIR / filename
+    for rel_path, collection_name in targets.items():
+        filename = Path(rel_path).name
+        path = FIXTURES_ROOT / rel_path
         data = path.read_bytes()
         sha256 = hashlib.sha256(data).hexdigest()
         collection_id = await _collection_id(session_factory, collection_name)

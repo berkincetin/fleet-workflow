@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DevRunDialog } from "@/components/examples/dev-run-dialog";
+import { HrRunDialog } from "@/components/examples/hr-run-dialog";
 import { InvoiceRunDialog } from "@/components/examples/invoice-run-dialog";
 import type { components } from "@fleet/shared";
 
@@ -15,6 +16,7 @@ function exampleTitle(example: ExampleOut): string {
   if (typeof p.question === "string") return p.question;
   if (typeof p.ticket_key === "string") return String(p.ticket_key);
   if (typeof p.vendor === "string") return `${p.vendor} — ${p.po_number ?? ""}`;
+  if (typeof p.candidate_name === "string") return p.candidate_name;
   return example.case_id;
 }
 
@@ -41,6 +43,7 @@ export function ExampleCard({ example }: { example: ExampleOut }) {
           <DevRunDialog initialTicketKey={String(example.payload.ticket_key ?? "")} />
         )}
         {example.agent_name === "invoice_agent" && <InvoiceRunDialog />}
+        {example.agent_name === "hr_agent" && <HrRunDialog />}
       </CardContent>
     </Card>
   );

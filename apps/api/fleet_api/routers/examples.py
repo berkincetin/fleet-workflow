@@ -33,6 +33,7 @@ _REQUIRED_FIELDS: dict[str, set[str]] = {
     "analytics": {"id", "question"},
     "dev_agent": {"id", "ticket_key"},
     "invoice_agent": {"id", "vendor", "po_number", "amount"},
+    "hr_agent": {"id", "candidate_name"},
 }
 
 

@@ -95,7 +95,8 @@ def test_erase_subject_removes_conversation_document_and_pseudonymizes_audit() -
             # Unique per run: qdrant_point_id is deterministic from content_sha256
             # (point_id_for) and globally unique in chunks — a fixed literal here
             # would collide with a leftover row from any earlier failed/aborted run.
-            content_sha = hashlib.sha256(f"erasure test chunk {uuid.uuid4().hex}".encode()).hexdigest()
+            chunk_text = f"erasure test chunk {uuid.uuid4().hex}"
+            content_sha = hashlib.sha256(chunk_text.encode()).hexdigest()
             point_id = point_id_for(content_sha)
             cur.execute(
                 "INSERT INTO chunks (document_id, content_sha256, qdrant_point_id, tokens) "

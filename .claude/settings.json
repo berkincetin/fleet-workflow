@@ -1,4 +1,10 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(FLEET_LITELLM_TIMEOUT=300 uv run python evals/runner.py --agent hr_agent)",
+      "Bash(curl -s --max-time 5 -o /dev/null http://localhost:4000/health/liveliness)"
+    ]
+  },
   "enabledPlugins": {
     "superpowers@claude-plugins-official": true
   }

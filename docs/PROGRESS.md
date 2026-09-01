@@ -809,3 +809,17 @@ Issues (symptom → root cause → resolution):
 Notes:
 - `.claude/settings.json` (auto-added permission entries from this session) and `docs/SUNUM_OZETI.md` (user's separate presentation work) were deliberately left **uncommitted** — neither belongs to Sprint 8.
 - Sprint 8 is complete: 8.1–8.5 all DONE, report at `docs/reports/sprint-8.md`, graph refreshed, PR #12 open. Merge waits on CI, per the branch convention (no direct pushes to `main`).
+
+## 2026-09-01 — Sprint 8 merged to main (PR #12) — DONE
+
+PR #12 merged to `main` as `b6e78bf` after all required CI checks passed (lint, unit, security, integration, build-image — all green on both runs). Local `main` fast-forwarded; **441 unit tests re-verified green on the merged main**, not just on the branch.
+
+Sprint 8 (KVKK Lane) is closed: 8.1–8.5 all DONE, `docs/reports/sprint-8.md` written, knowledge graph refreshed (3832 nodes / 6913 edges / 331 communities), merged.
+
+Next up per `docs/IMPLEMENTATION_PLAN.md`: **Sprint 9 — Hardening**.
+
+Carried-forward open items (unchanged by the merge, all previously logged):
+- 4 integration tests flaky under full-suite load (green in isolation) — worth a dedicated stabilisation task.
+- `users.email_hash` always `""` since Sprint 1 — its pseudonymisation purpose is unmet.
+- `invoice_agent` extraction never routes to the documented "Claude Sonnet on redacted text" — more conservative than spec, but a real doc/code divergence awaiting a decision.
+- Host-run evals do not read `.env`, so local-lane runs still need `FLEET_LITELLM_TIMEOUT=300` exported explicitly.

@@ -103,10 +103,16 @@ model_list:
 
   # ---- Local lane (clearance: pii) — Ollama, host-native GPU ---------------
   # No cloud model is ever cleared for pii; these serve pii/confidential traffic.
+  # `timeout` is set well above the global 60s (litellm_settings.request_timeout)
+  # because litellm's Ollama provider path uses its own aiohttp session timeout,
+  # not the router-level default — on CPU-only inference (no GPU, task 8.1's
+  # rehearsal finding) a 7B model easily takes >60s to generate a full JSON
+  # response, and the request must be allowed to finish rather than time out.
   - model_name: local-reasoning
     litellm_params:
       model: ollama/qwen2.5:7b-instruct-q4_K_M
       api_base: os.environ/OLLAMA_BASE_URL
+      timeout: 300
       input_cost_per_token: 0.0
       output_cost_per_token: 0.0
     model_info:
@@ -119,6 +125,7 @@ model_list:
     litellm_params:
       model: ollama/bge-m3
       api_base: os.environ/OLLAMA_BASE_URL
+      timeout: 300
       input_cost_per_token: 0.0
       output_cost_per_token: 0.0
     model_info:

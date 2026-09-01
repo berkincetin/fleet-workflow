@@ -24,12 +24,18 @@ OCR_INPUT_SCHEMA = {
 
 
 def build_ocr_tool(
-    *, vision_client: VisionClient, tesseract_fn: Callable[[bytes], str]
+    *,
+    vision_client: VisionClient,
+    tesseract_fn: Callable[[bytes], str],
+    sensitivity: str = "internal",
 ) -> Callable[..., Any]:
     async def _ocr(image_base64: str) -> dict[str, str]:
         image_bytes = base64.b64decode(image_base64)
         result = await ocr_image(
-            image_bytes, vision_client=vision_client, tesseract_fn=tesseract_fn
+            image_bytes,
+            vision_client=vision_client,
+            tesseract_fn=tesseract_fn,
+            sensitivity=sensitivity,
         )
         return {"text": result.text, "source": result.source}
 
@@ -37,12 +43,17 @@ def build_ocr_tool(
 
 
 def build_ocr_contract(
-    *, vision_client: VisionClient, tesseract_fn: Callable[[bytes], str]
+    *,
+    vision_client: VisionClient,
+    tesseract_fn: Callable[[bytes], str],
+    sensitivity: str = "internal",
 ) -> ToolContract:
     return ToolContract(
         name="ocr.extract_text",
         risk_class="read",
         description="Extract text from an image (vision-LLM primary, tesseract fallback).",
         input_schema=OCR_INPUT_SCHEMA,
-        fn=build_ocr_tool(vision_client=vision_client, tesseract_fn=tesseract_fn),
+        fn=build_ocr_tool(
+            vision_client=vision_client, tesseract_fn=tesseract_fn, sensitivity=sensitivity
+        ),
     )

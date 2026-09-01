@@ -62,6 +62,7 @@ async def start_run(
     from fleet_mcp.servers.erp import ErpTool
     from fleet_mcp.servers.ocr import build_ocr_tool
     from fleet_mcp.servers.pg_ro import PgReadOnlyTool
+    from fleet_rag.ingest.ocr import tesseract_ocr
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
     agent_row = (
@@ -71,7 +72,11 @@ async def start_run(
         raise HTTPException(status_code=500, detail="invoice_agent not seeded — run `make seed`")
 
     llm_client = await build_client()
-    ocr = _OcrToolAdapter(build_ocr_tool(vision_client=llm_client, tesseract_fn=lambda b: ""))
+    ocr = _OcrToolAdapter(
+        build_ocr_tool(
+            vision_client=llm_client, tesseract_fn=tesseract_ocr, sensitivity="confidential"
+        )
+    )
     erp = ErpTool()
     po_lookup = PgPoLookup(
         tool=PgReadOnlyTool(

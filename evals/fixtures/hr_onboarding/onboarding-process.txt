@@ -1,0 +1,16 @@
+Yeni Çalışan Oryantasyon Süreci
+
+Yeni işe başlayan tüm çalışanlar, ilk iş gününde İnsan Kaynakları ekibiyle bir
+karşılama toplantısı yapar. Bu toplantıda şirket kimlik kartı, dizüstü
+bilgisayar ve e-posta hesabı teslim edilir.
+
+Oryantasyon programı toplam 5 iş günü sürer. İlk üç gün şirket kültürü, araçlar
+ve departman tanıtımlarına ayrılır. Son iki gün, yeni çalışanın kendi
+departmanındaki mentoruyla birebir çalışmasına ayrılır.
+
+Deneme süresi 3 aydır. Deneme süresi sonunda, yönetici ve İnsan Kaynakları
+ortak bir değerlendirme toplantısı yapar.
+
+Yeni çalışanlar, işe başladıktan sonraki ilk hafta içinde zorunlu KVKK ve bilgi
+güvenliği eğitimini tamamlamak zorundadır. Bu eğitim tamamlanmadan sistem
+erişim yetkileri tam olarak açılmaz.

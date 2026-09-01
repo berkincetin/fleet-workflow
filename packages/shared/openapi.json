@@ -889,6 +889,22 @@
               "type": "integer",
               "title": "Collection Id"
             }
+          },
+          {
+            "name": "subject_hash",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Subject Hash"
+            }
           }
         ],
         "requestBody": {
@@ -1742,6 +1758,70 @@
         }
       }
     },
+    "/v1/hr-agent/runs": {
+      "post": {
+        "tags": [
+          "hr-agent"
+        ],
+        "summary": "Start Run",
+        "operationId": "start_run_v1_hr_agent_runs_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-fleet-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Fleet-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/fleet_api__routers__hr_agent__RunIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/examples": {
       "get": {
         "tags": [
@@ -2567,6 +2647,53 @@
                     "$ref": "#/components/schemas/AuditRowOut"
                   },
                   "title": "Response List Audit V1 Admin Audit Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/subjects/{hash_}": {
+      "delete": {
+        "tags": [
+          "subjects"
+        ],
+        "summary": "Erase Subject",
+        "operationId": "erase_subject_v1_subjects__hash___delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "hash_",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Hash "
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErasureResult"
                 }
               }
             }
@@ -3568,6 +3695,17 @@
           "status": {
             "type": "string",
             "title": "Status"
+          },
+          "subject_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject Hash"
           }
         },
         "type": "object",
@@ -3580,6 +3718,39 @@
           "status"
         ],
         "title": "DocumentOut"
+      },
+      "ErasureResult": {
+        "properties": {
+          "subject_hash": {
+            "type": "string",
+            "title": "Subject Hash"
+          },
+          "conversations_deleted": {
+            "type": "integer",
+            "title": "Conversations Deleted"
+          },
+          "messages_deleted": {
+            "type": "integer",
+            "title": "Messages Deleted"
+          },
+          "documents_deleted": {
+            "type": "integer",
+            "title": "Documents Deleted"
+          },
+          "audit_rows_pseudonymized": {
+            "type": "integer",
+            "title": "Audit Rows Pseudonymized"
+          }
+        },
+        "type": "object",
+        "required": [
+          "subject_hash",
+          "conversations_deleted",
+          "messages_deleted",
+          "documents_deleted",
+          "audit_rows_pseudonymized"
+        ],
+        "title": "ErasureResult"
       },
       "ExampleIn": {
         "properties": {
@@ -4298,6 +4469,27 @@
         "type": "object",
         "required": [
           "ticket_key"
+        ],
+        "title": "RunIn"
+      },
+      "fleet_api__routers__hr_agent__RunIn": {
+        "properties": {
+          "image_base64": {
+            "type": "string",
+            "title": "Image Base64"
+          },
+          "criteria": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Criteria",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "image_base64"
         ],
         "title": "RunIn"
       },

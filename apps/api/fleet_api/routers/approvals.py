@@ -110,10 +110,13 @@ async def _resume_invoice_agent_run(run_id: str, *, approved: bool) -> None:
     from fleet_mcp.servers.erp import ErpTool
     from fleet_mcp.servers.ocr import build_ocr_tool
     from fleet_mcp.servers.pg_ro import PgReadOnlyTool
+    from fleet_rag.ingest.ocr import tesseract_ocr
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
     llm_client = await build_client()
-    ocr = build_ocr_tool(vision_client=llm_client, tesseract_fn=lambda b: "")
+    ocr = build_ocr_tool(
+        vision_client=llm_client, tesseract_fn=tesseract_ocr, sensitivity="confidential"
+    )
     erp = ErpTool()
     po_lookup = PgPoLookup(
         tool=PgReadOnlyTool(
@@ -126,6 +129,28 @@ async def _resume_invoice_agent_run(run_id: str, *, approved: bool) -> None:
         graph = build_invoice_agent_graph(
             llm_client=llm_client, ocr=_OcrToolAdapter(ocr), erp=erp, po_lookup=po_lookup,
             checkpointer=checkpointer,
+        )
+        config = {"configurable": {"thread_id": run_id}}
+        await graph.ainvoke(Command(resume={"approved": approved}), config)
+
+
+async def _resume_hr_agent_run(run_id: str, *, approved: bool) -> None:
+    """Same rebuild-fresh-and-resume mechanism as Dev/Invoice Agent, for HR
+    Agent's hr.shortlist_draft interrupt (task 8.5)."""
+    from agents.hr_agent.graph import build_hr_agent_graph
+    from core.llm.factory import build_client
+    from fleet_api.db import database_url as api_database_url
+    from fleet_mcp.servers.ocr import build_ocr_tool
+    from fleet_rag.ingest.ocr import tesseract_ocr
+    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
+    llm_client = await build_client()
+    ocr = build_ocr_tool(vision_client=llm_client, tesseract_fn=tesseract_ocr, sensitivity="pii")
+
+    checkpoint_dsn = api_database_url().replace("postgresql+asyncpg://", "postgresql://")
+    async with AsyncPostgresSaver.from_conn_string(checkpoint_dsn) as checkpointer:
+        graph = build_hr_agent_graph(
+            llm_client=llm_client, ocr=_OcrToolAdapter(ocr), checkpointer=checkpointer,
         )
         config = {"configurable": {"thread_id": run_id}}
         await graph.ainvoke(Command(resume={"approved": approved}), config)
@@ -150,6 +175,7 @@ class _OcrToolAdapter:
 _RESUMERS: dict[str, Callable[..., Awaitable[None]]] = {
     "dev_agent": _resume_dev_agent_run,
     "invoice_agent": _resume_invoice_agent_run,
+    "hr_agent": _resume_hr_agent_run,
 }
 
 

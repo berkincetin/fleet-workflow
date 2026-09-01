@@ -79,7 +79,12 @@ def test_cost_summary_renders_seeded_traffic(client: TestClient) -> None:
 
     assert body["total_usd"] > 0
     assert len(body["by_dept"]) >= 1
-    assert len(body["by_agent"]) == 4  # support_copilot, analytics, dev_agent, invoice_agent
+    # Derived from the seeder rather than hardcoded: this assertion was a
+    # literal `== 4` and broke the moment task 8.5 legitimately seeded
+    # hr_agent + hr_onboarding, even though the cost summary was correct.
+    from fleet_api.seed import _DEMO_AGENTS
+
+    assert len(body["by_agent"]) == len(_DEMO_AGENTS)
     assert len(body["by_model"]) == 3
     assert len(body["burn_down"]) >= 1
     assert 0 <= body["cache_hit_ratio"] <= 1

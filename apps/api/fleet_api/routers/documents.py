@@ -47,6 +47,7 @@ class DocumentOut(BaseModel):
     sha256: str
     ocr_status: str
     status: str
+    subject_hash: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -64,6 +65,7 @@ def _minio_client(settings: Settings) -> Minio:
 async def upload_document(
     collection_id: int,
     file: UploadFile,
+    subject_hash: str | None = None,
     _: object = Depends(require_permission(Permission.UPLOAD)),  # noqa: B008
     session: AsyncSession = Depends(get_session),  # noqa: B008
     settings: Settings = Depends(get_settings),  # noqa: B008
@@ -93,7 +95,10 @@ async def upload_document(
         client.make_bucket(settings.minio_bucket)
     client.put_object(settings.minio_bucket, key, io.BytesIO(data), length=len(data))
 
-    row = Document(collection_id=collection_id, uri=key, sha256=digest, status="queued")
+    row = Document(
+        collection_id=collection_id, uri=key, sha256=digest, status="queued",
+        subject_hash=subject_hash,
+    )
     session.add(row)
     await session.commit()
     await session.refresh(row)

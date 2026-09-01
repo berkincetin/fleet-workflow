@@ -554,6 +554,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/hr-agent/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Run */
+        post: operations["start_run_v1_hr_agent_runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/examples": {
         parameters: {
             query?: never;
@@ -807,6 +824,23 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/subjects/{hash_}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Erase Subject */
+        delete: operations["erase_subject_v1_subjects__hash___delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1161,6 +1195,21 @@ export interface components {
             ocr_status: string;
             /** Status */
             status: string;
+            /** Subject Hash */
+            subject_hash?: string | null;
+        };
+        /** ErasureResult */
+        ErasureResult: {
+            /** Subject Hash */
+            subject_hash: string;
+            /** Conversations Deleted */
+            conversations_deleted: number;
+            /** Messages Deleted */
+            messages_deleted: number;
+            /** Documents Deleted */
+            documents_deleted: number;
+            /** Audit Rows Pseudonymized */
+            audit_rows_pseudonymized: number;
         };
         /** ExampleIn */
         ExampleIn: {
@@ -1417,6 +1466,16 @@ export interface components {
         fleet_api__routers__dev_agent__RunIn: {
             /** Ticket Key */
             ticket_key: string;
+        };
+        /** RunIn */
+        fleet_api__routers__hr_agent__RunIn: {
+            /** Image Base64 */
+            image_base64: string;
+            /**
+             * Criteria
+             * @default []
+             */
+            criteria: string[];
         };
         /** RunIn */
         fleet_api__routers__invoice_agent__RunIn: {
@@ -2093,6 +2152,7 @@ export interface operations {
         parameters: {
             query: {
                 collection_id: number;
+                subject_hash?: string | null;
             };
             header?: never;
             path?: never;
@@ -2594,6 +2654,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["fleet_api__routers__invoice_agent__RunIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_run_v1_hr_agent_runs_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-fleet-api-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["fleet_api__routers__hr_agent__RunIn"];
             };
         };
         responses: {
@@ -3125,6 +3220,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditRowOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    erase_subject_v1_subjects__hash___delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hash_: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErasureResult"];
                 };
             };
             /** @description Validation Error */

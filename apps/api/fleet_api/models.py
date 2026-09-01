@@ -147,6 +147,10 @@ class Document(Base):
     ocr_status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
     meta: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    # Right-to-erasure lookup key (TRD §8, task 8.3) — set only for uploads
+    # tied to an identifiable human subject (e.g. HR CVs, task 8.5); null for
+    # documents with no single "subject" (policies, knowledge-base docs).
+    subject_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -234,6 +238,9 @@ class Conversation(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     agent_id: Mapped[int] = mapped_column(ForeignKey("agents.id"), nullable=False)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    # Right-to-erasure lookup key (TRD §8, task 8.3) — subject_hash(user.kc_sub),
+    # set at conversation-creation time (see routers/chat.py).
+    subject_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

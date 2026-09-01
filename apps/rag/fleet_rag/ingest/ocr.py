@@ -1,18 +1,34 @@
-"""OCR step: vision-LLM primary, tesseract fallback (TRD §3 tech stack, task 3.1).
+"""OCR step: vision-LLM primary, tesseract fallback (TRD §3 tech stack, task 3.1);
+sensitivity-gated local-only lane for confidential/pii raw documents (TRD §8,
+task 8.2 fix).
 
-Layout-aware extraction via the gateway's reasoning model is tried first;
-any failure (gateway error, refusal, empty result) falls back to local
-Tesseract (`tur` + `eng`) so ingestion never hard-fails on a scanned page.
+Layout-aware extraction via the gateway's reasoning model is tried first for
+public/internal-sensitivity images; any failure (gateway error, refusal, empty
+result) falls back to local Tesseract (`tur` + `eng`) so ingestion never
+hard-fails on a scanned page. For `confidential`/`pii` images (raw invoices,
+CVs — dept scenarios 04/05 both spell out "OCR path: local (Tesseract)... cloud
+vision only for pre-redacted or non-sensitive docs"), the vision-LLM step is
+skipped entirely: no cloud model in the registry is cleared above `internal`
+(gateway/litellm/config.yaml), and the raw image predates any PII redaction
+(redaction runs on the *extracted text*, in pii.py, downstream of OCR), so
+attempting a cloud vision call here would leak unredacted PII/financial
+identifiers before the pipeline ever gets a chance to redact them.
+
 Both the vision client and the tesseract call are injected, keeping this
-module unit-testable without network or a local tesseract binary — the real
-wiring (LLMClient, pytesseract) lives in the caller (pipeline.py).
+module unit-testable without network or a local tesseract binary; `tesseract_ocr`
+below is the one real pytesseract implementation, shared by every caller
+(worker.py, fleet_mcp.servers.ocr, the invoice_agent API routers) instead of
+each defining or stubbing its own.
 """
 
 from __future__ import annotations
 
 import base64
+import io
 from dataclasses import dataclass
 from typing import Any, Protocol
+
+from core.llm.routing import Sensitivity
 
 
 class VisionClient(Protocol):
@@ -32,8 +48,22 @@ _PROMPT = (
     "reading order. Reply with only the extracted text, no commentary."
 )
 
+# confidential and pii raw images never reach the cloud vision-LLM (TRD §8).
+_LOCAL_ONLY_FLOOR = Sensitivity.CONFIDENTIAL
 
-async def _try_vision(image_bytes: bytes, vision_client: VisionClient) -> str:
+
+def tesseract_ocr(image_bytes: bytes) -> str:
+    """Real local OCR (pytesseract, tur+eng) — the local-lane implementation
+    every caller should pass as `tesseract_fn` in production."""
+    import pytesseract
+    from PIL import Image
+
+    image = Image.open(io.BytesIO(image_bytes))
+    text: str = pytesseract.image_to_string(image, lang="tur+eng")
+    return text
+
+
+async def _try_vision(image_bytes: bytes, vision_client: VisionClient, *, sensitivity: str) -> str:
     b64 = base64.b64encode(image_bytes).decode("ascii")
     messages = [
         {
@@ -44,7 +74,7 @@ async def _try_vision(image_bytes: bytes, vision_client: VisionClient) -> str:
             ],
         }
     ]
-    response = await vision_client.reasoning(messages, sensitivity="internal")
+    response = await vision_client.reasoning(messages, sensitivity=sensitivity)
     return (response.content or "").strip()
 
 
@@ -53,14 +83,19 @@ async def ocr_image(
     *,
     vision_client: VisionClient,
     tesseract_fn: Any,
+    sensitivity: str = "internal",
 ) -> OcrResult:
-    """Run vision-LLM OCR; fall back to `tesseract_fn(image_bytes)` on failure/empty."""
-    try:
-        text = await _try_vision(image_bytes, vision_client)
-        if text:
-            return OcrResult(text=text, source="vision-llm")
-    except Exception:
-        pass
+    """Run vision-LLM OCR (skipped for confidential/pii); fall back to (or, for
+    confidential/pii, go straight to) `tesseract_fn(image_bytes)`."""
+    local_only = Sensitivity.parse(sensitivity) >= _LOCAL_ONLY_FLOOR
+
+    if not local_only:
+        try:
+            text = await _try_vision(image_bytes, vision_client, sensitivity=sensitivity)
+            if text:
+                return OcrResult(text=text, source="vision-llm")
+        except Exception:
+            pass
 
     try:
         text = tesseract_fn(image_bytes)

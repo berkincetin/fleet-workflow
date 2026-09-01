@@ -18,6 +18,28 @@ from typing import Any
 import httpx
 
 
+def _build_metadata(kwargs: dict[str, Any]) -> dict[str, Any]:
+    """trace_id/agent_id/user_id/dept_id passthrough (TRD §6 trace correlation)
+    plus, when `redact_langfuse` is set, litellm's own per-request redaction
+    switch (TRD §8: "detected identifiers masked in logs/traces always").
+    This is read from `litellm_params.metadata.headers` server-side (see
+    litellm/litellm_core_utils/redact_messages.py) — a JSON-body convention
+    litellm uses to mimic a header, NOT an actual HTTP request header (real
+    header forwarding is a separate, disabled-by-default proxy setting that
+    populates a different field entirely — confirmed against the proxy's own
+    source rather than assumed, task 8.4)."""
+    metadata = {
+        k: kwargs[k]
+        for k in ("trace_id", "agent_id", "user_id", "dept_id")
+        if kwargs.get(k) is not None
+    }
+    if kwargs.pop("redact_langfuse", False):
+        # litellm's check is `is not True` (identity, not truthy) — a JSON
+        # string "true" would NOT satisfy it; must be the real boolean.
+        metadata["headers"] = {"litellm-enable-message-redaction": True}
+    return metadata
+
+
 class ProxyTransport:
     """Async transport that POSTs chat completions to the LiteLLM proxy."""
 
@@ -34,12 +56,7 @@ class ProxyTransport:
         """Send a completion; raise for a non-2xx so the client maps it to GatewayError."""
         url = f"{self._base_url}/chat/completions"
         headers = {"Authorization": f"Bearer {self._master_key}"}
-
-        metadata = {
-            k: kwargs[k]
-            for k in ("trace_id", "agent_id", "user_id", "dept_id")
-            if kwargs.get(k) is not None
-        }
+        metadata = _build_metadata(kwargs)
         payload: dict[str, Any] = {"model": model, "messages": messages}
         for passthrough in ("max_tokens", "temperature", "tools", "response_format"):
             if passthrough in kwargs:
@@ -61,11 +78,7 @@ class ProxyTransport:
         headers = {"Authorization": f"Bearer {self._master_key}"}
         payload: dict[str, Any] = {"model": model, "input": input}
 
-        metadata = {
-            k: kwargs[k]
-            for k in ("trace_id", "agent_id", "user_id", "dept_id")
-            if kwargs.get(k) is not None
-        }
+        metadata = _build_metadata(kwargs)
         if metadata:
             payload["metadata"] = metadata
 
@@ -85,11 +98,7 @@ class ProxyTransport:
         url = f"{self._base_url}/chat/completions"
         headers = {"Authorization": f"Bearer {self._master_key}"}
 
-        metadata = {
-            k: kwargs[k]
-            for k in ("trace_id", "agent_id", "user_id", "dept_id")
-            if kwargs.get(k) is not None
-        }
+        metadata = _build_metadata(kwargs)
         payload: dict[str, Any] = {
             "model": model,
             "messages": messages,

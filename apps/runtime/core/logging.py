@@ -26,6 +26,7 @@ import os
 import sys
 import threading
 import time
+import urllib.parse
 import urllib.request
 from typing import Any
 
@@ -63,6 +64,13 @@ class LokiPushHandler(logging.Handler):
 
     def __init__(self, *, loki_url: str, service: str, timeout: float = 2.0) -> None:
         super().__init__()
+        # FLEET_LOKI_URL is operator-supplied, so pin the scheme before it ever
+        # reaches urlopen: urllib honours file:/ (and other) schemes, which would
+        # turn a misconfigured env var into a local-file read rather than an
+        # obvious connection error (bandit B310).
+        scheme = urllib.parse.urlparse(loki_url).scheme
+        if scheme not in ("http", "https"):
+            raise ValueError(f"FLEET_LOKI_URL must be http:// or https://, got {scheme!r}")
         self._url = f"{loki_url.rstrip('/')}/loki/api/v1/push"
         self._service = service
         self._timeout = timeout
@@ -93,7 +101,9 @@ class LokiPushHandler(logging.Handler):
 
     def _send(self, req: urllib.request.Request) -> None:
         try:
-            urllib.request.urlopen(req, timeout=self._timeout)
+            # nosec B310 — the scheme is pinned to http/https in __init__, so a
+            # file:/ or custom-scheme URL can never reach this call.
+            urllib.request.urlopen(req, timeout=self._timeout)  # nosec B310
         except Exception:  # noqa: BLE001 — best-effort; stdout already has the line
             pass
 

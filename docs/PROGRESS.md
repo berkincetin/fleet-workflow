@@ -792,3 +792,20 @@ Verified (final):
 Notes:
 - Sprint 8 (8.1–8.5) is feature-complete. Remaining close-out per protocol step 7: sprint report, graph refresh, commit + PR.
 - The 4 flaky integration tests remain a known, pre-existing issue worth a dedicated fix later (they share a fixed-literal-content / async-ingest-polling pattern); not addressed here to keep this sprint's diff scoped.
+
+## 2026-08-15 — Sprint 8 close: graph refresh, PR #12, CI fixes — DONE
+
+Built: no feature code. Sprint close per protocol step 7 (report → graph → commit/PR), plus two defects the close itself surfaced.
+
+Verified:
+- **Knowledge graph refreshed** (`/graphify . --update`): 151 changed files (128 code + 23 docs) re-extracted → **3832 nodes, 6913 edges, 331 communities** (was 3628/6898/319). Health check clean apart from 1 self-loop edge (noted, not corrective — graph is usable). Cost this run: 243,862 input / 76,978 output tokens.
+- **PR #12 opened** against `main` from `feat/sprint-8-kvkk-lane`.
+- **CI green after two fixes below:** lint ✅, unit ✅, security ✅ (integration + build-image running at time of writing).
+
+Issues (symptom → root cause → resolution):
+- **`git push` was blocked by the `pre-push` hook: 4 failures in `test_hr_extractor.py`.** Root cause was mine, and self-inflicted an hour earlier: when converting a `%`-formatted test string to an f-string to satisfy ruff's `UP031`, I escaped the *opening* brace (`{{`) but left the closing `}}` on the **second**, non-f-string line — where `}}` is two literal characters, not an escape. Every parametrized case then fed the extractor JSON with a trailing `}`, raising `ExtractionParseError`. I had run the full unit suite *before* that ruff fix and not after, so it went unnoticed until the hook caught it. Fixed to a single `}`; 441 passed. **The pre-push hook did exactly its job** — this is the failure mode it exists for.
+- **CI `security` job failed: bandit `B310` (Medium) on `core/logging.py`'s `urllib.request.urlopen`.** `-ll` fails the build at Medium+. The warning was legitimate, not noise: `FLEET_LOKI_URL` is operator-supplied and its scheme was never validated, so a misconfigured env var (`file:/...`) would have urllib perform a **local file read** instead of failing with an obvious connection error. Fixed by *closing the actual risk* rather than silencing the check — the scheme is now pinned to http/https in `LokiPushHandler.__init__`, raising `ValueError` otherwise. Bandit still flags the call site (static analysis cannot see the constructor's guard), so the `# nosec B310` added there is a justified, documented claim rather than a blanket suppression. Bandit now exits 0 with Medium: 0 / High: 0.
+
+Notes:
+- `.claude/settings.json` (auto-added permission entries from this session) and `docs/SUNUM_OZETI.md` (user's separate presentation work) were deliberately left **uncommitted** — neither belongs to Sprint 8.
+- Sprint 8 is complete: 8.1–8.5 all DONE, report at `docs/reports/sprint-8.md`, graph refreshed, PR #12 open. Merge waits on CI, per the branch convention (no direct pushes to `main`).

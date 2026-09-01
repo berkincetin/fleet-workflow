@@ -747,3 +747,48 @@ Result: **62 passed, 5 failed** in 5m33s. All five triaged by re-running in isol
 - `test_pii_logging_masked_live` — **passes in isolation** (`1 passed in 6.38s`); the failing assertion is the Langfuse-trace one, which the 8.1-8.4 entry already documented as timing-sensitive (Langfuse ingests asynchronously and the redaction is a fire-and-forget task). Same known flake under full-suite load, not an 8.5 regression. Notably its captured stdout shows masking working correctly: `"content": "My contact email is [EMAIL], please note it."`
 
 Net: 8.5 introduced exactly one integration-suite break, and it is a stale hardcoded count in an unrelated test rather than a defect in the HR feature.
+
+## 2026-08-15 — 8.5 fixes (all four decisions delegated to Claude) — IN PROGRESS
+
+User handed the four open decisions over ("işi tamamen sana bırakıyorum") and asked for the sprint to be closed. Decisions taken and applied:
+
+1. **Fixture renderer bug → FIXED (real bug).** `evals/synthetic_images.py`: `size` now defaults to `None` and the canvas height is derived from the line count (`_MARGIN * 2 + len(lines) * line_height`) instead of a fixed `(900, 260)` that clipped every 6th line. Explicit `size=` callers are still honoured. Verified: all 8 extraction + 2 schema_exclusion CVs now render at 328/424px and the `Yetenekler:` line reaches OCR in **10/10** (was 0/8).
+2. **`+`→`*` OCR artefact → FIXED in the extractor, not the dataset.** Reasoning: a real scanned CV hits the same Tesseract behaviour, so loosening the eval assertion would leave the *product* storing a wrong phone number and merely hide it. Added `_normalize_phone()` in `agents/hr_agent/extractor.py`, deliberately narrow (`^\s*\*(?=\d)` — only a leading `*` immediately followed by a digit) so an unrelated `*` is never touched.
+3. **Translation → prompt fixed.** `_SYSTEM_PROMPT` gained an explicit "transcribe in the CV's own language, never translate" rule naming the observed `Fleet Lojistik`→`Fleet Logistics` failure, and stating that the English examples illustrate JSON *shape*, not target language. Per rule 5 this is a prompt change, so the eval pass-rate is re-measured below and belongs in the PR description.
+4. **Timeout → documented + set, default unchanged.** `FLEET_LITELLM_TIMEOUT=300` added to `.env.example` (with the measured 26-39s rationale) and to the local `.env`. The 60s **default stays** in `factory.py`: a genuinely stuck *cloud* call should not hang for five minutes; the local lane opts in explicitly. Note for future sessions: host-run evals do not read `.env` (that file carries compose-internal hostnames like `host.docker.internal`), so local-lane eval runs still need `FLEET_LITELLM_TIMEOUT=300` exported on the command line.
+
+Also fixed, and required by rule 9:
+- **`tests/integration/test_observability_admin_router_live.py`** — the stale `assert len(body["by_agent"]) == 4` now derives from `fleet_api.seed._DEMO_AGENTS`, so seeding a new demo agent can never break an unrelated cost-summary test again.
+- **`tests/unit/test_hr_extractor.py`** — 6 new cases: phone normalisation (parametrized over the real artefact, an already-correct number, a no-marker number and empty), a narrowness guard proving `*ext. 42` survives untouched, and an assertion that the no-translate rule stays in the prompt.
+- **`tests/integration/test_hr_agent_e2e_live.py` (new)** — the missing live flow test. Full round-trip through the real app: `builder` POSTs a rendered CV to `/v1/hr-agent/runs` → real Tesseract OCR + real local-Qwen extraction → pending Approval with `action == "hr.shortlist_draft"`; `approver` approves. A second test proves the reject path leaves nothing pending. The CV deliberately carries a birthdate and gender on the page, and the test asserts neither reaches the approval payload — the schema-exclusion guardrail proven end-to-end, not just at unit level.
+
+Issues (symptom → root cause → resolution):
+- Second eval attempt died with `ConnectionRefusedError [WinError 1225]` from asyncpg. First hypothesis (my own error) was that sourcing `.env` into the shell injected compose-internal hostnames; re-running with a clean environment reproduced it, disproving that. Actual cause: **every container was gone** (`docker ps` empty, `compose ps` empty) — Docker Desktop had restarted and taken the volumes with it, so the database was empty (`relation "agents" does not exist`). Resolved by `compose up -d` + `alembic upgrade head` + `fleet_api.seed` + `fleet_rag.seed_docs`; HR seed state re-verified (hr_agent pii/cache-off, hr_onboarding internal/cache-on → collection 4, `hr-policies` holding 2 chunks). The `.env` observation still stands as a real caveat and is recorded in decision 4.
+- `ruff` flagged `UP031` on a `%`-formatted test string I had just written; converted to an f-string. RESOLVED.
+
+**Eval result after the four fixes: `hr_agent` 100% (15/15), threshold 0.90 — task 8.5's headline AC now PASSES** (was 47%). Every case type green: 8/8 extraction, 2/2 schema_exclusion, 5/5 qa_grounding. All three diagnosed root causes were correct — no further extraction failures remain.
+
+Independently confirmed before the full eval, with a single direct proxy call against the real local model, that the prompt fix works: a TR CV containing "Veri Analisti, Fleet Lojistik" came back as `"Veri Analisti, Fleet Lojistik"` (previously "Fleet Logistics"), and the raw model output still carried `*90 555 111 2233` — showing the `*`→`+` correction genuinely happens in `_normalize_phone`, not by the model silently behaving differently.
+
+**Live e2e: `tests/integration/test_hr_agent_e2e_live.py` — 2 passed (104s).** Both HITL paths proven against the real stack, and the DB rows are the evidence:
+- `approvals` row: `action=hr.shortlist_draft`, `status=approved`, payload `{"full_name": "Zeynep Kaya", "email": "zeynep.kaya@example.com", "phone": "+90 555 987 6543", "education": ["BSc Bilgisayar Muhendisligi, ITU, 2018"], "experience": ["Backend Gelistirici, Fleet Lojistik, 2018-2023"], "skills": ["Python", "PostgreSQL", "Docker"]}` — a second row reached `rejected`.
+- That single payload independently confirms all three fixes plus the guardrail, on real data: the CV page carried `Dogum Tarihi: 1990-04-12` and `Cinsiyet: Kadin` and OCR read them, yet **neither reaches the payload** (schema exclusion, end-to-end); the phone is `+90` where OCR produced `*90` (fix 2); `Fleet Lojistik` / `Bilgisayar Muhendisligi` stayed Turkish (fix 3); the skills line is populated at all (fix 1 — it used to be clipped off the canvas).
+
+Issues (symptom → root cause → resolution):
+- **The new e2e test first reported `2 skipped`, which was misleading — it was actually failing.** `pytest -q` collapsed the module-level error into a skip-looking line; `-rs` revealed `psycopg.errors.UndefinedTable: relation "checkpoints" does not exist`. Root cause: LangGraph's checkpointer tables are created by `AsyncPostgresSaver.setup()`, **not** by Alembic, and repo-wide the only caller was a single integration test (`test_runtime_graph_live.py:81`). A fresh database therefore has no `checkpoints` table, and every HITL agent (dev/invoice/hr) breaks on its first checkpoint write — it only ever worked because that one test had happened to run first. The Docker Desktop restart that wiped the volumes exposed it. **Fixed properly rather than worked around:** new `apps/api/fleet_api/checkpointer_setup.py` (idempotent; handles the Windows ProactorEventLoop caveat) wired into `make migrate`, so schema setup is one step for every fresh stack. Pre-existing latent gap, not introduced by 8.5 — but 8.5 is what surfaced it.
+- Lesson for future sessions: prefer `pytest -rs`/`-rA` on live-integration modules; a bare `-q` "skipped" can hide a collection-time failure.
+
+## 2026-08-15 — 8.5 close + Sprint 8 gate — DONE
+
+All four delegated decisions applied, all of task 8.5's AC now met, sprint gate run green.
+
+Verified (final):
+- **`make eval AGENT=hr_agent`: 100% (15/15)** vs. the 0.90 threshold — 8/8 extraction, 2/2 schema_exclusion, 5/5 qa_grounding.
+- **`tests/integration/test_hr_agent_e2e_live.py`: 2 passed** — approve and reject HITL paths, real OCR + real local-Qwen extraction, against the live stack.
+- **Unit: 441 passed** (was 435; +6 from the phone-normalisation/no-translate cases).
+- **Integration (full suite, live stack): 65 passed, 4 failed in 8m20s.** The four are `test_rag_ingest_live`, `test_rag_query_live`, `test_rag_pii_collection_live`, `test_pii_logging_masked_live` — **all 4 re-run green in isolation (8 passed in 65s, together with the observability test)**, the same pre-existing full-suite resource-contention/async-ingestion flakiness triaged earlier in this sprint, unrelated to 8.5. Critically, `test_observability_admin_router_live::test_cost_summary_renders_seeded_traffic` — the one genuine 8.5 break — now **passes** in the full suite, confirming the `_DEMO_AGENTS`-derived assertion fix.
+- `ruff check apps evals tests` clean; `mypy apps` 18 errors (unchanged baseline, now across 118 files); web `tsc --noEmit` + `eslint` clean.
+
+Notes:
+- Sprint 8 (8.1–8.5) is feature-complete. Remaining close-out per protocol step 7: sprint report, graph refresh, commit + PR.
+- The 4 flaky integration tests remain a known, pre-existing issue worth a dedicated fix later (they share a fixed-literal-content / async-ingest-polling pattern); not addressed here to keep this sprint's diff scoped.

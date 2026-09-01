@@ -24,6 +24,9 @@ class CurrentUser:
 
     sub: str
     roles: set[str] = field(default_factory=set)
+    # Carried only as far as `get_or_create_user`, which stores its hash — the
+    # raw address is never persisted or logged (TRD §8).
+    email: str | None = None
 
 
 async def _fetch_jwks(url: str) -> dict:
@@ -60,7 +63,7 @@ async def verify_bearer_token(token: str, settings: Settings) -> CurrentUser:
     sub = claims.get("sub")
     if not sub:
         raise UnauthorizedError("token missing sub")
-    return CurrentUser(sub=sub, roles=_extract_roles(claims))
+    return CurrentUser(sub=sub, roles=_extract_roles(claims), email=claims.get("email"))
 
 
 async def get_current_user(
@@ -78,7 +81,7 @@ async def get_current_user(
     if credentials is None or not credentials.credentials:
         raise UnauthorizedError("missing bearer token")
     jwt_user = await verify_bearer_token(credentials.credentials, settings)
-    db_user = await get_or_create_user(session, kc_sub=jwt_user.sub)
+    db_user = await get_or_create_user(session, kc_sub=jwt_user.sub, email=jwt_user.email)
     await seed_roles_from_jwt(session, db_user, jwt_user.roles)
     await session.commit()
     db_roles = await load_roles(session, db_user)

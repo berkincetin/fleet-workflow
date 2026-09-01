@@ -85,3 +85,27 @@ def test_selection_prefers_lowest_sufficient_clearance() -> None:
     # route to the higher-clearance local one (keep cloud lane for non-PII).
     model = select_model(_MODELS, role="reasoning", sensitivity="internal")
     assert model["sensitivity_clearance"] == "internal"
+
+
+async def test_invoice_extraction_resolves_to_the_local_lane() -> None:
+    """Pins the documented behaviour of `invoice_agent` (dept scenario 04).
+
+    The scenario doc once claimed "Claude Sonnet (on redacted text)", but
+    `agents.invoice_agent.graph` calls `extract_invoice_fields` without
+    `redacted=True`, and no cloud model has clearance >= confidential — so
+    extraction has always resolved to the local lane. The doc was corrected to
+    match (2026-09-01); this test is what keeps them from drifting apart again.
+    A future change that genuinely wants cloud reasoning must add the redaction
+    step AND update the doc, and will fail here first.
+    """
+    chosen = select_model(_MODELS, role="reasoning", sensitivity="confidential")
+    assert chosen["name"] == "local-reasoning"
+    assert chosen["sensitivity_clearance"] == "pii"
+
+
+async def test_redaction_downgrade_would_reach_cloud_if_the_agent_ever_opted_in() -> None:
+    """The counterpart: the downgrade rule itself works. Extraction is local
+    because the agent never passes `redacted=True`, not because the mechanism
+    is missing — so this documents exactly what changing that would unlock."""
+    chosen = select_model(_MODELS, role="reasoning", sensitivity="confidential", redacted=True)
+    assert chosen["name"] == "reasoning"

@@ -842,3 +842,25 @@ Issues (symptom → root cause → resolution):
   3. *A connection/pool leak* — **disproved**: Postgres connections stayed flat at 5 for the whole run.
   The actual cause is **CPU-only Ollama contention**, quantified: 4 concurrent `local-reasoning` calls complete in **14s / 31s / 48s / 63s** (near-linear queueing), and a **cold model load costs 20s vs 1s warm** (`/api/ps` shows `bge-m3` and `qwen2.5:7b` both resident, competing). The suite alternates embeddings (RAG tests) and reasoning (HR/invoice tests), so each switch pays a reload; under that accumulated latency aiohttp's timer fires and the proxy returns 500. The three RAG tests each touch the local lane 4–5 times; `test_pii_logging_masked_live` touches it **zero** times, so **that one is a different bug** — the previously-diagnosed Langfuse async-ingestion race, not contention.
   **OPEN — no fix applied yet**, reported per rule 5. This is test-infrastructure fragility on GPU-less hardware, not a product defect: every one of these tests passes in isolation, and hosted CI does not run the local lane at all.
+
+## 2026-09-01 — Flaky integration tests: Ollama tuning applied, partial fix — PARTIAL
+
+Built: `docs/runbooks/local-lane-ollama-tuning.md` (new). Ollama on this machine runs as a **snap inside WSL Ubuntu** (not a Windows service, not the compose stack — found via `ss`/`ps` after the Windows process list came back empty). Configured with `snap set ollama keep-alive=1h num-parallel=1 max-loaded-models=2 load-timeout=10m` + `snap restart`, and **verified the values actually reached the process** by reading `/proc/<pid>/environ`, not just `snap get`.
+
+Verified (measured, before → after):
+- Sequential model alternation, which is what the suite actually does (pytest runs with no xdist): embed→reason→embed was **20s / 12s / 1s**, now **1s / 16s / 1s**; a second warm reasoning call **7s**. `/api/ps` confirms both models stay resident together instead of evicting each other.
+- **Full suite: 5 failed / 64 passed → 4 failed / 65 passed, with zero litellm HTTP 500s** (previously several). `test_hr_agent_e2e_live` — the heaviest local-lane consumer — went green.
+- Unit suite still 450 passed; `ruff` clean.
+
+Issues (symptom → root cause → resolution):
+- **`num-parallel=1` did NOT help concurrency and made the tail worse**: 4 concurrent calls went from 14/31/48/63s to 22/30/50/85s, because requests now strictly queue. Kept anyway (this suite is sequential, so it never pays that cost) but recorded honestly in the runbook so nobody later reads it as a throughput win. The real gain is `keep-alive` + `max-loaded-models` removing the swap cost.
+- **The remaining 4 failures have a DIFFERENT root cause than the contention one — my earlier diagnosis lumped all five together and was wrong.** They now fail with **no HTTP 500 in the proxy log at all**. Narrowing so far, all reproduced or excluded by measurement rather than assumption:
+  - Each fails in the full suite, passes alone.
+  - `test_rag_{stores,ingest,query,pii_collection}` run **together**: 5 passed. Adding the two modules that immediately precede them (`test_pii_logging_masked_live`, `test_prometheus_alert_rules_live`): 6 passed. So it is not a RAG-module interaction, nor an interaction with their immediate predecessors.
+  - A `-x` run surfaced the most informative signal: the first failure was not in a RAG test at all but at **testcontainers setup**, with `ReadTimeoutError: NpipeHTTPConnectionPool(... read timeout=60)` and `docker.errors.APIError: 500` while *removing* a container — i.e. **the Docker daemon itself stalling**, not our code.
+  - Context: 29 containers exist on this machine (many exited, from unrelated projects — rag-demo, projectai, agent_workflow), and several suite modules spin testcontainers up/down. `fleet-dev-n8n-main-1` was also found exited, though no RAG test uses it.
+  **Current working theory: cumulative Docker Desktop pressure on Windows named-pipe transport**, not a product defect and not the local lane. **OPEN** — not fixed, and deliberately not "fixed" by retries, which would mask a real regression. Bisecting further costs ~12 min per run; parking it here with the evidence recorded rather than burning the sprint budget on it.
+
+Notes:
+- Every one of these tests passes in isolation, and hosted CI (which does not run the local lane and starts from a clean Docker) is unaffected — PR #12's integration job was green.
+- Cleaning up the unrelated exited containers is the obvious next experiment, but they belong to the user's other projects, so I did not remove them.

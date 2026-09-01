@@ -9,19 +9,36 @@ waiting on token refresh.
 from __future__ import annotations
 
 from fleet_api.models import Role, User
+from fleet_api.privacy import subject_hash
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def get_or_create_user(
-    session: AsyncSession, *, kc_sub: str, display_name: str | None = None
+    session: AsyncSession, *, kc_sub: str, display_name: str | None = None, email: str | None = None
 ) -> User:
     """First-login provisioning: a verified Keycloak principal always gets an
-    internal users row, rather than requiring every user to be pre-seeded."""
+    internal users row, rather than requiring every user to be pre-seeded.
+
+    `email_hash` stores `subject_hash(email)` — never the address itself (TRD
+    §8). It was written as `""` unconditionally from Sprint 1 until this fix,
+    so the column's whole KVKK-pseudonymisation purpose was unmet; an erasure
+    request naming an email had nothing to match on. Still `""` when the token
+    carries no `email` claim, since the column is NOT NULL.
+    """
     row = (await session.execute(select(User).where(User.kc_sub == kc_sub))).scalar_one_or_none()
     if row is not None:
+        # Backfill on next login for rows provisioned before this fix, so the
+        # hash arrives without a migration over pseudonymous data.
+        if not row.email_hash and email:
+            row.email_hash = subject_hash(email)
+            await session.flush()
         return row
-    row = User(kc_sub=kc_sub, email_hash="", display_name=display_name or kc_sub)
+    row = User(
+        kc_sub=kc_sub,
+        email_hash=subject_hash(email) if email else "",
+        display_name=display_name or kc_sub,
+    )
     session.add(row)
     await session.flush()
     return row

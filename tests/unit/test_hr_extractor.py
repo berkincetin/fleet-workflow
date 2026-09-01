@@ -144,7 +144,7 @@ async def test_leading_star_from_ocr_is_normalized_to_plus(raw: str, expected: s
     stored profile must hold the real number for real scans, not just for evals."""
     llm = _FakeLLM(
         f'{{"full_name": "A", "email": "", "phone": "{raw}", '
-        '"education": [], "experience": [], "skills": []}}'
+        '"education": [], "experience": [], "skills": []}'
     )
     profile = await extract_cv_profile(ocr_text="x", llm_client=llm)
     assert profile.phone == expected

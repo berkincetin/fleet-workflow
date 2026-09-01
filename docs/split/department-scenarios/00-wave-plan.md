@@ -19,7 +19,7 @@
 | 1 | Support Copilot | Customer Service | **0 (task 4.4)** | internal | cloud | RAG, semantic cache | done | live |
 | 2 | Self-Service Analytics | Data | **0 (task 5.2)** | internal | cloud | text-to-SQL, pg_ro | done | live |
 | 3 | Dev Agent | IT / Engineering | **0 (task 5.5)** | internal | cloud | MCP jira/github/slack, HITL | done | live |
-| 4 | Invoice & Reconciliation | Finance | **0 (task 6.3)** | confidential | local OCR + cloud reasoning on redacted | OCR, n8n, approval | done | live |
+| 4 | Invoice & Reconciliation | Finance | **0 (task 6.3)** | confidential | local OCR + local reasoning (see §4 note) | OCR, n8n, approval | done | live |
 | 5 | HR Talent & Onboarding | HR | **0 partial (Sprint 8) → 1** | pii / internal | local (CVs) + cloud (policies) | local lane, OCR | task 8.5 | partial → coming soon |
 | 6 | Listing Quality | Listings Ops | 1 | internal | cloud | multimodal, n8n triggers | task 11.1 | coming soon |
 | 7 | Vehicle Intake | Trink sat! | 1 | confidential | mixed | multimodal, OCR, SQL | task 11.2 | coming soon |

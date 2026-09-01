@@ -127,3 +127,45 @@ async def test_extract_cv_profile_drops_protected_attributes_the_model_still_emi
     assert not hasattr(profile, "gender")
     assert not hasattr(profile, "photo_description")
     assert profile.full_name == "Ayse Yilmaz"
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("*90 555 111 2233", "+90 555 111 2233"),  # the real task 8.5 OCR artefact
+        ("+90 555 111 2233", "+90 555 111 2233"),  # already correct: untouched
+        ("0555 111 2233", "0555 111 2233"),  # no leading marker: untouched
+        ("", ""),
+    ],
+)
+async def test_leading_star_from_ocr_is_normalized_to_plus(raw: str, expected: str) -> None:
+    """Tesseract reads a phone's leading '+' as '*' on scans (task 8.5: 4/8 eval
+    CVs). The model transcribes faithfully, so the extractor corrects it — the
+    stored profile must hold the real number for real scans, not just for evals."""
+    llm = _FakeLLM(
+        f'{{"full_name": "A", "email": "", "phone": "{raw}", '
+        '"education": [], "experience": [], "skills": []}}'
+    )
+    profile = await extract_cv_profile(ocr_text="x", llm_client=llm)
+    assert profile.phone == expected
+
+
+async def test_star_is_only_stripped_when_it_leads_a_digit() -> None:
+    """Narrowness guard: a '*' that isn't the leading +-artefact must survive,
+    so the fix can never corrupt an unrelated value."""
+    llm = _FakeLLM(
+        '{"full_name": "A", "email": "", "phone": "*ext. 42", '
+        '"education": [], "experience": [], "skills": []}'
+    )
+    profile = await extract_cv_profile(ocr_text="x", llm_client=llm)
+    assert profile.phone == "*ext. 42"
+
+
+async def test_prompt_instructs_the_model_to_preserve_source_language() -> None:
+    """Task 8.5: the model translated 'Fleet Lojistik' -> 'Fleet Logistics'
+    because the prompt's own examples are English. The no-translate rule is
+    what prevents that data corruption, so assert it stays in the prompt."""
+    llm = _FakeLLM(_VALID_JSON)
+    await extract_cv_profile(ocr_text="cv text", llm_client=llm)
+    system_prompt = str(llm.calls[0][0]["content"])
+    assert "never" in system_prompt.lower() and "translate" in system_prompt.lower()

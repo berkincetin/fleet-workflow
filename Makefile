@@ -23,8 +23,9 @@ test: ## unit + integration (testcontainers)
 	uv run pytest tests/unit -q
 	uv run pytest tests/integration -q
 
-migrate: ## apply DB migrations (alembic upgrade head)
+migrate: ## apply DB migrations (alembic upgrade head) + LangGraph checkpointer tables
 	uv run alembic -c infra/migrations/alembic.ini upgrade head
+	uv run python -m fleet_api.checkpointer_setup
 
 seed: ## load synthetic data + analytics fixture views
 	uv run python -m fleet_api.seed

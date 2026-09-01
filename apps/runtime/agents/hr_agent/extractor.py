@@ -44,6 +44,11 @@ Do not include age, date of birth, gender, marital status, or any photo/appearan
 description in your response, even if present in the CV text — these fields are not
 part of the schema and must be omitted entirely.
 If a field cannot be determined from the text, use an empty string (or empty list).
+
+Transcribe every value in the CV's own language exactly as written — never
+translate. Turkish institution, employer, and job titles must stay Turkish
+(e.g. 'Fleet Lojistik' stays 'Fleet Lojistik', never 'Fleet Logistics'); the
+example values above are illustrations of the JSON shape, not a target language.
 """
 
 _CODE_FENCE_RE = re.compile(r"^```(?:json)?\s*(.*?)\s*```$", re.DOTALL)
@@ -52,6 +57,20 @@ _CODE_FENCE_RE = re.compile(r"^```(?:json)?\s*(.*?)\s*```$", re.DOTALL)
 def _strip_code_fence(text: str) -> str:
     match = _CODE_FENCE_RE.match(text.strip())
     return match.group(1) if match else text
+
+
+# Tesseract reliably reads a phone number's leading "+" as "*" on scanned
+# documents (task 8.5: "+90 555 111 2233" -> "*90 555 111 2233" in 4/8 eval
+# CVs). The model transcribes faithfully, so the artefact reaches the profile
+# unless corrected here. Deliberately narrow: only a leading *, and only when
+# what follows is a digit, so a genuine "*" elsewhere is never touched. Fixing
+# it in the extractor rather than loosening the eval's assertion keeps the
+# stored profile correct for real scans too, not just for the eval.
+_LEADING_STAR_PHONE_RE = re.compile(r"^\s*\*(?=\d)")
+
+
+def _normalize_phone(phone: str) -> str:
+    return _LEADING_STAR_PHONE_RE.sub("+", phone).strip()
 
 
 class ExtractionParseError(Exception):
@@ -103,13 +122,15 @@ async def extract_cv_profile(
             raise ExtractionParseError(f"expected a list, got {value!r}")
         return [str(v) for v in value]
 
+    phone = _normalize_phone(str(parsed["phone"]))
+
     # Reading only the six allowed keys below is the enforcement mechanism:
     # any other key the model emitted (age, gender, photo, birthdate, ...) is
     # silently dropped here, never reaching the returned CvProfile.
     return CvProfile(
         full_name=str(parsed["full_name"]),
         email=str(parsed["email"]),
-        phone=str(parsed["phone"]),
+        phone=phone,
         education=_str_list(parsed["education"]),
         experience=_str_list(parsed["experience"]),
         skills=_str_list(parsed["skills"]),

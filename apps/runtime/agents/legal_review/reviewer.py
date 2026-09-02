@@ -53,6 +53,11 @@ it matches SAPMA, report it, citing that excerpt's number and quoting the \
 offending sentence VERBATIM from the contract. Never report a clause just because \
 the excerpt mentions a risk — the contract text itself has to match the SAPMA.
 
+Go through EVERY excerpt before you answer, and do not stop at the first conflict \
+you find — a contract usually breaches more than one rule, and the findings list \
+is expected to hold one entry per conflicting clause. A review that reports one \
+problem and misses the rest is worse than useless to counsel.
+
 Risk level must be the excerpt's RISK value, one of: {", ".join(RISK_LEVELS)}.
 
 Respond with exactly one JSON object and nothing else — no markdown, no commentary:

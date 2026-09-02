@@ -107,7 +107,7 @@ a legal first pass.
 
 ### Verified
 
-- `make eval AGENT=legal_review`: see the run log below; threshold 0.85.
+- `make eval AGENT=legal_review`: **100% (13/13)**, threshold 0.85.
   13 cases: 6 planted risky clauses (unlimited liability, missing KVKK annex,
   silent auto-renewal, one-sided termination, foreign jurisdiction/arbitration,
   pre-existing IP assignment), 4 clean-contract false-alarm controls, 2 schema
@@ -287,7 +287,37 @@ gate section.
 
 ## Gate
 
-_(filled in at close — see PROGRESS.md entries for the per-task record)_
+| Check | Result |
+|---|---|
+| `ruff check .` | clean |
+| `mypy apps` | 18 errors, **all pre-existing baseline**, 0 new |
+| `pnpm -r lint` (eslint) | clean |
+| `pytest tests/unit` | **508 passed** (was 475 before this sprint) |
+| `pytest tests/security` | **67 passed** (was 55; +12 from the legal_review injection corpus) |
+| `make eval AGENT=dealer_onboarding` | **100%** (13/13, threshold 0.85) |
+| `make eval AGENT=legal_review` | **100%** (13/13, threshold 0.85) |
+| `make eval AGENT=hr_agent` | **93%** (threshold 0.90) — local-lane regression check |
+| `make eval AGENT=support_copilot` | **100%** (threshold 0.90) — post-re-ingest check |
+| `make eval AGENT=invoice_agent` | **89%** (threshold 0.90) — **fails, pre-existing**, see below |
+| Integration (live stack) | new agents' e2e green; see the per-task Verified sections |
+
+### The one red gate: `invoice_agent` at 89%
+
+Two cases fail, both the same shape: the fixtures whose vendor names carry
+Turkish diacritics — `Boğaziçi Danışmanlık` and `Sakarya Matbaacılık` — OCR out
+of the rendered invoice as `Bogazici Danigmanlik` / `Sakarya Matbaacilik`, so the
+agent's vendor cross-check reports a mismatch against the PO fixture. The other
+ten extraction cases, whose vendors are ASCII-safe, all pass.
+
+This is diacritic fidelity in the rendered-image OCR path. It predates this
+sprint, and nothing in Sprint 12 touches invoice extraction — its lane, model
+and prompt are unchanged, and the local model is back on the same 7B it has run
+since Sprint 8. **It was deliberately not fixed here.** Loosening another
+agent's vendor matcher (or re-rendering its fixtures) is outside tasks 12.1/12.2
+and deserves its own decision: the honest options are a diacritic-folding vendor
+comparison, better fixture rendering, or accepting a lower threshold, and they
+have different implications for how much a real vendor-name mismatch is allowed
+to slip through.
 
 ---
 

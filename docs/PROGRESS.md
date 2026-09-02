@@ -973,3 +973,12 @@ Verified (live):
 Open / remaining for close:
 - **v0.1.0 tag** not pushed yet — it triggers a GHCR image push (outward-facing), holding for user confirmation. AC "tag pipeline all green" verifies once tagged.
 - Screenshots/GIFs for the deck: web UI is live on :3000 for capture; not auto-generated headlessly.
+
+## 2026-09-02 — Sprint 10 close (report, gate, PR) — DONE (tag deferred)
+
+Sprint 10 close per protocol step 7 (report → gate → commit/PR). v0.1.0 tag deferred by user decision.
+
+Verified: `ruff` clean; unit+security 494 passed; demo dry-run 16s (<15min AC). No app-logic changes, integration unaffected.
+Report: docs/reports/sprint-10.md. Graph refresh: graphify installed but loads next session (skill not in this session's registry) — deferred.
+PR: opening against main; merges after CI green per branch convention.
+Open: v0.1.0 tag (triggers GHCR publish) — user to cut later; screenshots/GIFs for deck (UI live on :3000).

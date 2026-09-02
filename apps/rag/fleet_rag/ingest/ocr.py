@@ -25,6 +25,9 @@ from __future__ import annotations
 
 import base64
 import io
+import os
+import shutil
+import sys
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -52,11 +55,37 @@ _PROMPT = (
 _LOCAL_ONLY_FLOOR = Sensitivity.CONFIDENTIAL
 
 
+_WINDOWS_TESSERACT_DEFAULT = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+
+
+def _resolve_tesseract_cmd() -> str | None:
+    """Locate the tesseract binary when it is installed but not on PATH.
+
+    The Windows installer does not add itself to PATH, so every shell that
+    forgets to export it fails the local-OCR evals with a bare
+    `TesseractNotFoundError` — hit in Sprint 11 and twice more in Sprint 12.
+    `FLEET_TESSERACT_CMD` wins if set; otherwise the standard Windows install
+    location is used when it exists. Returns None on a PATH-based install, in
+    which case pytesseract's own default is left alone.
+    """
+    explicit = os.environ.get("FLEET_TESSERACT_CMD")
+    if explicit:
+        return explicit
+    if sys.platform == "win32" and os.path.exists(_WINDOWS_TESSERACT_DEFAULT):
+        return _WINDOWS_TESSERACT_DEFAULT
+    return None
+
+
 def tesseract_ocr(image_bytes: bytes) -> str:
     """Real local OCR (pytesseract, tur+eng) — the local-lane implementation
     every caller should pass as `tesseract_fn` in production."""
     import pytesseract
     from PIL import Image
+
+    if shutil.which("tesseract") is None:
+        resolved = _resolve_tesseract_cmd()
+        if resolved is not None:
+            pytesseract.pytesseract.tesseract_cmd = resolved
 
     image = Image.open(io.BytesIO(image_bytes))
     text: str = pytesseract.image_to_string(image, lang="tur+eng")

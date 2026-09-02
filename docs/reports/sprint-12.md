@@ -283,8 +283,8 @@ Audited by sensitivity:
 | `vehicle_intake` | `confidential` + `redacted=True` → internal | cloud | no |
 | others | `internal` | cloud | no |
 
-`hr_agent` and `invoice_agent` evals were re-run on the 14B — results in the
-gate section.
+`hr_agent`, `invoice_agent` and `support_copilot` were all re-evaluated after
+the lane settled back on the 7B — results in the gate section.
 
 ---
 

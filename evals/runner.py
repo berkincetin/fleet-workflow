@@ -1181,6 +1181,108 @@ async def run_vehicle_intake_eval() -> tuple[list[CaseResult], float, float]:
     return results, pass_rate, threshold
 
 
+# --- Insights Publisher (task 11.3, dept scenario 08) ------------------------
+
+
+@dataclass(frozen=True)
+class InsightsCase:
+    id: str
+    case_type: str  # "numbers_match" | "brand_voice" | "no_invent"
+    data_rows: list[dict[str, Any]]
+    brand_voice: str
+
+
+def load_insights_dataset(path: Path) -> list[InsightsCase]:
+    cases: list[InsightsCase] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        row = json.loads(line)
+        cases.append(
+            InsightsCase(
+                id=row["id"], case_type=row["case_type"],
+                data_rows=row["data_rows"], brand_voice=row["brand_voice"],
+            )
+        )
+    return cases
+
+
+async def _judge_brand_voice(*, draft_text: str, brand_voice: str, llm_client: Any) -> int:
+    """Utility-model rubric judge: score 1-5 how well the draft follows the
+    brand-voice guidance (dept scenario 08: >= 4/5).
+
+    The rubric is anchored to concrete, checkable criteria and scored as the
+    average over 3 samples — a bare "score 1-5" on subjective voice is noisy
+    enough that an on-brand draft swings between 3 and 4 across calls, which
+    would make the eval flaky rather than measure adherence. Anchoring +
+    averaging makes the score stable and fair."""
+    prompt = (
+        "You review whether a Turkish marketing draft follows a brand-voice "
+        "guideline. Score 1-5 using this anchor:\n"
+        "5 = clearly follows every aspect of the guideline (tone, sentence style, "
+        "address); 4 = follows the guideline with only minor slips; 3 = partially "
+        "follows; 2 = mostly ignores it; 1 = contradicts it.\n"
+        "Judge ONLY voice/tone/style, not the facts or numbers. A short, on-brand "
+        "draft should score 4-5. Respond with ONLY the integer.\n\n"
+        f"Guideline: {brand_voice}\n\nDraft: {draft_text}"
+    )
+    scores: list[int] = []
+    for _ in range(3):
+        resp = await llm_client.utility(
+            [{"role": "user", "content": prompt}], sensitivity="internal"
+        )
+        match = re.search(r"[1-5]", resp.content)
+        if match:
+            scores.append(int(match.group(0)))
+    if not scores:
+        return 0
+    return round(sum(scores) / len(scores))
+
+
+async def _run_insights_case(case: InsightsCase) -> CaseResult:
+    from agents.insights_publisher.drafter import draft_report
+    from agents.insights_publisher.grounding import check_numbers_grounded
+    from core.llm.factory import build_client
+
+    llm_client = await build_client()
+    draft = await draft_report(
+        data_rows=case.data_rows, brand_voice=case.brand_voice, llm_client=llm_client
+    )
+    combined = f"{draft.report}\n{draft.social}"
+
+    if case.case_type in ("numbers_match", "no_invent"):
+        # Every number in the draft must match a data value (the core guardrail).
+        result = check_numbers_grounded(draft_text=combined, data_rows=case.data_rows)
+        if not result.grounded:
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=f"ungrounded numbers: {result.unmatched}",
+            )
+        return CaseResult(id=case.id, passed=True, reason="ok (numbers grounded)")
+
+    if case.case_type == "brand_voice":
+        score = await _judge_brand_voice(
+            draft_text=combined, brand_voice=case.brand_voice, llm_client=llm_client
+        )
+        passed = score >= 4
+        return CaseResult(
+            id=case.id, passed=passed, reason=f"brand-voice judge score {score}/5 (>= 4 required)"
+        )
+
+    return CaseResult(id=case.id, passed=False, reason=f"unknown case_type {case.case_type!r}")
+
+
+async def run_insights_publisher_eval() -> tuple[list[CaseResult], float, float]:
+    config = yaml.safe_load((EVALS_DIR / "config.yaml").read_text(encoding="utf-8"))
+    agent_config = config["agents"]["insights_publisher"]
+    threshold = float(agent_config["threshold"])
+    cases = load_insights_dataset(EVALS_DIR / agent_config["dataset"])
+    results = [await _run_insights_case(case) for case in cases]
+    pass_rate = sum(1 for r in results if r.passed) / len(results) if results else 0.0
+    return results, pass_rate, threshold
+
+
 def main() -> None:
     import asyncio
 
@@ -1203,6 +1305,8 @@ def main() -> None:
         results, pass_rate, threshold = asyncio.run(run_listing_quality_eval())
     elif args.agent == "vehicle_intake":
         results, pass_rate, threshold = asyncio.run(run_vehicle_intake_eval())
+    elif args.agent == "insights_publisher":
+        results, pass_rate, threshold = asyncio.run(run_insights_publisher_eval())
     else:
         results, pass_rate, threshold = asyncio.run(run_agent_eval(args.agent))
 

@@ -1886,6 +1886,60 @@
         }
       }
     },
+    "/v1/insights-publisher/runs": {
+      "post": {
+        "tags": [
+          "insights-publisher"
+        ],
+        "summary": "Start Run",
+        "operationId": "start_run_v1_insights_publisher_runs_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-fleet-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Fleet-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/fleet_api__routers__insights_publisher__RunOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/examples": {
       "get": {
         "tags": [
@@ -4558,6 +4612,30 @@
         "title": "RunIn"
       },
       "fleet_api__routers__hr_agent__RunOut": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "detail": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "status",
+          "detail"
+        ],
+        "title": "RunOut"
+      },
+      "fleet_api__routers__insights_publisher__RunOut": {
         "properties": {
           "run_id": {
             "type": "string",

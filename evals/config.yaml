@@ -28,3 +28,9 @@ agents:
     # OCR-level noise on long VINs is expected; the guardrails (missing→incomplete,
     # band-contains-median, redaction) are the hard asserts.
     threshold: 0.85
+  insights_publisher:
+    dataset: datasets/insights_publisher.jsonl
+    # 0.90: numbers-match + no-invent are deterministic hard checks; brand-voice
+    # is a utility-model rubric judge (>= 4/5). The drafter is told to use only
+    # the provided numbers, so grounding should be near-perfect.
+    threshold: 0.90

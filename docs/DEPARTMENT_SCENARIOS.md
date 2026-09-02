@@ -18,7 +18,7 @@
 | 5 | HR Talent & Onboarding | HR | **0 partial (Sprint 8) → 1** | pii / internal | local (CVs) + cloud (policies) | local lane, OCR | task 8.5 | partial → coming soon |
 | 6 | Listing Quality | Listings Ops | 1 | internal | cloud | multimodal, n8n triggers | task 11.1 | live |
 | 7 | Vehicle Intake | Trink sat! | 1 | confidential | mixed | multimodal, OCR, SQL | task 11.2 | live |
-| 8 | Insights Publisher | Marketing | 1 | internal | cloud | n8n cron, SQL, brand voice | task 11.3 | coming soon |
+| 8 | Insights Publisher | Marketing | 1 | internal | cloud | n8n cron, SQL, brand voice | task 11.3 | live |
 | 9 | Dealer Onboarding | Corporate Sales | 2 | pii | local OCR + approval emails | OCR, email MCP | task 12.1 | coming soon |
 | 10 | Legal Document Review | Legal | 2 | confidential | local | RAG, clause extraction | task 12.2 | coming soon |
 

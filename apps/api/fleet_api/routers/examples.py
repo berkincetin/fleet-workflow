@@ -36,6 +36,7 @@ _REQUIRED_FIELDS: dict[str, set[str]] = {
     "hr_agent": {"id", "candidate_name"},
     "listing_quality": {"id", "model", "color", "description", "price", "segment"},
     "vehicle_intake": {"id", "report_lines", "segment"},
+    "insights_publisher": {"id", "data_rows", "brand_voice"},
 }
 
 

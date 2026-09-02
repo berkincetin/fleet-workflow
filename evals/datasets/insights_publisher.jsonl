@@ -1,0 +1,11 @@
+{"id": "ip-numbers-01", "case_type": "numbers_match", "data_rows": [{"segment": "sedan-2018", "avg_price": 500000}, {"segment": "suv-2020", "avg_price": 800000}], "brand_voice": "Sıcak, güven veren, sade bir dil kullan. Abartıdan kaçın."}
+{"id": "ip-numbers-02", "case_type": "numbers_match", "data_rows": [{"segment": "hatchback-2019", "avg_price": 460000}, {"segment": "sedan-2018", "avg_price": 510000}], "brand_voice": "Kısa, net cümleler. Rakamları öne çıkar."}
+{"id": "ip-numbers-03", "case_type": "numbers_match", "data_rows": [{"month": "Ocak", "index": 1250}, {"month": "Subat", "index": 1310}], "brand_voice": "Profesyonel ve bilgilendirici bir ton."}
+{"id": "ip-numbers-04", "case_type": "numbers_match", "data_rows": [{"segment": "suv-2020", "avg_price": 780000}, {"segment": "suv-2020", "count": 340}], "brand_voice": "Sade, veri odaklı."}
+{"id": "ip-numbers-05", "case_type": "numbers_match", "data_rows": [{"segment": "sedan", "avg_price": 495000}, {"segment": "hatchback", "avg_price": 445000}], "brand_voice": "Okuyucuya güven veren bir dil."}
+{"id": "ip-voice-01", "case_type": "brand_voice", "data_rows": [{"segment": "sedan-2018", "avg_price": 500000}], "brand_voice": "Sıcak, samimi, güven veren bir dil kullan. Teknik jargondan kaçın. Okuyucuya doğrudan hitap et."}
+{"id": "ip-voice-02", "case_type": "brand_voice", "data_rows": [{"segment": "suv-2020", "avg_price": 800000}], "brand_voice": "Profesyonel, kısa ve net. Abartılı sıfatlar kullanma. Rakamı bağlamıyla ver."}
+{"id": "ip-voice-03", "case_type": "brand_voice", "data_rows": [{"month": "Mart", "index": 1400}], "brand_voice": "Bilgilendirici ve tarafsız. Reklam dili değil, haber dili kullan."}
+{"id": "ip-noinvent-01", "case_type": "no_invent", "data_rows": [{"segment": "sedan-2018", "avg_price": 500000}, {"segment": "suv-2020", "avg_price": 800000}], "brand_voice": "Sade bir dil."}
+{"id": "ip-noinvent-02", "case_type": "no_invent", "data_rows": [{"segment": "hatchback-2019", "avg_price": 460000}], "brand_voice": "Kısa ve net."}
+{"id": "ip-noinvent-03", "case_type": "no_invent", "data_rows": [{"month": "Nisan", "index": 1350}, {"month": "Mayis", "index": 1380}], "brand_voice": "Profesyonel ton."}

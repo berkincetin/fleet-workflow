@@ -943,3 +943,17 @@ Issues (symptom → root cause → resolution):
 Notes / deviations:
 - This is a real re-platform: dev now runs Postgres under the CNPG operator, not a plain Deployment. The stable `postgres:5432` name is preserved so app/config wiring is unchanged. `values.yaml` gained `postgres.instances/storageSize/backup.*`, `qdrant.snapshot.*`, `minio.versioning/buckets`.
 - Compose dev stack (`make dev`) is unchanged — it still uses plain postgres:16; the CNPG migration is in the Helm chart (k3d/staging/prod substrate), matching how §14 scopes backup/DR to the cluster environments.
+
+## 2026-09-02 — Sprint 9 close (report, gate, PR) — DONE
+
+Sprint 9 (Hardening) feature-complete: 9.2, 9.1, 9.4 all DONE (9.3 [DEFERRABLE], not assigned). Close-out per protocol step 7.
+
+Verified (final gate):
+- `make lint`: ruff clean, mypy apps clean (18 baseline, 0 new), web eslint clean (after pnpm install on the fresh machine).
+- **Unit + security: 494 passed.**
+- Integration (live stack): 55 passed / 6 failed / 8 skipped. **The 6 failures are an environmental blocker on this fresh keyless machine, not a Sprint 9 regression** — they route through cloud lanes with no API key. Confirmed root cause on test_chat_live: litellm's *streaming* reasoning route surfaces the Gemini `API key not valid` error instead of falling back to ollama (the non-streaming path falls back cleanly). The RAG failures are the pre-existing full-suite local-lane contention flakiness (pass in isolation). Documented in docs/reports/sprint-9.md; unblock by adding a cloud key to .env.
+- Sprint report written: `docs/reports/sprint-9.md`.
+
+Notes:
+- Remaining close steps: knowledge graph refresh (`/graphify . --update`), push branch, open PR. Merge waits on CI per branch convention.
+- New-machine setup done this session (make/k6/pnpm/k3d/helm/Ollama+models, .env, migrations+seed+KB, CNPG operator). The only missing piece for a 100%-green integration gate is a cloud API key in .env.

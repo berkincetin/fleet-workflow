@@ -30,3 +30,78 @@ spec:
   ports:
     - port: 6333
       targetPort: 6333
+{{- if .Values.qdrant.snapshot.enabled }}
+---
+{{- /* Nightly Qdrant snapshot → MinIO (TRD §14). Two containers share an
+emptyDir: an init container with curl (the minio/mc image ships no HTTP client —
+a bug the 9.4 restore drill caught) calls Qdrant's /snapshots API per collection
+and writes the files to the volume; the main mc container uploads them under a
+timestamped prefix so a restore can be selective and history is retained. */}}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: qdrant-snapshot
+  namespace: {{ include "fleet.namespace" . }}
+spec:
+  schedule: {{ .Values.qdrant.snapshot.schedule | quote }}
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          volumes:
+            - name: snaps
+              emptyDir: {}
+          initContainers:
+            - name: take-snapshot
+              image: {{ .Values.qdrant.snapshot.curlImage | default "curlimages/curl:8.11.0" }}
+              volumeMounts:
+                - name: snaps
+                  mountPath: /snaps
+              command:
+                - sh
+                - -c
+                - |
+                  set -e
+                  COLLS=$(curl -sf http://qdrant:6333/collections \
+                    | tr ',' '\n' | sed -n 's/.*"name":"\([^"]*\)".*/\1/p')
+                  if [ -z "$COLLS" ]; then echo "no collections to snapshot"; exit 0; fi
+                  for c in $COLLS; do
+                    echo "snapshotting $c"
+                    SNAP=$(curl -sf -X POST "http://qdrant:6333/collections/$c/snapshots?wait=true" \
+                      | sed -n 's/.*"name":"\([^"]*\)".*/\1/p' | head -1)
+                    curl -sf -o "/snaps/${c}__${SNAP}" \
+                      "http://qdrant:6333/collections/$c/snapshots/$SNAP"
+                  done
+                  echo "snapshots written to /snaps"
+          containers:
+            - name: upload
+              image: {{ .Values.qdrant.snapshot.mcImage | default "minio/mc:latest" }}
+              volumeMounts:
+                - name: snaps
+                  mountPath: /snaps
+              env:
+                - name: MINIO_ROOT_USER
+                  value: {{ .Values.minio.rootUser | quote }}
+                - name: MINIO_ROOT_PASSWORD
+                  value: {{ .Values.minio.rootPassword | quote }}
+                - name: BUCKET
+                  value: {{ .Values.qdrant.snapshot.bucket | quote }}
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  TS=$(date -u +%Y%m%dT%H%M%SZ)
+                  mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+                  mc mb -p "local/$BUCKET" || true
+                  if [ -z "$(ls -A /snaps 2>/dev/null)" ]; then echo "nothing to upload"; exit 0; fi
+                  for f in /snaps/*; do
+                    base=$(basename "$f")
+                    coll=${base%%__*}; snap=${base#*__}
+                    mc cp "$f" "local/$BUCKET/$TS/$coll/$snap"
+                  done
+                  echo "qdrant snapshots uploaded under $TS/"
+{{- end }}

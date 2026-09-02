@@ -916,3 +916,30 @@ Notes / deviations:
 - AC says "against k3d"; run against the compose stack instead (k3d not up this session; 9.4 will bring up a cluster). The SLO measurement is equivalent — same images, same API/gateway path — noted here honestly. A k3d re-run can reuse the identical scripts by pointing FLEET_API_BASE/FLEET_KEYCLOAK_BASE at the ingress.
 - The TRD §10 "300 concurrent chat" target is explicitly for the reference cluster; a single dev GPU cannot approach it and the 50-VU saturation report is the honest evidence of that boundary, not a platform defect. Hosted CI does not run the local lane.
 - support_copilot's sensitivity was toggled pii→internal only to route load through the free local lane; restored to the seeded `internal` afterwards (verified).
+
+## 2026-09-02 — 9.4 Backup & restore drill (full CloudNativePG migration) — DONE
+
+User chose the full CNPG migration (not the "prove on scratch only" option). Installed k3d + helm on the new machine (winget), brought up a scratch k3d cluster, migrated Postgres to CloudNativePG, and exercised PITR + Qdrant snapshot restore end to end.
+
+Built (branch `feat/sprint-9-hardening`):
+- **Postgres → CloudNativePG.** `infra/helm/fleet/templates/postgres.yaml` replaced: a CNPG `Cluster` (image `ghcr.io/cloudnative-pg/postgresql:16.4`, initdb from a `postgres-credentials` secret), `backup.barmanObjectStore` → `s3://fleet-pg-backups/` on MinIO (gzip WAL+data, 7d retention), a `ScheduledBackup` (nightly base), and a stable `postgres` Service selecting the CNPG primary (`cnpg.io/instanceRole: primary`) so nothing downstream rewires. `infra/k3d/up.sh` now installs the cluster-scoped CNPG operator (1.24.1) before the chart.
+- **Qdrant nightly snapshots → MinIO.** A CronJob in `qdrant.yaml`: a `curlimages/curl` init container calls Qdrant's `/collections/*/snapshots` API and writes to a shared emptyDir, an `mc` container uploads under a timestamped prefix.
+- **MinIO versioning.** `minio-init` post-install hook creates `fleet-documents` / `fleet-pg-backups` / `fleet-qdrant-snapshots` and enables versioning on each.
+- `docs/runbooks/restore.md` — PITR + Qdrant restore procedures with the exact commands, plus a drill log.
+
+Verified (live, scratch k3d cluster `fleet`, ns `fleet-dev`):
+- CNPG cluster reached **`Cluster in healthy state`**, `postgres` Service endpoints point at the primary pod.
+- **Postgres PITR PASS:** on-demand Backup `completed`; base + WAL objects present in MinIO. Inserted a post-backup row + forced WAL archival; a recovery `Cluster/postgres-restore` (bootstrap.recovery from the barman store, recover-to-latest) reached healthy and **contained all rows including the post-backup one** — base restore + WAL replay both proven.
+- **Qdrant snapshot restore PASS:** created `drill_coll` (2 pts) → snapshot CronJob uploaded to MinIO → deleted the collection (404) → restored via `snapshots/upload?priority=snapshot` → **`count: 2` back** (two independent checks).
+- **MinIO versioning PASS:** `mc version info` shows versioning enabled on all three buckets.
+- `helm lint` clean; `helm template` renders 21 resources.
+
+Issues (symptom → root cause → resolution):
+- **Qdrant snapshot CronJob failed on first run.** Root cause: it used the `minio/mc` image with `wget` to call Qdrant's API, but **that image ships no HTTP client at all** (no wget/curl/nc — confirmed by listing /usr/bin). The drill caught it. Fixed to a two-container job (curl init container fetches snapshots → shared emptyDir; mc container uploads). Added a `qdrant.snapshot.curlImage` value. Re-ran → snapshot + restore both green.
+- CNPG `postgres-1` rejected `psql` over the unix socket (peer auth for `fleet`); used TCP + `PGPASSWORD` instead. The `fleet` app role also lacks `pg_switch_wal`/`CHECKPOINT` (no superuser secret) — forced WAL rollover with bulk writes; noted `archive_timeout` (5min default) as the real RPO knob in the runbook.
+- A backgrounded `kubectl port-forward` for Qdrant kept dying / leaking port 6334 in this shell; drove all in-cluster HTTP via ephemeral `curlimages/curl` pods on the cluster network instead — more reliable than host port-forwarding on Docker Desktop/Windows.
+- The helm install left a `pending-install` release once (a nohup'd up.sh whose parent shell exited mid-install); `helm uninstall` + reinstall cleared it. `up.sh` itself is fine when run to completion.
+
+Notes / deviations:
+- This is a real re-platform: dev now runs Postgres under the CNPG operator, not a plain Deployment. The stable `postgres:5432` name is preserved so app/config wiring is unchanged. `values.yaml` gained `postgres.instances/storageSize/backup.*`, `qdrant.snapshot.*`, `minio.versioning/buckets`.
+- Compose dev stack (`make dev`) is unchanged — it still uses plain postgres:16; the CNPG migration is in the Helm chart (k3d/staging/prod substrate), matching how §14 scopes backup/DR to the cluster environments.

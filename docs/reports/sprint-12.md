@@ -176,6 +176,17 @@ here, so the cloud lanes inherit the same ceiling.
 A measured full contract review (15 excerpts in, ~440 tokens out) takes **~200s
 on CPU** with the 14B.
 
+**This also reverses a Sprint 8 decision.** `docs/reports/sprint-8.md` kept the
+client-side default at 60s ("a genuinely stuck *cloud* call should not hang for
+five minutes; the local lane opts in explicitly"), with `.env` carrying the
+override. That held while the local lane was a 7B doing extraction. It does not
+hold now: any caller that does not load `.env` — pytest (there is no conftest
+loading it), ad-hoc scripts — silently got 60s and died on a local call while
+the proxy kept working, which is a confusing failure, not a safety property. A
+client timeout shorter than the server's does not protect anything. The default
+in `factory.py` is now 900s, matching the proxy ceiling, and remains overridable
+per environment.
+
 ### 4. Python's casefold is not Turkish-aware
 
 The contract-quote check compares a model-supplied quote against the contract.

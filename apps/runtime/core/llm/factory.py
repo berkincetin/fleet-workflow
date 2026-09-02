@@ -71,11 +71,16 @@ async def build_client(
     master_key = litellm_master_key or os.environ.get(
         "FLEET_LITELLM_MASTER_KEY", "sk-fleet-dev-master"
     )
-    # CPU-only local-lane inference (no GPU — task 8.1's rehearsal finding) can
-    # take well over the 60s default for a 7B model's full JSON response;
-    # overridable per-environment rather than raising the default outright,
-    # since a genuinely stuck cloud call shouldn't hang this long either.
-    timeout = float(os.environ.get("FLEET_LITELLM_TIMEOUT", "60"))
+    # Matches the proxy's own ceiling (litellm_settings.request_timeout, 900s).
+    # It used to default to 60 and be raised per-environment, but a client
+    # timeout shorter than the server's is just a lie: the httpx.ReadTimeout
+    # fires while the proxy is still generating, so the caller sees a confusing
+    # failure and the work is done anyway. CPU-only local-lane inference (no
+    # GPU — task 8.1's rehearsal finding) needs the room: a 14B contract review
+    # measured ~200s in task 12.2, and callers that ran without .env loaded
+    # (pytest, ad-hoc scripts) were silently getting the 60s default and
+    # timing out on it. Still overridable per-environment.
+    timeout = float(os.environ.get("FLEET_LITELLM_TIMEOUT", "900"))
 
     engine = create_async_engine(database_url, pool_pre_ping=True)
     session_factory = async_sessionmaker(engine, expire_on_commit=False)

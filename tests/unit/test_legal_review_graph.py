@@ -174,6 +174,57 @@ async def test_quote_matching_tolerates_line_wrapping_and_turkish_case() -> None
     assert len(result["findings"]) == 1
 
 
+async def test_clause_the_model_marked_conforming_is_dropped_silently() -> None:
+    """The measured failure mode this filter exists for: the model writes a
+    rationale saying the clause does NOT meet the deviation criterion, then
+    emits it as a high-risk finding anyway."""
+    graph, _ = _build(
+        {
+            "findings": [
+                {
+                    "clause": "Fesih Hakkı",
+                    "matches": "STANDART",
+                    "risk_level": "high",
+                    "playbook_ref": 1,
+                    "contract_excerpt": _QUOTE,
+                    "rationale": "Bu cümle SAPMA kriterini karşılamaz.",
+                },
+                {
+                    "clause": "Sorumluluk",
+                    "matches": "SAPMA",
+                    "risk_level": "high",
+                    "playbook_ref": 1,
+                    "contract_excerpt": _QUOTE,
+                },
+            ]
+        }
+    )
+    result = await graph.ainvoke(
+        {"contract_text": _CONTRACT}, {"configurable": {"thread_id": "2d"}}
+    )
+    assert [f["clause"] for f in result["findings"]] == ["Sorumluluk"]
+    # A conforming clause is not an error — it must not show up as uncited.
+    assert result["uncited"] == []
+
+
+async def test_missing_or_garbled_verdict_fails_toward_reporting() -> None:
+    """A dropped finding is worse than a noisy one for a legal first pass, so
+    anything that is not an explicit STANDART is kept."""
+    for verdict in ({}, {"matches": ""}, {"matches": "sapma"}, {"matches": "belirsiz"}):
+        review = build_review(
+            [
+                {
+                    "clause": "Sorumluluk",
+                    "risk_level": "high",
+                    "playbook_ref": 1,
+                    **verdict,
+                }
+            ],
+            playbook_refs=["sha-a"],
+        )
+        assert len(review.findings) == 1, verdict
+
+
 async def test_risk_level_outside_the_vocabulary_is_rejected() -> None:
     graph, _ = _build(
         {

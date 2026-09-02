@@ -120,6 +120,22 @@ def _normalize_for_match(text: str) -> str:
     return " ".join(text.translate(_TR_FOLD).split()).casefold()
 
 
+def _is_conforming(raw: dict[str, Any]) -> bool:
+    """True when the model classified this clause as matching the STANDART.
+
+    The `matches` verdict exists because the local model turned out to be good
+    at the judgement and bad at acting on it: on a clean contract it would write
+    a rationale literally saying *"bu cümle SAPMA kriterini karşılamaz"* (this
+    sentence does not meet the deviation criterion) — and then emit the entry as
+    a high-risk finding anyway. Asking for the verdict as its own field lets the
+    model do the classification it is good at and lets code do the filtering it
+    is bad at, which is the same division of labour as every other guardrail
+    here. Anything other than an explicit "standart" is treated as a deviation,
+    so a missing or garbled verdict fails toward *reporting* the clause.
+    """
+    return str(raw.get("matches", "") or "").strip().casefold() == "standart"
+
+
 def build_review(
     raw_findings: list[dict[str, Any]],
     *,
@@ -154,6 +170,11 @@ def build_review(
 
         if not clause:
             continue  # nothing to report — not a dropped finding, an empty one
+        if _is_conforming(raw):
+            # The model classified this clause as matching the playbook's
+            # STANDART. It is not a finding, and it is dropped silently rather
+            # than reported as uncited — nothing went wrong here.
+            continue
 
         reason: str | None = None
         if risk is None:

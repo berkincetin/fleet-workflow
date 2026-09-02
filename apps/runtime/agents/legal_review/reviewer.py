@@ -47,16 +47,15 @@ is FINE. It is NOT a finding. Do not report it.
 this is a finding.
 - RISK — the risk level to use when you report that SAPMA.
 
-Work rule by rule. For each excerpt, find the contract clause on that topic and \
-decide which of the two it matches. If it matches STANDART, skip it silently. If \
-it matches SAPMA, report it, citing that excerpt's number and quoting the \
-offending sentence VERBATIM from the contract. Never report a clause just because \
-the excerpt mentions a risk — the contract text itself has to match the SAPMA.
+Work rule by rule. For each excerpt, find the contract clause on that topic, \
+quote it VERBATIM from the contract, and state which of the two it matches in \
+the "matches" field: "STANDART" if the clause complies, "SAPMA" if it deviates. \
+Never answer "SAPMA" just because the excerpt mentions a risk — the quoted \
+contract text itself has to match the SAPMA description.
 
 Go through EVERY excerpt before you answer, and do not stop at the first conflict \
-you find — a contract usually breaches more than one rule, and the findings list \
-is expected to hold one entry per conflicting clause. A review that reports one \
-problem and misses the rest is worse than useless to counsel.
+you find — a contract usually breaches more than one rule. Skip an excerpt only \
+when the contract says nothing at all about that topic.
 
 Risk level must be the excerpt's RISK value, one of: {", ".join(RISK_LEVELS)}.
 
@@ -65,15 +64,17 @@ Respond with exactly one JSON object and nothing else — no markdown, no commen
   "findings": [
     {{
       "clause": "<the clause's topic name, e.g. \\"Fesih Hakkı\\" — not just \\"Madde 3\\">",
+      "matches": "<STANDART|SAPMA>",
       "risk_level": "<high|medium|low>",
       "playbook_ref": <the excerpt number, e.g. 2>,
       "contract_excerpt": "<the exact sentence copied from the contract>",
-      "rationale": "<one sentence: how that sentence deviates from that excerpt>"
+      "rationale": "<one sentence explaining the match>"
     }}
   ]
 }}
 
-Report an empty findings list if the contract conforms to the playbooks. Do not \
+Entries marked "STANDART" are discarded before anyone reads the review, so \
+listing them costs nothing — what matters is that "matches" is honest. Do not \
 invent clauses that are not in the contract text. This is a first-pass advisory \
 review for a lawyer, not legal advice."""
 

@@ -957,3 +957,28 @@ Verified (final gate):
 Notes:
 - Remaining close steps: knowledge graph refresh (`/graphify . --update`), push branch, open PR. Merge waits on CI per branch convention.
 - New-machine setup done this session (make/k6/pnpm/k3d/helm/Ollama+models, .env, migrations+seed+KB, CNPG operator). The only missing piece for a 100%-green integration gate is a cloud API key in .env.
+
+## 2026-09-02 — Sprint 10 (Demo assembly & docs) — PARTIAL (10.1 + 10.2 built, tag pending)
+
+Built (branch `feat/sprint-10-demo-docs`):
+- **10.1 README finalized** — full install (compose + k3d), model-lane guidance (local vs cloud, incl. the embedding-dimension gotcha), seed logins, service map, and a demo walkthrough mapped to the 15-min script. Grounded in the actual fresh-install I ran on this new machine this session. Added `make seed-demo` (migrate + seed + seed-docs one-shot).
+- **10.2** — `.github/workflows/release.yml`: tag-triggered (`v*`) pipeline = lint→unit→integration→security, then `release-image` (build → trivy scan → push to GHCR, version + latest tags). `docs/runbooks/on-call.md` (health checks, common symptoms incl. the Qdrant dimension + checkpointer cases, kill switch, approvals, escalation).
+
+Verified (live):
+- `make seed-demo` runs green + idempotent against the running stack.
+- README relative links all resolve.
+- `ruff` clean; release.yml + ci.yml valid YAML.
+- **Demo dry-run (timed): 16s** for Support Copilot RAG (streamed + citation) + Analytics text-to-SQL (`SELECT COUNT(*) FROM fixture_sales` executed) — vastly under the 15-min AC. RBAC on `/v1/approvals`: 403 member / 200 approver (correct).
+
+Open / remaining for close:
+- **v0.1.0 tag** not pushed yet — it triggers a GHCR image push (outward-facing), holding for user confirmation. AC "tag pipeline all green" verifies once tagged.
+- Screenshots/GIFs for the deck: web UI is live on :3000 for capture; not auto-generated headlessly.
+
+## 2026-09-02 — Sprint 10 close (report, gate, PR) — DONE (tag deferred)
+
+Sprint 10 close per protocol step 7 (report → gate → commit/PR). v0.1.0 tag deferred by user decision.
+
+Verified: `ruff` clean; unit+security 494 passed; demo dry-run 16s (<15min AC). No app-logic changes, integration unaffected.
+Report: docs/reports/sprint-10.md. Graph refresh: graphify installed but loads next session (skill not in this session's registry) — deferred.
+PR: opening against main; merges after CI green per branch convention.
+Open: v0.1.0 tag (triggers GHCR publish) — user to cut later; screenshots/GIFs for deck (UI live on :3000).

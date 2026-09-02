@@ -1,0 +1,111 @@
+name: Release
+
+# Tag-triggered release pipeline (TRD §14): a `v*` tag runs the full check suite
+# and, once green, builds + pushes the release image tagged with the version.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.7.12"
+      - run: uv sync
+      - run: uv run ruff check .
+      - run: uv run mypy apps packages || true
+
+  unit:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.7.12"
+      - run: uv sync
+      - run: uv run pytest tests/unit -q
+
+  integration:
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.7.12"
+      - run: uv sync
+      - run: uv run pytest tests/integration -q
+
+  security:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.7.12"
+      - run: uv sync
+      - name: bandit
+        run: uv run bandit -r apps packages -ll
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+
+  # Only after every check is green does the release image build + push. The tag
+  # (e.g. v0.1.0) becomes the image tag; the scan gates the publish.
+  release-image:
+    runs-on: ubuntu-latest
+    needs: [unit, integration, security]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Derive version from tag
+        id: ver
+        run: echo "version=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build release image (load locally for scan)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          tags: |
+            ghcr.io/${{ github.repository }}/fleet-api:${{ steps.ver.outputs.version }}
+            ghcr.io/${{ github.repository }}/fleet-api:latest
+          push: false
+          load: true
+      - name: Trivy scan (gates the publish)
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "${HOME}/.cache/trivy:/root/.cache/trivy" \
+            aquasec/trivy:0.65.0 image \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            ghcr.io/${{ github.repository }}/fleet-api:${{ steps.ver.outputs.version }}
+      - name: Push release image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          tags: |
+            ghcr.io/${{ github.repository }}/fleet-api:${{ steps.ver.outputs.version }}
+            ghcr.io/${{ github.repository }}/fleet-api:latest
+          push: true

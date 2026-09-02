@@ -38,6 +38,9 @@ n8n-import: ## import + activate the workflows/*.json exports into n8n (run once
 	$(COMPOSE) exec n8n-main n8n update:workflow --all --active=true
 	$(COMPOSE) restart n8n-main n8n-worker
 
+seed-demo: migrate seed seed-docs ## one-shot demo data: schema + checkpointer + synthetic data + KB ingest (run after `make dev`, before opening the app)
+	@echo "Demo data loaded. Next: make api (:8000) and make web (:3000); log in with user1/user1."
+
 eval: ## run an agent's eval dataset against the live stack; ALL=1 for every agent (make eval AGENT=support_copilot)
 ifdef ALL
 	@for a in $$(uv run python -c "import yaml; print(' '.join(yaml.safe_load(open('evals/config.yaml'))['agents']))"); do \

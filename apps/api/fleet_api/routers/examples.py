@@ -34,6 +34,7 @@ _REQUIRED_FIELDS: dict[str, set[str]] = {
     "dev_agent": {"id", "ticket_key"},
     "invoice_agent": {"id", "vendor", "po_number", "amount"},
     "hr_agent": {"id", "candidate_name"},
+    "listing_quality": {"id", "model", "color", "description", "price", "segment"},
 }
 
 

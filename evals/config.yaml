@@ -17,3 +17,8 @@ agents:
   hr_agent:
     dataset: datasets/hr_agent.jsonl
     threshold: 0.90
+  listing_quality:
+    dataset: datasets/listing_quality.jsonl
+    # 0.85 not 0.90: this is a vision agent judging rendered listing photos; the
+    # dept scenario's own bar is "false-positive control >= 85% precision".
+    threshold: 0.85

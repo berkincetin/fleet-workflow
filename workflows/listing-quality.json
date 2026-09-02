@@ -1,0 +1,95 @@
+{
+  "name": "listing-quality",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "listing-quality",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-new-listing",
+      "name": "New listing webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-400, 0],
+      "webhookId": "b1a7c4e2-9d3f-4a6b-8c11-3f2e7a9d1c40"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.FLEET_API_BASE_URL }}/v1/listing-quality/runs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-Fleet-Api-Key", "value": "={{ $env.FLEET_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ listing_id: $json.body.listing_id, image_base64: $json.body.image_base64, description: $json.body.description, price: $json.body.price, segment: $json.body.segment, shadow: true }) }}",
+        "options": {}
+      },
+      "id": "http-listing-run",
+      "name": "Run listing quality check (shadow)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-160, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "respond-1",
+      "name": "Respond with verdict",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [80, 0]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 2 * * *" }]
+        }
+      },
+      "id": "cron-nightly",
+      "name": "Nightly batch re-check",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-400, 220]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.FLEET_API_BASE_URL }}/v1/listing-quality/pending",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-Fleet-Api-Key", "value": "={{ $env.FLEET_API_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-batch-fetch",
+      "name": "Fetch listings to re-check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-160, 220]
+    }
+  ],
+  "connections": {
+    "New listing webhook": {
+      "main": [[{ "node": "Run listing quality check (shadow)", "type": "main", "index": 0 }]]
+    },
+    "Run listing quality check (shadow)": {
+      "main": [[{ "node": "Respond with verdict", "type": "main", "index": 0 }]]
+    },
+    "Nightly batch re-check": {
+      "main": [[{ "node": "Fetch listings to re-check", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

@@ -900,6 +900,134 @@ async def run_hr_agent_eval() -> tuple[list[CaseResult], float, float]:
     return results, pass_rate, threshold
 
 
+# --- Listing Quality (task 11.1, dept scenario 06) ---------------------------
+
+# Fixed reference bands per segment for the eval (stands in for the pg_ro
+# price-index view). Clean fixtures sit inside; price-anomaly fixtures fall far
+# outside (<60% low / >160% high), matching the checker's stated thresholds.
+_LISTING_BANDS = {
+    "sedan-2018": {"low": 400000, "high": 600000, "median": 500000, "currency": "TRY"},
+    "suv-2020": {"low": 650000, "high": 950000, "median": 800000, "currency": "TRY"},
+    "hatchback-2019": {"low": 380000, "high": 560000, "median": 460000, "currency": "TRY"},
+}
+
+
+@dataclass(frozen=True)
+class ListingCase:
+    id: str
+    model: str
+    color: str
+    plate_visible: bool
+    description: str
+    price: float
+    segment: str
+    expect_codes: list[str]
+    prohibited_banner: str | None = None
+
+
+def load_listing_dataset(path: Path) -> list[ListingCase]:
+    cases: list[ListingCase] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        row = json.loads(line)
+        cases.append(
+            ListingCase(
+                id=row["id"], model=row["model"], color=row["color"],
+                plate_visible=bool(row["plate_visible"]), description=row["description"],
+                price=float(row["price"]), segment=row["segment"],
+                expect_codes=list(row["expect_codes"]),
+                prohibited_banner=row.get("prohibited_banner"),
+            )
+        )
+    return cases
+
+
+class _FixedPriceIndex:
+    async def reference_band(self, *, segment: str) -> dict[str, Any] | None:
+        return _LISTING_BANDS.get(segment)
+
+
+async def _run_listing_case(case: ListingCase) -> set[str]:
+    """Run one case through the real listing_quality graph — real gateway
+    vision (utility) call on a rendered listing photo, real mock listings.flag.
+    Returns the set of flag codes the agent produced."""
+    from agents.listing_quality.graph import build_listing_quality_graph
+    from core.llm.factory import build_client
+    from fleet_mcp.servers.listings import build_listings_server
+    from langgraph.checkpoint.memory import InMemorySaver
+    from listing_images import render_listing_photo_base64
+
+    llm_client = await build_client()
+    _, listings_tool = build_listings_server(api_key="eval")
+
+    graph = build_listing_quality_graph(
+        vision_client=llm_client,
+        price_index=_FixedPriceIndex(),
+        listings_flag=listings_tool,
+        checkpointer=InMemorySaver(),
+    )
+    image_b64 = render_listing_photo_base64(
+        model=case.model, color=case.color, plate_visible=case.plate_visible,
+        prohibited_banner=case.prohibited_banner,
+    )
+    result = await graph.ainvoke(
+        {
+            "listing_id": case.id, "image_base64": image_b64,
+            "description": case.description, "price": case.price,
+            "currency": "TRY", "segment": case.segment,
+        },
+        {"configurable": {"thread_id": f"eval-{case.id}"}},
+    )
+    verdict = result.get("verdict", {"flags": []})
+    return {f["code"] for f in verdict.get("flags", [])}
+
+
+def evaluate_listing_case(case: ListingCase, got_codes: set[str]) -> CaseResult:
+    """A case passes if the expected code(s) are all present. Extra flags do not
+    fail an already-problem listing, but a clean listing that gets ANY flag is a
+    false positive (precision) — tracked separately in run_listing_quality_eval."""
+    want = set(case.expect_codes)
+    if not want:
+        # Clean control: no flags expected. A flag here is a false positive.
+        passed = not got_codes
+        reason = "clean" if passed else f"false positive: flagged {sorted(got_codes)}"
+        return CaseResult(id=case.id, passed=passed, reason=reason)
+    missing = want - got_codes
+    passed = not missing
+    reason = (
+        "ok"
+        if passed
+        else f"missed expected code(s): {sorted(missing)} (got {sorted(got_codes)})"
+    )
+    return CaseResult(id=case.id, passed=passed, reason=reason)
+
+
+async def run_listing_quality_eval() -> tuple[list[CaseResult], float, float]:
+    config = yaml.safe_load((EVALS_DIR / "config.yaml").read_text(encoding="utf-8"))
+    agent_config = config["agents"]["listing_quality"]
+    threshold = float(agent_config["threshold"])
+    cases = load_listing_dataset(EVALS_DIR / agent_config["dataset"])
+
+    results: list[CaseResult] = []
+    # Precision = of the listings the agent flagged, how many should have been
+    # flagged (dept scenario 06: false-positive control >= 85% precision).
+    true_pos = false_pos = 0
+    for case in cases:
+        got = await _run_listing_case(case)
+        results.append(evaluate_listing_case(case, got))
+        if got:
+            if set(case.expect_codes):
+                true_pos += 1
+            else:
+                false_pos += 1
+    precision = true_pos / (true_pos + false_pos) if (true_pos + false_pos) else 1.0
+    print(f"listing_quality precision: {precision:.0%} (>= 85% target)")
+    pass_rate = sum(1 for r in results if r.passed) / len(results) if results else 0.0
+    return results, pass_rate, threshold
+
+
 def main() -> None:
     import asyncio
 
@@ -918,6 +1046,8 @@ def main() -> None:
         results, pass_rate, threshold = asyncio.run(run_invoice_agent_eval())
     elif args.agent == "hr_agent":
         results, pass_rate, threshold = asyncio.run(run_hr_agent_eval())
+    elif args.agent == "listing_quality":
+        results, pass_rate, threshold = asyncio.run(run_listing_quality_eval())
     else:
         results, pass_rate, threshold = asyncio.run(run_agent_eval(args.agent))
 

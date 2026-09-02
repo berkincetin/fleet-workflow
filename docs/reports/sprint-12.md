@@ -180,6 +180,9 @@ works on the 7B. The trigger was a `lr-clean-4` response whose own rationale
 read *"bu cümle SAPMA kriterini karşılamaz"* (this sentence does not meet the
 deviation criterion), attached to a `high` finding.
 
+With the verdict filter in place the **7B scores 100% (13/13)** — better than
+the 14B ever managed, on a model that answers in seconds instead of minutes.
+
 The process lesson: on a small model, read the outputs. Three prompt rewrites
 tuned against the *score* made things worse each time, because a pass rate
 cannot distinguish "missed the clause" from "found it and stopped".

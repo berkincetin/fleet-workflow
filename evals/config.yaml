@@ -17,3 +17,20 @@ agents:
   hr_agent:
     dataset: datasets/hr_agent.jsonl
     threshold: 0.90
+  listing_quality:
+    dataset: datasets/listing_quality.jsonl
+    # 0.85 not 0.90: this is a vision agent judging rendered listing photos; the
+    # dept scenario's own bar is "false-positive control >= 85% precision".
+    threshold: 0.85
+  vehicle_intake:
+    dataset: datasets/vehicle_intake.jsonl
+    # 0.85: extraction runs on local tesseract OCR of rendered reports, so some
+    # OCR-level noise on long VINs is expected; the guardrails (missing→incomplete,
+    # band-contains-median, redaction) are the hard asserts.
+    threshold: 0.85
+  insights_publisher:
+    dataset: datasets/insights_publisher.jsonl
+    # 0.90: numbers-match + no-invent are deterministic hard checks; brand-voice
+    # is a utility-model rubric judge (>= 4/5). The drafter is told to use only
+    # the provided numbers, so grounding should be near-perfect.
+    threshold: 0.90

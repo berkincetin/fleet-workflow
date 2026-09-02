@@ -12,13 +12,17 @@ from sqlalchemy import text
 
 _DEMO_AGENTS = [
     "support_copilot", "analytics", "dev_agent", "invoice_agent", "hr_agent", "hr_onboarding",
+    "listing_quality", "vehicle_intake", "insights_publisher",
 ]
 _DEMO_MODELS = ["utility", "reasoning", "utility-fallback-1"]
 
 # evals/ lives at the repo root, three levels above apps/api/fleet_api/.
 _EVALS_DIR = Path(__file__).resolve().parents[3] / "evals"
 
-_DEPARTMENTS = ["Customer Service", "Data", "Finance", "HR", "IT"]
+_DEPARTMENTS = [
+    "Customer Service", "Data", "Finance", "HR", "IT", "Listings Ops", "Trink sat",
+    "Marketing",
+]
 
 # Default model matrix (TRD §4.2), mirrored from gateway/litellm/config.yaml.
 # Seeded into the registry so Admin → Models and the gateway client have rows to
@@ -31,12 +35,14 @@ _DEFAULT_MODELS = [
      ["tools", "json", "vision"], 8192, "internal", "us"),
     ("reasoning-fallback-1", "openai", "openai/gpt-4o", 0.0025, 0.01, 128000,
      ["tools", "json", "vision"], 16384, "internal", "us"),
-    ("reasoning-fallback-2", "gemini", "gemini/gemini-1.5-pro", 0.00125, 0.005, 2000000,
+    ("reasoning-fallback-2", "gemini", "gemini/gemini-3.6-flash", 0.00125, 0.005, 1000000,
      ["tools", "json", "vision"], 8192, "internal", "us"),
-    ("utility", "gemini", "gemini/gemini-1.5-flash", 0.000075, 0.0003, 1000000,
+    # Primary utility is vision-capable OpenAI gpt-4o-mini (Wave-1 vision agents,
+    # task 11.x); the retired gemini-1.5-flash moved to a fallback on a current id.
+    ("utility", "openai", "openai/gpt-4o-mini", 0.00015, 0.0006, 128000,
+     ["tools", "json", "vision"], 16384, "internal", "us"),
+    ("utility-fallback-1", "gemini", "gemini/gemini-3.6-flash", 0.000075, 0.0003, 1000000,
      ["tools", "json", "vision"], 8192, "internal", "us"),
-    ("utility-fallback-1", "openai", "openai/gpt-4o-mini", 0.00015, 0.0006, 128000,
-     ["tools", "json"], 16384, "internal", "us"),
     ("utility-fallback-2", "anthropic", "anthropic/claude-haiku-4-5", 0.001, 0.005, 200000,
      ["tools", "json"], 8192, "internal", "us"),
     ("embeddings", "openai", "openai/text-embedding-3-small", 0.00002, 0.0, 8191,
@@ -267,6 +273,114 @@ async def seed_hr_agents() -> None:
     await engine.dispose()
 
 
+_FIXTURE_PRICE_INDEX_VIEW = """
+CREATE OR REPLACE VIEW fixture_price_index AS
+SELECT * FROM (VALUES
+  ('sedan-2018', 400000, 600000, 500000, 'TRY'),
+  ('suv-2020', 650000, 950000, 800000, 'TRY'),
+  ('hatchback-2019', 380000, 560000, 460000, 'TRY')
+) AS t(segment, band_low, band_high, band_median, currency);
+"""
+
+
+async def seed_listing_quality_agent() -> None:
+    """Listing Quality agent (task 11.1, dept scenario 06). Vision flag-only
+    agent; no RAG collections. sensitivity internal (public listing data)."""
+    engine = get_engine(database_url())
+    async with engine.begin() as conn:
+        dept_id = (
+            await conn.execute(
+                text("SELECT id FROM departments WHERE name = 'Listings Ops'")
+            )
+        ).scalar_one()
+        await conn.execute(
+            text(
+                "INSERT INTO agents (name, dept_id, reasoning_model, utility_model, "
+                "sensitivity, semantic_cache, semantic_cache_threshold, max_context_tokens, "
+                "collection_ids) VALUES ('listing_quality', :d, 'reasoning', 'utility', "
+                "'internal', false, 0.95, 8000, '{}') ON CONFLICT (name) DO NOTHING"
+            ),
+            {"d": dept_id},
+        )
+    await engine.dispose()
+
+
+_FIXTURE_COMPARABLES_VIEW = """
+CREATE OR REPLACE VIEW fixture_comparables AS
+SELECT * FROM (VALUES
+  ('sedan-2018', 480000), ('sedan-2018', 500000), ('sedan-2018', 520000),
+  ('sedan-2018', 460000), ('sedan-2018', 540000),
+  ('suv-2020', 700000), ('suv-2020', 800000), ('suv-2020', 750000),
+  ('suv-2020', 820000), ('suv-2020', 780000),
+  ('hatchback-2019', 420000), ('hatchback-2019', 450000), ('hatchback-2019', 480000)
+) AS t(segment, price);
+"""
+
+
+async def seed_vehicle_intake_agent() -> None:
+    """Vehicle Intake agent (task 11.2, dept scenario 07). Confidential; local
+    OCR + redact + cloud reasoning; no write tools; advisory."""
+    engine = get_engine(database_url())
+    async with engine.begin() as conn:
+        dept_id = (
+            await conn.execute(
+                text("SELECT id FROM departments WHERE name = 'Trink sat'")
+            )
+        ).scalar_one()
+        await conn.execute(
+            text(
+                "INSERT INTO agents (name, dept_id, reasoning_model, utility_model, "
+                "sensitivity, semantic_cache, semantic_cache_threshold, max_context_tokens, "
+                "collection_ids) VALUES ('vehicle_intake', :d, 'reasoning', 'utility', "
+                "'confidential', false, 0.95, 8000, '{}') ON CONFLICT (name) DO NOTHING"
+            ),
+            {"d": dept_id},
+        )
+    await engine.dispose()
+
+
+_FIXTURE_PRICE_INDEX_MONTHLY_VIEW = """
+CREATE OR REPLACE VIEW fixture_index_monthly AS
+SELECT * FROM (VALUES
+  ('sedan-2018', 500000, 340),
+  ('suv-2020', 800000, 210),
+  ('hatchback-2019', 460000, 180)
+) AS t(segment, avg_price, listing_count);
+"""
+
+
+async def seed_insights_publisher_agent() -> None:
+    """Insights Publisher agent (task 11.3, dept scenario 08). Internal; reasoning
+    + utility; mkt-brand KB (brand voice); cms.publish/social.post write:external
+    → approval. semantic_cache OFF (each monthly report is distinct)."""
+    engine = get_engine(database_url())
+    async with engine.begin() as conn:
+        dept_id = (
+            await conn.execute(text("SELECT id FROM departments WHERE name = 'Marketing'"))
+        ).scalar_one()
+        await conn.execute(
+            text(
+                "INSERT INTO collections (name, dept_id, sensitivity, retention_days, "
+                "pii_policy) VALUES ('mkt-brand', :d, 'internal', NULL, 'redact') "
+                "ON CONFLICT (name) DO NOTHING"
+            ),
+            {"d": dept_id},
+        )
+        mkt_brand_id = (
+            await conn.execute(text("SELECT id FROM collections WHERE name = 'mkt-brand'"))
+        ).scalar_one()
+        await conn.execute(
+            text(
+                "INSERT INTO agents (name, dept_id, reasoning_model, utility_model, "
+                "sensitivity, semantic_cache, semantic_cache_threshold, max_context_tokens, "
+                "collection_ids) VALUES ('insights_publisher', :d, 'reasoning', 'utility', "
+                "'internal', false, 0.95, 8000, :cids) ON CONFLICT (name) DO NOTHING"
+            ),
+            {"d": dept_id, "cids": [mkt_brand_id]},
+        )
+    await engine.dispose()
+
+
 async def seed_eval_cases() -> None:
     """Import evals/datasets/*.jsonl into `eval_cases` (source='seed'), task
     6.5.2. Idempotent on (agent_name, case_id) via ON CONFLICT DO NOTHING —
@@ -398,10 +512,17 @@ async def seed() -> None:
         await conn.execute(text(_FIXTURE_ORDERS_VIEW))
         # Invoice-reconciliation fixture consumed by 6.3 (department scenario 04).
         await conn.execute(text(_FIXTURE_PURCHASE_ORDERS_VIEW))
+        # Listing-quality price-index fixture consumed by 11.1 (dept scenario 06).
+        await conn.execute(text(_FIXTURE_PRICE_INDEX_VIEW))
+        # Vehicle-intake comparables fixture consumed by 11.2 (dept scenario 07).
+        await conn.execute(text(_FIXTURE_COMPARABLES_VIEW))
+        # Insights-publisher monthly index fixture consumed by 11.3 (dept scenario 08).
+        await conn.execute(text(_FIXTURE_PRICE_INDEX_MONTHLY_VIEW))
         await conn.execute(
             text(
                 "GRANT SELECT ON fixture_sales, fixture_orders, "
-                "fixture_purchase_orders TO fleet_readonly"
+                "fixture_purchase_orders, fixture_price_index, fixture_comparables, "
+                "fixture_index_monthly TO fleet_readonly"
             )
         )
     await engine.dispose()
@@ -414,6 +535,9 @@ def main() -> None:
     asyncio.run(seed_dev_agent())
     asyncio.run(seed_invoice_agent())
     asyncio.run(seed_hr_agents())
+    asyncio.run(seed_listing_quality_agent())
+    asyncio.run(seed_vehicle_intake_agent())
+    asyncio.run(seed_insights_publisher_agent())
     asyncio.run(seed_eval_cases())
     asyncio.run(seed_observability_demo())
 

@@ -1446,7 +1446,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RunOut"
+                  "$ref": "#/components/schemas/fleet_api__routers__dev_agent__RunOut"
                 }
               }
             }
@@ -1740,7 +1740,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RunOut"
+                  "$ref": "#/components/schemas/fleet_api__routers__invoice_agent__RunOut"
                 }
               }
             }
@@ -1804,7 +1804,125 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RunOut"
+                  "$ref": "#/components/schemas/fleet_api__routers__hr_agent__RunOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/listing-quality/runs": {
+      "post": {
+        "tags": [
+          "listing-quality"
+        ],
+        "summary": "Start Run",
+        "operationId": "start_run_v1_listing_quality_runs_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-fleet-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Fleet-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/fleet_api__routers__listing_quality__RunIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/fleet_api__routers__listing_quality__RunOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/insights-publisher/runs": {
+      "post": {
+        "tags": [
+          "insights-publisher"
+        ],
+        "summary": "Start Run",
+        "operationId": "start_run_v1_insights_publisher_runs_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-fleet-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Fleet-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/fleet_api__routers__insights_publisher__RunOut"
                 }
               }
             }
@@ -4210,30 +4328,6 @@
         ],
         "title": "RoleOut"
       },
-      "RunOut": {
-        "properties": {
-          "run_id": {
-            "type": "string",
-            "title": "Run Id"
-          },
-          "status": {
-            "type": "string",
-            "title": "Status"
-          },
-          "detail": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Detail"
-          }
-        },
-        "type": "object",
-        "required": [
-          "run_id",
-          "status",
-          "detail"
-        ],
-        "title": "RunOut"
-      },
       "RunResultOut": {
         "properties": {
           "status": {
@@ -4472,6 +4566,30 @@
         ],
         "title": "RunIn"
       },
+      "fleet_api__routers__dev_agent__RunOut": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "detail": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "status",
+          "detail"
+        ],
+        "title": "RunOut"
+      },
       "fleet_api__routers__hr_agent__RunIn": {
         "properties": {
           "image_base64": {
@@ -4493,6 +4611,54 @@
         ],
         "title": "RunIn"
       },
+      "fleet_api__routers__hr_agent__RunOut": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "detail": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "status",
+          "detail"
+        ],
+        "title": "RunOut"
+      },
+      "fleet_api__routers__insights_publisher__RunOut": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "detail": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "status",
+          "detail"
+        ],
+        "title": "RunOut"
+      },
       "fleet_api__routers__invoice_agent__RunIn": {
         "properties": {
           "image_base64": {
@@ -4505,6 +4671,108 @@
           "image_base64"
         ],
         "title": "RunIn"
+      },
+      "fleet_api__routers__invoice_agent__RunOut": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "detail": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "status",
+          "detail"
+        ],
+        "title": "RunOut"
+      },
+      "fleet_api__routers__listing_quality__RunIn": {
+        "properties": {
+          "listing_id": {
+            "type": "string",
+            "title": "Listing Id"
+          },
+          "image_base64": {
+            "type": "string",
+            "title": "Image Base64"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "price": {
+            "type": "number",
+            "title": "Price"
+          },
+          "segment": {
+            "type": "string",
+            "title": "Segment"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "default": "TRY"
+          },
+          "shadow": {
+            "type": "boolean",
+            "title": "Shadow",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "listing_id",
+          "image_base64",
+          "description",
+          "price",
+          "segment"
+        ],
+        "title": "RunIn"
+      },
+      "fleet_api__routers__listing_quality__RunOut": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "flags": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Flags"
+          },
+          "detail": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "status",
+          "flags",
+          "detail"
+        ],
+        "title": "RunOut"
       }
     },
     "securitySchemes": {

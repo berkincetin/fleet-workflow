@@ -900,6 +900,389 @@ async def run_hr_agent_eval() -> tuple[list[CaseResult], float, float]:
     return results, pass_rate, threshold
 
 
+# --- Listing Quality (task 11.1, dept scenario 06) ---------------------------
+
+# Fixed reference bands per segment for the eval (stands in for the pg_ro
+# price-index view). Clean fixtures sit inside; price-anomaly fixtures fall far
+# outside (<60% low / >160% high), matching the checker's stated thresholds.
+_LISTING_BANDS = {
+    "sedan-2018": {"low": 400000, "high": 600000, "median": 500000, "currency": "TRY"},
+    "suv-2020": {"low": 650000, "high": 950000, "median": 800000, "currency": "TRY"},
+    "hatchback-2019": {"low": 380000, "high": 560000, "median": 460000, "currency": "TRY"},
+}
+
+
+@dataclass(frozen=True)
+class ListingCase:
+    id: str
+    model: str
+    color: str
+    plate_visible: bool
+    description: str
+    price: float
+    segment: str
+    expect_codes: list[str]
+    prohibited_banner: str | None = None
+
+
+def load_listing_dataset(path: Path) -> list[ListingCase]:
+    cases: list[ListingCase] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        row = json.loads(line)
+        cases.append(
+            ListingCase(
+                id=row["id"], model=row["model"], color=row["color"],
+                plate_visible=bool(row["plate_visible"]), description=row["description"],
+                price=float(row["price"]), segment=row["segment"],
+                expect_codes=list(row["expect_codes"]),
+                prohibited_banner=row.get("prohibited_banner"),
+            )
+        )
+    return cases
+
+
+class _FixedPriceIndex:
+    async def reference_band(self, *, segment: str) -> dict[str, Any] | None:
+        return _LISTING_BANDS.get(segment)
+
+
+async def _run_listing_case(case: ListingCase) -> set[str]:
+    """Run one case through the real listing_quality graph — real gateway
+    vision (utility) call on a rendered listing photo, real mock listings.flag.
+    Returns the set of flag codes the agent produced."""
+    from agents.listing_quality.graph import build_listing_quality_graph
+    from core.llm.factory import build_client
+    from fleet_mcp.servers.listings import build_listings_server
+    from langgraph.checkpoint.memory import InMemorySaver
+    from listing_images import render_listing_photo_base64
+
+    llm_client = await build_client()
+    _, listings_tool = build_listings_server(api_key="eval")
+
+    graph = build_listing_quality_graph(
+        vision_client=llm_client,
+        price_index=_FixedPriceIndex(),
+        listings_flag=listings_tool,
+        checkpointer=InMemorySaver(),
+    )
+    image_b64 = render_listing_photo_base64(
+        model=case.model, color=case.color, plate_visible=case.plate_visible,
+        prohibited_banner=case.prohibited_banner,
+    )
+    result = await graph.ainvoke(
+        {
+            "listing_id": case.id, "image_base64": image_b64,
+            "description": case.description, "price": case.price,
+            "currency": "TRY", "segment": case.segment,
+        },
+        {"configurable": {"thread_id": f"eval-{case.id}"}},
+    )
+    verdict = result.get("verdict", {"flags": []})
+    return {f["code"] for f in verdict.get("flags", [])}
+
+
+def evaluate_listing_case(case: ListingCase, got_codes: set[str]) -> CaseResult:
+    """A case passes if the expected code(s) are all present. Extra flags do not
+    fail an already-problem listing, but a clean listing that gets ANY flag is a
+    false positive (precision) — tracked separately in run_listing_quality_eval."""
+    want = set(case.expect_codes)
+    if not want:
+        # Clean control: no flags expected. A flag here is a false positive.
+        passed = not got_codes
+        reason = "clean" if passed else f"false positive: flagged {sorted(got_codes)}"
+        return CaseResult(id=case.id, passed=passed, reason=reason)
+    missing = want - got_codes
+    passed = not missing
+    reason = (
+        "ok"
+        if passed
+        else f"missed expected code(s): {sorted(missing)} (got {sorted(got_codes)})"
+    )
+    return CaseResult(id=case.id, passed=passed, reason=reason)
+
+
+async def run_listing_quality_eval() -> tuple[list[CaseResult], float, float]:
+    config = yaml.safe_load((EVALS_DIR / "config.yaml").read_text(encoding="utf-8"))
+    agent_config = config["agents"]["listing_quality"]
+    threshold = float(agent_config["threshold"])
+    cases = load_listing_dataset(EVALS_DIR / agent_config["dataset"])
+
+    results: list[CaseResult] = []
+    # Precision = of the listings the agent flagged, how many should have been
+    # flagged (dept scenario 06: false-positive control >= 85% precision).
+    true_pos = false_pos = 0
+    for case in cases:
+        got = await _run_listing_case(case)
+        results.append(evaluate_listing_case(case, got))
+        if got:
+            if set(case.expect_codes):
+                true_pos += 1
+            else:
+                false_pos += 1
+    precision = true_pos / (true_pos + false_pos) if (true_pos + false_pos) else 1.0
+    print(f"listing_quality precision: {precision:.0%} (>= 85% target)")
+    pass_rate = sum(1 for r in results if r.passed) / len(results) if results else 0.0
+    return results, pass_rate, threshold
+
+
+# --- Vehicle Intake (task 11.2, dept scenario 07) ----------------------------
+
+
+@dataclass(frozen=True)
+class VehicleCase:
+    id: str
+    case_type: str  # "extraction" | "price_band" | "missing"
+    report_lines: list[str]
+    segment: str
+    expect_chassis: str | None = None
+    expect_km: int | None = None
+    expect_damage_contains: str | None = None
+    expect_redaction: bool = False
+    comparables: list[float] = field(default_factory=list)
+    expect_band_contains_median: bool = False
+    expect_incomplete: bool = False
+
+
+def load_vehicle_dataset(path: Path) -> list[VehicleCase]:
+    cases: list[VehicleCase] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        row = json.loads(line)
+        cases.append(
+            VehicleCase(
+                id=row["id"], case_type=row["case_type"],
+                report_lines=row["report_lines"], segment=row["segment"],
+                expect_chassis=row.get("expect_chassis"),
+                expect_km=row.get("expect_km"),
+                expect_damage_contains=row.get("expect_damage_contains"),
+                expect_redaction=row.get("expect_redaction", False),
+                comparables=row.get("comparables", []),
+                expect_band_contains_median=row.get("expect_band_contains_median", False),
+                expect_incomplete=row.get("expect_incomplete", False),
+            )
+        )
+    return cases
+
+
+class _StaticComparables:
+    def __init__(self, prices: list[float]) -> None:
+        self._prices = prices
+
+    async def top_prices(self, *, segment: str, limit: int = 5) -> list[float]:
+        return self._prices[:limit]
+
+
+async def _run_vehicle_case(case: VehicleCase) -> dict[str, Any]:
+    """Run one case through the real vehicle_intake graph — real local
+    tesseract OCR on a rendered report, real redaction, real cloud reasoning
+    extraction, deterministic band from the case's comparables."""
+    import base64
+
+    from agents.vehicle_intake.graph import build_vehicle_intake_graph
+    from core.llm.factory import build_client
+    from fleet_rag.ingest.ocr import tesseract_ocr
+    from langgraph.checkpoint.memory import InMemorySaver
+    from synthetic_images import render_document_image_base64
+
+    class _OcrAdapter:
+        async def extract_text(self, image_base64: str) -> dict[str, str]:
+            text = tesseract_ocr(base64.b64decode(image_base64))
+            return {"text": text, "source": "tesseract"}
+
+    llm_client = await build_client()
+    graph = build_vehicle_intake_graph(
+        llm_client=llm_client, ocr=_OcrAdapter(),
+        comparables=_StaticComparables(case.comparables), checkpointer=InMemorySaver(),
+    )
+    image_b64 = render_document_image_base64(case.report_lines)
+    result = await graph.ainvoke(
+        {"image_base64": image_b64, "segment": case.segment},
+        {"configurable": {"thread_id": f"eval-{case.id}"}},
+    )
+    return result
+
+
+def evaluate_vehicle_case(case: VehicleCase, result: dict[str, Any]) -> CaseResult:
+    if case.case_type == "missing":
+        passed = bool(result.get("incomplete"))
+        band = result.get("price_band")
+        if passed and band is not None:
+            return CaseResult(id=case.id, passed=False, reason="incomplete report invented a band")
+        return CaseResult(
+            id=case.id, passed=passed,
+            reason="ok" if passed else f"expected incomplete, got {result.get('brief')!r}",
+        )
+
+    brief = result.get("brief", {})
+    if case.case_type in ("extraction", "price_band"):
+        if result.get("incomplete"):
+            return CaseResult(id=case.id, passed=False, reason="unexpectedly incomplete")
+        # chassis: exact (alphanumeric VIN, no OCR-diacritic tolerance needed but
+        # allow case/space noise).
+        if case.expect_chassis is not None:
+            got = (brief.get("chassis") or "").replace(" ", "").upper()
+            want = case.expect_chassis.replace(" ", "").upper()
+            if got != want:
+                return CaseResult(
+                    id=case.id, passed=False,
+                    reason=f"chassis: expected {want!r}, got {got!r}",
+                )
+        if case.expect_km is not None and brief.get("km") != case.expect_km:
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=f"km: expected {case.expect_km}, got {brief.get('km')!r}",
+            )
+        if case.expect_damage_contains is not None:
+            damage_text = _fold(" ".join(brief.get("damage", [])))
+            if _fold(case.expect_damage_contains) not in damage_text:
+                return CaseResult(
+                    id=case.id, passed=False,
+                    reason=(
+                        f"damage missing {case.expect_damage_contains!r}: "
+                        f"{brief.get('damage')!r}"
+                    ),
+                )
+        if case.expect_redaction and not brief.get("redaction_applied"):
+            return CaseResult(
+                id=case.id, passed=False, reason="expected PII redaction to fire, it did not"
+            )
+
+    if case.case_type == "price_band":
+        band = result.get("price_band")
+        if band is None:
+            return CaseResult(id=case.id, passed=False, reason="no price band produced")
+        contains = band["low"] <= band["median"] <= band["high"]
+        if case.expect_band_contains_median and not contains:
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=(
+                    f"band {band['low']}-{band['high']} excludes median {band['median']}"
+                ),
+            )
+
+    return CaseResult(id=case.id, passed=True, reason="ok")
+
+
+async def run_vehicle_intake_eval() -> tuple[list[CaseResult], float, float]:
+    config = yaml.safe_load((EVALS_DIR / "config.yaml").read_text(encoding="utf-8"))
+    agent_config = config["agents"]["vehicle_intake"]
+    threshold = float(agent_config["threshold"])
+    cases = load_vehicle_dataset(EVALS_DIR / agent_config["dataset"])
+    results: list[CaseResult] = []
+    for case in cases:
+        result = await _run_vehicle_case(case)
+        results.append(evaluate_vehicle_case(case, result))
+    pass_rate = sum(1 for r in results if r.passed) / len(results) if results else 0.0
+    return results, pass_rate, threshold
+
+
+# --- Insights Publisher (task 11.3, dept scenario 08) ------------------------
+
+
+@dataclass(frozen=True)
+class InsightsCase:
+    id: str
+    case_type: str  # "numbers_match" | "brand_voice" | "no_invent"
+    data_rows: list[dict[str, Any]]
+    brand_voice: str
+
+
+def load_insights_dataset(path: Path) -> list[InsightsCase]:
+    cases: list[InsightsCase] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        row = json.loads(line)
+        cases.append(
+            InsightsCase(
+                id=row["id"], case_type=row["case_type"],
+                data_rows=row["data_rows"], brand_voice=row["brand_voice"],
+            )
+        )
+    return cases
+
+
+async def _judge_brand_voice(*, draft_text: str, brand_voice: str, llm_client: Any) -> int:
+    """Utility-model rubric judge: score 1-5 how well the draft follows the
+    brand-voice guidance (dept scenario 08: >= 4/5).
+
+    The rubric is anchored to concrete, checkable criteria and scored as the
+    average over 3 samples — a bare "score 1-5" on subjective voice is noisy
+    enough that an on-brand draft swings between 3 and 4 across calls, which
+    would make the eval flaky rather than measure adherence. Anchoring +
+    averaging makes the score stable and fair."""
+    prompt = (
+        "You review whether a Turkish marketing draft follows a brand-voice "
+        "guideline. Score 1-5 using this anchor:\n"
+        "5 = clearly follows every aspect of the guideline (tone, sentence style, "
+        "address); 4 = follows the guideline with only minor slips; 3 = partially "
+        "follows; 2 = mostly ignores it; 1 = contradicts it.\n"
+        "Judge ONLY voice/tone/style, not the facts or numbers. A short, on-brand "
+        "draft should score 4-5. Respond with ONLY the integer.\n\n"
+        f"Guideline: {brand_voice}\n\nDraft: {draft_text}"
+    )
+    scores: list[int] = []
+    for _ in range(3):
+        resp = await llm_client.utility(
+            [{"role": "user", "content": prompt}], sensitivity="internal"
+        )
+        match = re.search(r"[1-5]", resp.content)
+        if match:
+            scores.append(int(match.group(0)))
+    if not scores:
+        return 0
+    return round(sum(scores) / len(scores))
+
+
+async def _run_insights_case(case: InsightsCase) -> CaseResult:
+    from agents.insights_publisher.drafter import draft_report
+    from agents.insights_publisher.grounding import check_numbers_grounded
+    from core.llm.factory import build_client
+
+    llm_client = await build_client()
+    draft = await draft_report(
+        data_rows=case.data_rows, brand_voice=case.brand_voice, llm_client=llm_client
+    )
+    combined = f"{draft.report}\n{draft.social}"
+
+    if case.case_type in ("numbers_match", "no_invent"):
+        # Every number in the draft must match a data value (the core guardrail).
+        result = check_numbers_grounded(draft_text=combined, data_rows=case.data_rows)
+        if not result.grounded:
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=f"ungrounded numbers: {result.unmatched}",
+            )
+        return CaseResult(id=case.id, passed=True, reason="ok (numbers grounded)")
+
+    if case.case_type == "brand_voice":
+        score = await _judge_brand_voice(
+            draft_text=combined, brand_voice=case.brand_voice, llm_client=llm_client
+        )
+        passed = score >= 4
+        return CaseResult(
+            id=case.id, passed=passed, reason=f"brand-voice judge score {score}/5 (>= 4 required)"
+        )
+
+    return CaseResult(id=case.id, passed=False, reason=f"unknown case_type {case.case_type!r}")
+
+
+async def run_insights_publisher_eval() -> tuple[list[CaseResult], float, float]:
+    config = yaml.safe_load((EVALS_DIR / "config.yaml").read_text(encoding="utf-8"))
+    agent_config = config["agents"]["insights_publisher"]
+    threshold = float(agent_config["threshold"])
+    cases = load_insights_dataset(EVALS_DIR / agent_config["dataset"])
+    results = [await _run_insights_case(case) for case in cases]
+    pass_rate = sum(1 for r in results if r.passed) / len(results) if results else 0.0
+    return results, pass_rate, threshold
+
+
 def main() -> None:
     import asyncio
 
@@ -918,6 +1301,12 @@ def main() -> None:
         results, pass_rate, threshold = asyncio.run(run_invoice_agent_eval())
     elif args.agent == "hr_agent":
         results, pass_rate, threshold = asyncio.run(run_hr_agent_eval())
+    elif args.agent == "listing_quality":
+        results, pass_rate, threshold = asyncio.run(run_listing_quality_eval())
+    elif args.agent == "vehicle_intake":
+        results, pass_rate, threshold = asyncio.run(run_vehicle_intake_eval())
+    elif args.agent == "insights_publisher":
+        results, pass_rate, threshold = asyncio.run(run_insights_publisher_eval())
     else:
         results, pass_rate, threshold = asyncio.run(run_agent_eval(args.agent))
 

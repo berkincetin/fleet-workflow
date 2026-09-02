@@ -1,7 +1,12 @@
 # Runbook — Local-lane (Ollama) tuning for the dev machine
 
 **Applies to:** any GPU-less development machine running the local model lane
-(`local-reasoning` = `qwen2.5:7b-instruct-q4_K_M`, `local-embeddings` = `bge-m3`).
+(`local-reasoning` = `qwen2.5:14b-instruct-q4_K_M` since task 12.2, `local-embeddings`
+= `bge-m3`). The 14B roughly doubles the per-call time this runbook is about: a
+full contract review measured ~200s on CPU, which is why
+`litellm_settings.request_timeout` is now 900s rather than 60s — and note that
+the **per-model `timeout:` on the Ollama lane does nothing**; litellm's Ollama
+path reads the global `litellm.request_timeout`.
 **Symptom it fixes:** integration tests that pass individually but fail in the
 full suite with `GatewayError: gateway call failed for model 'local-reasoning'`
 and an HTTP **500** from the litellm proxy.

@@ -1,0 +1,7 @@
+Geçmiş Redline Notları — Gizlilik Süresi
+
+STANDART (uygun, bulgu değildir): Gizlilik yükümlülüğü sözleşmenin sona ermesinden itibaren 3 yıl veya daha uzun süre devam eder.
+
+SAPMA (bulgu): Gizlilik süresini 3 yıldan kısa tutan madde.
+
+RISK: medium

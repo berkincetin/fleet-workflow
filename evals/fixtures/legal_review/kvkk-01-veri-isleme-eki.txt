@@ -1,0 +1,7 @@
+KVKK Kontrol Listesi — Kişisel Veri İşleme Eki
+
+STANDART (uygun, bulgu değildir): Sözleşme ya hiç kişisel veri işlenmediğini belirtir, ya da kişisel veri işleniyorsa sözleşmeye KVKK Veri İşleyen Eki eklendiğini açıkça belirtir.
+
+SAPMA (bulgu): Kişisel veri işleneceğini, aktarılacağını veya saklanacağını belirten ancak KVKK ekinden hiç söz etmeyen, böyle bir ek düzenlenmediğini söyleyen madde.
+
+RISK: high

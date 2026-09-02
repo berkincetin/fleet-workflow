@@ -49,9 +49,15 @@ The gateway (LiteLLM) routes by request sensitivity. Out of the box:
 - **Local lane (default for this demo, cost-free):** start Ollama and pull the
   two models the lane uses, then no cloud keys are needed —
   ```bash
-  ollama pull qwen2.5:7b-instruct-q4_K_M   # reasoning
-  ollama pull bge-m3                        # embeddings
+  ollama pull qwen2.5:14b-instruct-q4_K_M   # reasoning (~9 GB)
+  ollama pull bge-m3                         # embeddings
   ```
+  The 14B is the pinned local reasoning model: the Legal Document Review agent
+  (`legal_review`) needs it to tell a compliant clause from a violating one, and
+  the 7B measurably could not (see `docs/reports/sprint-12.md`). On a machine
+  that cannot hold it, swap `local-reasoning` back to
+  `qwen2.5:7b-instruct-q4_K_M` in `gateway/litellm/config.yaml` and expect
+  `make eval AGENT=legal_review` to fail.
   `make seed-demo` ingests the demo KB with `bge-m3` (1024-dim). Keep RAG agents
   on the local lane so query embeddings match the stored vectors.
 - **Cloud lane:** put a real `OPENAI_API_KEY` (and/or `ANTHROPIC_API_KEY`,

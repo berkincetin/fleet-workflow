@@ -12,7 +12,8 @@ from sqlalchemy import text
 
 _DEMO_AGENTS = [
     "support_copilot", "analytics", "dev_agent", "invoice_agent", "hr_agent", "hr_onboarding",
-    "listing_quality", "vehicle_intake", "insights_publisher",
+    "listing_quality", "vehicle_intake", "insights_publisher", "dealer_onboarding",
+    "legal_review",
 ]
 _DEMO_MODELS = ["utility", "reasoning", "utility-fallback-1"]
 
@@ -21,7 +22,7 @@ _EVALS_DIR = Path(__file__).resolve().parents[3] / "evals"
 
 _DEPARTMENTS = [
     "Customer Service", "Data", "Finance", "HR", "IT", "Listings Ops", "Trink sat",
-    "Marketing",
+    "Marketing", "Corporate Sales", "Legal",
 ]
 
 # Default model matrix (TRD §4.2), mirrored from gateway/litellm/config.yaml.
@@ -47,7 +48,10 @@ _DEFAULT_MODELS = [
      ["tools", "json"], 8192, "internal", "us"),
     ("embeddings", "openai", "openai/text-embedding-3-small", 0.00002, 0.0, 8191,
      ["json"], 1, "internal", "us"),
-    ("local-reasoning", "ollama", "ollama/qwen2.5:7b-instruct-q4_K_M", 0.0, 0.0, 32768,
+    # 14B (task 12.2): the local lane serves confidential/pii reasoning, and
+    # dept scenario 10's contract review is the hardest job on it. See the note
+    # in gateway/litellm/config.yaml for the measurement that drove the bump.
+    ("local-reasoning", "ollama", "ollama/qwen2.5:14b-instruct-q4_K_M", 0.0, 0.0, 32768,
      ["tools", "json"], 4096, "pii", "local"),
     ("local-embeddings", "ollama", "ollama/bge-m3", 0.0, 0.0, 8192,
      ["json"], 1, "pii", "local"),
@@ -381,6 +385,71 @@ async def seed_insights_publisher_agent() -> None:
     await engine.dispose()
 
 
+async def seed_dealer_onboarding_agent() -> None:
+    """Dealer Onboarding agent (task 12.1, dept scenario 09). sensitivity=pii:
+    the authorization certificate and tax registration carry the dealer's tax
+    number and IBAN, and `pii` is the one level core.llm.routing never
+    downgrades — so extraction is pinned to the local lane by the registry row
+    itself, not only by the agent code. No RAG collection (its "knowledge" is
+    the uploaded documents, same shape as invoice_agent/hr_agent/vehicle_intake);
+    semantic_cache off (every applicant's dossier is distinct)."""
+    engine = get_engine(database_url())
+    async with engine.begin() as conn:
+        dept_id = (
+            await conn.execute(
+                text("SELECT id FROM departments WHERE name = 'Corporate Sales'")
+            )
+        ).scalar_one()
+        await conn.execute(
+            text(
+                "INSERT INTO agents (name, dept_id, reasoning_model, utility_model, "
+                "sensitivity, semantic_cache, semantic_cache_threshold, max_context_tokens, "
+                "collection_ids) VALUES ('dealer_onboarding', :d, 'reasoning', 'utility', "
+                "'pii', false, 0.95, 8000, '{}') ON CONFLICT (name) DO NOTHING"
+            ),
+            {"d": dept_id},
+        )
+    await engine.dispose()
+
+
+async def seed_legal_review_agent() -> None:
+    """Legal Document Review agent (task 12.2, dept scenario 10). sensitivity=
+    confidential, which routes both the embedding and the reasoning call to the
+    local lane (no cloud model in the default matrix is cleared above
+    `internal`) — contracts stay on the machine. `legal-playbooks` is
+    confidential + allow-local-only so its embeddings are local too, keeping the
+    ingest and query vector spaces the same. semantic_cache off: two contracts
+    that read alike are not interchangeable."""
+    engine = get_engine(database_url())
+    async with engine.begin() as conn:
+        dept_id = (
+            await conn.execute(text("SELECT id FROM departments WHERE name = 'Legal'"))
+        ).scalar_one()
+        await conn.execute(
+            text(
+                "INSERT INTO collections (name, dept_id, sensitivity, retention_days, "
+                "pii_policy) VALUES ('legal-playbooks', :d, 'confidential', NULL, "
+                "'allow-local-only') ON CONFLICT (name) DO NOTHING"
+            ),
+            {"d": dept_id},
+        )
+        playbooks_id = (
+            await conn.execute(
+                text("SELECT id FROM collections WHERE name = 'legal-playbooks'")
+            )
+        ).scalar_one()
+        await conn.execute(
+            text(
+                "INSERT INTO agents (name, dept_id, reasoning_model, utility_model, "
+                "sensitivity, semantic_cache, semantic_cache_threshold, max_context_tokens, "
+                "collection_ids) VALUES ('legal_review', :d, 'reasoning', 'utility', "
+                "'confidential', false, 0.95, 8000, :cids) ON CONFLICT (name) DO NOTHING"
+            ),
+            {"d": dept_id, "cids": [playbooks_id]},
+        )
+    await engine.dispose()
+
+
 async def seed_eval_cases() -> None:
     """Import evals/datasets/*.jsonl into `eval_cases` (source='seed'), task
     6.5.2. Idempotent on (agent_name, case_id) via ON CONFLICT DO NOTHING —
@@ -538,6 +607,8 @@ def main() -> None:
     asyncio.run(seed_listing_quality_agent())
     asyncio.run(seed_vehicle_intake_agent())
     asyncio.run(seed_insights_publisher_agent())
+    asyncio.run(seed_dealer_onboarding_agent())
+    asyncio.run(seed_legal_review_agent())
     asyncio.run(seed_eval_cases())
     asyncio.run(seed_observability_demo())
 

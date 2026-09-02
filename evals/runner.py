@@ -1283,6 +1283,484 @@ async def run_insights_publisher_eval() -> tuple[list[CaseResult], float, float]
     return results, pass_rate, threshold
 
 
+# --- Dealer Onboarding (task 12.1, dept scenario 09) -------------------------
+
+
+@dataclass(frozen=True)
+class DealerCase:
+    id: str
+    case_type: str  # "extraction" | "mismatch" | "clean" | "missing_docs" | "email_template"
+    application: dict[str, Any]
+    documents: list[dict[str, Any]] = field(default_factory=list)
+    expect_company_name: str | None = None
+    expect_tax_no: str | None = None
+    expect_iban: str | None = None
+    expect_certificate_no: str | None = None
+    expect_name_mismatch: bool | None = None
+    expect_status: str | None = None
+    expect_missing_items: list[str] = field(default_factory=list)
+    expect_absent_items: list[str] = field(default_factory=list)
+    expect_email_pending_approval: bool = False
+    missing_documents: list[str] = field(default_factory=list)
+    missing_fields: list[str] = field(default_factory=list)
+
+
+def load_dealer_dataset(path: Path) -> list[DealerCase]:
+    cases: list[DealerCase] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        row = json.loads(line)
+        cases.append(
+            DealerCase(
+                id=row["id"], case_type=row["case_type"],
+                application=row["application"], documents=row.get("documents", []),
+                expect_company_name=row.get("expect_company_name"),
+                expect_tax_no=row.get("expect_tax_no"),
+                expect_iban=row.get("expect_iban"),
+                expect_certificate_no=row.get("expect_certificate_no"),
+                expect_name_mismatch=row.get("expect_name_mismatch"),
+                expect_status=row.get("expect_status"),
+                expect_missing_items=row.get("expect_missing_items", []),
+                expect_absent_items=row.get("expect_absent_items", []),
+                expect_email_pending_approval=row.get("expect_email_pending_approval", False),
+                missing_documents=row.get("missing_documents", []),
+                missing_fields=row.get("missing_fields", []),
+            )
+        )
+    return cases
+
+
+class _FixtureCrm:
+    """CRM stand-in serving this case's application and recording status moves."""
+
+    def __init__(self, application: dict[str, Any]) -> None:
+        self._application = application
+        self.status_updates: list[dict[str, Any]] = []
+
+    async def get_application(self, *, application_id: str) -> dict[str, Any]:
+        return dict(self._application)
+
+    async def update_status(
+        self, *, application_id: str, status: str, note: str | None = None
+    ) -> dict[str, Any]:
+        record = {"application_id": application_id, "status": status, "note": note or ""}
+        self.status_updates.append(record)
+        return record
+
+
+class _RecordingEmail:
+    def __init__(self) -> None:
+        self.sent: list[dict[str, str]] = []
+
+    async def send(self, to: str, subject: str, body: str) -> None:
+        self.sent.append({"to": to, "subject": subject, "body": body})
+
+
+async def _run_dealer_case(case: DealerCase) -> tuple[dict[str, Any], _FixtureCrm, _RecordingEmail]:
+    """Run one case through the real dealer_onboarding graph — real local
+    tesseract OCR of rendered documents, real LOCAL-lane extraction (the call
+    is made at sensitivity=pii, so routing admits no cloud model), real
+    deterministic cross-check. CRM and email are fixtures: they are the
+    scenario's INTEGRATION-POINT and its sandbox transport, not the behaviour
+    under test."""
+    import base64
+
+    from agents.dealer_onboarding.graph import build_dealer_onboarding_graph
+    from core.llm.factory import build_client
+    from fleet_rag.ingest.ocr import tesseract_ocr
+    from langgraph.checkpoint.memory import InMemorySaver
+    from synthetic_images import render_document_image_base64
+
+    class _OcrAdapter:
+        async def extract_text(self, image_base64: str) -> dict[str, str]:
+            text = tesseract_ocr(base64.b64decode(image_base64))
+            return {"text": text, "source": "tesseract"}
+
+    llm_client = await build_client()
+    crm = _FixtureCrm(case.application)
+    email = _RecordingEmail()
+    graph = build_dealer_onboarding_graph(
+        llm_client=llm_client, ocr=_OcrAdapter(), crm=crm, email=email,
+        checkpointer=InMemorySaver(),
+    )
+    documents = [
+        {"kind": d["kind"], "image_base64": render_document_image_base64(d["lines"])}
+        for d in case.documents
+    ]
+    result = await graph.ainvoke(
+        {"application_id": str(case.application["application_id"]), "documents": documents},
+        {"configurable": {"thread_id": f"eval-{case.id}"}},
+    )
+    return result, crm, email
+
+
+# Formal-register markers the TR missing-document template must carry, and the
+# informal second-person forms it must never carry (dept scenario 09's "TR
+# formal tone"). Checked as whole words so "senin" style matches don't fire on
+# innocuous substrings.
+_TR_FORMAL_MARKERS = ("Sayın", "rica ederiz", "Saygılarımızla")
+_TR_INFORMAL_RE = re.compile(
+    r"\b(sen|sana|senin|seni|gönder|yolla|bekliyorum|selam)\b", re.IGNORECASE
+)
+
+
+def _evaluate_email_body(
+    case: DealerCase, *, body: str, missing_items: list[str]
+) -> CaseResult | None:
+    """Shared email assertions; returns a failure CaseResult or None if ok."""
+    for expected in case.expect_missing_items:
+        if expected not in missing_items:
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=f"email missing item {expected!r}; listed {missing_items!r}",
+            )
+        if expected not in body:
+            return CaseResult(
+                id=case.id, passed=False, reason=f"email body does not name {expected!r}"
+            )
+    for absent in case.expect_absent_items:
+        if absent in missing_items or absent in body:
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=f"email asks for {absent!r}, which was not missing",
+            )
+    for marker in _TR_FORMAL_MARKERS:
+        if marker not in body:
+            return CaseResult(
+                id=case.id, passed=False, reason=f"email lacks the formal marker {marker!r}"
+            )
+    informal = _TR_INFORMAL_RE.search(body)
+    if informal:
+        return CaseResult(
+            id=case.id, passed=False,
+            reason=f"email uses the informal form {informal.group(0)!r}",
+        )
+    return None
+
+
+def _evaluate_dealer_email_template_case(case: DealerCase) -> CaseResult:
+    """email_template cases are pure template rendering — no OCR, no model.
+
+    That is deliberate: the outbound email is rendered from a fixed template
+    precisely so what the approver sees is what gets sent, and this case type
+    is the regression test for that template's content and register.
+    """
+    from agents.dealer_onboarding.crosscheck import CrossCheck
+    from agents.dealer_onboarding.email_template import render_missing_docs_email
+
+    check = CrossCheck(
+        missing_documents=list(case.missing_documents),
+        missing_fields=list(case.missing_fields),
+    )
+    message = render_missing_docs_email(application=case.application, check=check)
+    failure = _evaluate_email_body(
+        case, body=message.body, missing_items=message.missing_items
+    )
+    if failure is not None:
+        return failure
+    if str(case.application["application_id"]) not in message.subject:
+        return CaseResult(
+            id=case.id, passed=False,
+            reason=f"subject lacks the application id: {message.subject!r}",
+        )
+    return CaseResult(id=case.id, passed=True, reason="ok")
+
+
+def evaluate_dealer_case(
+    case: DealerCase, result: dict[str, Any], crm: _FixtureCrm, email: _RecordingEmail
+) -> CaseResult:
+    dossier = result.get("dossier", {})
+    check = result.get("check", {})
+
+    if case.case_type == "extraction":
+        if case.expect_company_name is not None and not _vendor_reasonably_matches(
+            dossier.get("company_name") or "", case.expect_company_name
+        ):
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=(
+                    f"company_name: expected ~{case.expect_company_name!r}, "
+                    f"got {dossier.get('company_name')!r}"
+                ),
+            )
+        for label, expected in (
+            ("tax_no", case.expect_tax_no),
+            ("iban", case.expect_iban),
+            ("certificate_no", case.expect_certificate_no),
+        ):
+            if expected is None:
+                continue
+            got = (dossier.get(label) or "").replace(" ", "").upper()
+            if got != expected.replace(" ", "").upper():
+                return CaseResult(
+                    id=case.id, passed=False,
+                    reason=f"{label}: expected {expected!r}, got {dossier.get(label)!r}",
+                )
+        return CaseResult(id=case.id, passed=True, reason="ok")
+
+    if case.case_type in ("mismatch", "clean"):
+        if check.get("name_mismatch") is not case.expect_name_mismatch:
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=(
+                    f"name_mismatch: expected {case.expect_name_mismatch}, "
+                    f"got {check.get('name_mismatch')} "
+                    f"(certificate {check.get('certificate_name')!r} vs "
+                    f"application {check.get('application_name')!r})"
+                ),
+            )
+        if email.sent or "__interrupt__" in result:
+            return CaseResult(
+                id=case.id, passed=False,
+                reason="an email was composed/sent for a case that should not email",
+            )
+        statuses = [u["status"] for u in crm.status_updates]
+        if case.expect_status is not None and case.expect_status not in statuses:
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=f"expected CRM status {case.expect_status!r}, got {statuses!r}",
+            )
+        return CaseResult(id=case.id, passed=True, reason="ok")
+
+    if case.case_type == "missing_docs":
+        if "__interrupt__" not in result:
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=f"no approval interrupt; check={check!r}",
+            )
+        payload = result["__interrupt__"][0].value
+        if payload["risk_class"] != "write:external":
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=f"email interrupt risk_class {payload['risk_class']!r}",
+            )
+        if email.sent:
+            return CaseResult(
+                id=case.id, passed=False, reason="email was sent before approval"
+            )
+        if crm.status_updates:
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=f"CRM status changed before approval: {crm.status_updates!r}",
+            )
+        failure = _evaluate_email_body(
+            case, body=payload["args"]["body"], missing_items=payload["missing_items"]
+        )
+        return failure or CaseResult(id=case.id, passed=True, reason="ok")
+
+    return CaseResult(id=case.id, passed=False, reason=f"unknown case_type {case.case_type!r}")
+
+
+async def run_dealer_onboarding_eval() -> tuple[list[CaseResult], float, float]:
+    config = yaml.safe_load((EVALS_DIR / "config.yaml").read_text(encoding="utf-8"))
+    agent_config = config["agents"]["dealer_onboarding"]
+    threshold = float(agent_config["threshold"])
+    cases = load_dealer_dataset(EVALS_DIR / agent_config["dataset"])
+    results: list[CaseResult] = []
+    for case in cases:
+        if case.case_type == "email_template":
+            results.append(_evaluate_dealer_email_template_case(case))
+            continue
+        result, crm, email = await _run_dealer_case(case)
+        results.append(evaluate_dealer_case(case, result, crm, email))
+    pass_rate = sum(1 for r in results if r.passed) / len(results) if results else 0.0
+    return results, pass_rate, threshold
+
+
+# --- Legal Document Review (task 12.2, dept scenario 10) ---------------------
+
+
+@dataclass(frozen=True)
+class LegalCase:
+    id: str
+    case_type: str  # "planted" | "clean" | "schema" | "injection"
+    contract_text: str
+    expect_clause_keywords: list[str] = field(default_factory=list)
+    expect_risk_levels: list[str] = field(default_factory=list)
+    expect_no_high: bool = False
+    expect_min_findings: int = 0
+
+
+def load_legal_dataset(path: Path) -> list[LegalCase]:
+    cases: list[LegalCase] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        row = json.loads(line)
+        cases.append(
+            LegalCase(
+                id=row["id"], case_type=row["case_type"],
+                contract_text=row["contract_text"],
+                expect_clause_keywords=row.get("expect_clause_keywords", []),
+                expect_risk_levels=row.get("expect_risk_levels", []),
+                expect_no_high=row.get("expect_no_high", False),
+                expect_min_findings=row.get("expect_min_findings", 0),
+            )
+        )
+    return cases
+
+
+def load_playbook_excerpts() -> list[dict[str, str]]:
+    """The legal-playbooks fixtures, chunked exactly as ingestion chunks them.
+
+    Reusing `fleet_rag.ingest.chunk.chunk_text` (rather than splitting the files
+    some other way) keeps the eval's excerpt granularity and chunk_refs
+    identical to what the live Qdrant collection holds — so a citation that
+    resolves here resolves the same way in production, and the eval predicts
+    live behaviour instead of testing a shape the agent never actually sees.
+
+    The eval feeds the WHOLE playbook rather than a retrieved top-k, so a case
+    that fails failed on the *review*, not on that run's embedding draw — the
+    same reason listing_quality's eval uses a fixed price index instead of the
+    live pg_ro view. Live retrieval against the real Qdrant collection is
+    covered by tests/integration/test_legal_review_e2e_live.py.
+    """
+    from fleet_rag.ingest.chunk import chunk_text
+
+    fixtures = sorted((EVALS_DIR / "fixtures" / "legal_review").glob("*.txt"))
+    excerpts: list[dict[str, str]] = []
+    for path in fixtures:
+        for chunk in chunk_text(path.read_text(encoding="utf-8")):
+            excerpts.append(
+                {"content": chunk.content, "chunk_ref": chunk.content_sha256}
+            )
+    return excerpts
+
+
+class _StaticPlaybooks:
+    def __init__(self, excerpts: list[dict[str, str]]) -> None:
+        self._excerpts = excerpts
+
+    async def retrieve(self, *, query: str) -> list[dict[str, str]]:
+        return list(self._excerpts)
+
+
+async def _run_legal_case(
+    case: LegalCase, *, playbooks: _StaticPlaybooks
+) -> dict[str, Any]:
+    """Run one case through the real legal_review graph on the LOCAL lane
+    (sensitivity=confidential admits no cloud reasoning model in the default
+    matrix), with the full playbook as the retrieved set."""
+    from agents.legal_review.graph import build_legal_review_graph
+    from core.llm.factory import build_client
+    from langgraph.checkpoint.memory import InMemorySaver
+
+    llm_client = await build_client()
+    graph = build_legal_review_graph(
+        llm_client=llm_client, playbooks=playbooks, checkpointer=InMemorySaver()
+    )
+    result: dict[str, Any] = await graph.ainvoke(
+        {"contract_text": case.contract_text},
+        {"configurable": {"thread_id": f"eval-{case.id}"}},
+    )
+    return result
+
+
+def evaluate_legal_case(
+    case: LegalCase, result: dict[str, Any], *, valid_refs: set[str]
+) -> CaseResult:
+    from agents.legal_review.findings import RISK_LEVELS
+
+    if result.get("blocked_reason"):
+        return CaseResult(
+            id=case.id, passed=False, reason=f"blocked: {result['blocked_reason']}"
+        )
+    findings = result.get("findings", [])
+
+    # Schema + citation resolution hold for EVERY case type, not just the
+    # "schema" ones — an unresolvable playbook_ref anywhere is a guardrail
+    # failure, and the whole point is that counsel can trust every finding.
+    for finding in findings:
+        if finding["risk_level"] not in RISK_LEVELS:
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=f"risk_level outside the vocabulary: {finding['risk_level']!r}",
+            )
+        if finding["playbook_ref"] not in valid_refs:
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=f"playbook_ref does not resolve: {finding['playbook_ref']!r}",
+            )
+        if not finding["clause"].strip():
+            return CaseResult(id=case.id, passed=False, reason="finding with an empty clause")
+
+    if case.case_type in ("planted", "injection"):
+        # Match on the whole finding, contract_excerpt included: the excerpt is
+        # the verbatim clause text, so it identifies which clause was caught far
+        # more reliably than the model's free-form `clause` label (which drifts
+        # between "Fesih Hakkı" and "Madde 3" for the same finding).
+        def _text(f: dict[str, Any]) -> str:
+            return f"{f['clause']} {f.get('contract_excerpt', '')} {f.get('rationale', '')}"
+
+        haystack = _fold(" ".join(_text(f) for f in findings))
+        if not any(_fold(k) in haystack for k in case.expect_clause_keywords):
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=(
+                    f"planted clause not caught; expected one of "
+                    f"{case.expect_clause_keywords!r}, findings={[f['clause'] for f in findings]!r}"
+                ),
+            )
+        matched = [
+            f for f in findings
+            if any(_fold(k) in _fold(_text(f)) for k in case.expect_clause_keywords)
+        ]
+        if case.expect_risk_levels and not any(
+            f["risk_level"] in case.expect_risk_levels for f in matched
+        ):
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=(
+                    f"caught the clause but rated it "
+                    f"{[f['risk_level'] for f in matched]!r}, expected one of "
+                    f"{case.expect_risk_levels!r}"
+                ),
+            )
+        return CaseResult(id=case.id, passed=True, reason="ok (caught with a citation)")
+
+    if case.case_type == "clean":
+        highs = [f["clause"] for f in findings if f["risk_level"] == "high"]
+        if case.expect_no_high and highs:
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=f"false alarm: high-risk findings on a clean contract: {highs!r}",
+            )
+        return CaseResult(id=case.id, passed=True, reason="ok (no false high-risk alarm)")
+
+    if case.case_type == "schema":
+        if len(findings) < case.expect_min_findings:
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=f"expected >= {case.expect_min_findings} findings, got {len(findings)}",
+            )
+        return CaseResult(
+            id=case.id, passed=True, reason=f"ok ({len(findings)} schema-valid findings)"
+        )
+
+    return CaseResult(id=case.id, passed=False, reason=f"unknown case_type {case.case_type!r}")
+
+
+async def run_legal_review_eval() -> tuple[list[CaseResult], float, float]:
+    config = yaml.safe_load((EVALS_DIR / "config.yaml").read_text(encoding="utf-8"))
+    agent_config = config["agents"]["legal_review"]
+    threshold = float(agent_config["threshold"])
+    cases = load_legal_dataset(EVALS_DIR / agent_config["dataset"])
+
+    excerpts = load_playbook_excerpts()
+    playbooks = _StaticPlaybooks(excerpts)
+    valid_refs = {e["chunk_ref"] for e in excerpts}
+
+    results: list[CaseResult] = []
+    for case in cases:
+        result = await _run_legal_case(case, playbooks=playbooks)
+        results.append(evaluate_legal_case(case, result, valid_refs=valid_refs))
+    pass_rate = sum(1 for r in results if r.passed) / len(results) if results else 0.0
+    return results, pass_rate, threshold
+
+
 def main() -> None:
     import asyncio
 
@@ -1307,6 +1785,10 @@ def main() -> None:
         results, pass_rate, threshold = asyncio.run(run_vehicle_intake_eval())
     elif args.agent == "insights_publisher":
         results, pass_rate, threshold = asyncio.run(run_insights_publisher_eval())
+    elif args.agent == "dealer_onboarding":
+        results, pass_rate, threshold = asyncio.run(run_dealer_onboarding_eval())
+    elif args.agent == "legal_review":
+        results, pass_rate, threshold = asyncio.run(run_legal_review_eval())
     else:
         results, pass_rate, threshold = asyncio.run(run_agent_eval(args.agent))
 

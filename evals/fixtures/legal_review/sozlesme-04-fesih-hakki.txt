@@ -1,0 +1,7 @@
+Sözleşme Standartları — Fesih Hakkı
+
+STANDART (uygun, bulgu değildir): Fesih hakkı her iki tarafa karşılıklı ve eşit olarak tanınmıştır; bildirim süresi en fazla 30 gündür.
+
+SAPMA (bulgu): Fesih hakkını yalnızca karşı tarafa tanıyan, bize fesih hakkı vermeyen veya bize 30 günden uzun bildirim süresi yükleyen madde.
+
+RISK: high

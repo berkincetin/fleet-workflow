@@ -24,8 +24,8 @@
 | 6 | Listing Quality | Listings Ops | 1 | internal | cloud | multimodal, n8n triggers | task 11.1 | live |
 | 7 | Vehicle Intake | Trink sat! | 1 | confidential | mixed | multimodal, OCR, SQL | task 11.2 | live |
 | 8 | Insights Publisher | Marketing | 1 | internal | cloud | n8n cron, SQL, brand voice | task 11.3 | live |
-| 9 | Dealer Onboarding | Corporate Sales | 2 | pii | local OCR + approval emails | OCR, email MCP | task 12.1 | coming soon |
-| 10 | Legal Document Review | Legal | 2 | confidential | local | RAG, clause extraction | task 12.2 | coming soon |
+| 9 | Dealer Onboarding | Corporate Sales | 2 | pii | local OCR + approval emails | OCR, email MCP | task 12.1 | live |
+| 10 | Legal Document Review | Legal | 2 | confidential | local | RAG, clause extraction | task 12.2 | live |
 
 Wave 0 = built during the MVP sprints (task numbers reference IMPLEMENTATION_PLAN.md). Waves 1–2 = post-MVP onboarding, ~3–5 days each using the checklist at the end of this document. "Ships when" cites the IMPLEMENTATION_PLAN.md task that flips the scenario from planned to built; "UI status" reflects the `/scenarios` department hub introduced in Sprint 6.5.
 

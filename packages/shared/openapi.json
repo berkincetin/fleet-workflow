@@ -1940,6 +1940,116 @@
         }
       }
     },
+    "/v1/dealer-onboarding/runs": {
+      "post": {
+        "tags": [
+          "dealer-onboarding"
+        ],
+        "summary": "Start Run",
+        "operationId": "start_run_v1_dealer_onboarding_runs_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-fleet-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Fleet-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/fleet_api__routers__dealer_onboarding__RunIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/fleet_api__routers__dealer_onboarding__RunOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/legal-review/runs": {
+      "post": {
+        "tags": [
+          "legal-review"
+        ],
+        "summary": "Start Run",
+        "operationId": "start_run_v1_legal_review_runs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/fleet_api__routers__legal_review__RunIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/fleet_api__routers__legal_review__RunOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/examples": {
       "get": {
         "tags": [
@@ -3788,6 +3898,24 @@
         ],
         "title": "DeptIn"
       },
+      "DocumentIn": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "image_base64": {
+            "type": "string",
+            "title": "Image Base64"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "image_base64"
+        ],
+        "title": "DocumentIn"
+      },
       "DocumentOut": {
         "properties": {
           "id": {
@@ -3964,6 +4092,39 @@
           "score"
         ],
         "title": "FeedbackIn"
+      },
+      "FindingOut": {
+        "properties": {
+          "clause": {
+            "type": "string",
+            "title": "Clause"
+          },
+          "risk_level": {
+            "type": "string",
+            "title": "Risk Level"
+          },
+          "playbook_ref": {
+            "type": "string",
+            "title": "Playbook Ref"
+          },
+          "contract_excerpt": {
+            "type": "string",
+            "title": "Contract Excerpt",
+            "default": ""
+          },
+          "rationale": {
+            "type": "string",
+            "title": "Rationale",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "clause",
+          "risk_level",
+          "playbook_ref"
+        ],
+        "title": "FindingOut"
       },
       "HTTPValidationError": {
         "properties": {
@@ -4553,6 +4714,51 @@
         ],
         "title": "WorkflowOut"
       },
+      "fleet_api__routers__dealer_onboarding__RunIn": {
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "title": "Application Id"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentIn"
+            },
+            "type": "array",
+            "title": "Documents",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "application_id"
+        ],
+        "title": "RunIn"
+      },
+      "fleet_api__routers__dealer_onboarding__RunOut": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "detail": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "status",
+          "detail"
+        ],
+        "title": "RunOut"
+      },
       "fleet_api__routers__dev_agent__RunIn": {
         "properties": {
           "ticket_key": {
@@ -4693,6 +4899,68 @@
           "run_id",
           "status",
           "detail"
+        ],
+        "title": "RunOut"
+      },
+      "fleet_api__routers__legal_review__RunIn": {
+        "properties": {
+          "contract_text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Contract Text"
+          },
+          "top_k": {
+            "type": "integer",
+            "maximum": 50.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Top K",
+            "default": 15
+          }
+        },
+        "type": "object",
+        "required": [
+          "contract_text"
+        ],
+        "title": "RunIn"
+      },
+      "fleet_api__routers__legal_review__RunOut": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/FindingOut"
+            },
+            "type": "array",
+            "title": "Findings",
+            "default": []
+          },
+          "uncited": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Uncited",
+            "default": []
+          },
+          "detail": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Detail",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "status"
         ],
         "title": "RunOut"
       },

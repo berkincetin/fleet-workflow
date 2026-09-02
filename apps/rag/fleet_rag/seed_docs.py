@@ -79,12 +79,31 @@ async def seed_docs() -> None:
     # (matches the department scenario's two-collection KB split). hr-policies:
     # onboarding/leave policy docs (task 8.5, dept scenario 05's hr_onboarding
     # agent) — same internal/redact shape as the CS docs, a different dept.
+    # legal-playbooks (task 12.2, dept scenario 10) is the odd one out: it is
+    # confidential + allow-local-only, so it ingests at that sensitivity and
+    # therefore embeds with the LOCAL model. That is not a detail — the
+    # legal_review agent queries at `confidential` too, and a collection
+    # ingested with cloud embeddings would be a different vector space (and a
+    # different dimension) from its own queries.
     targets = {
         "support_copilot/trink-sat-process.txt": "cs-help-center",
         "support_copilot/membership-and-payments.txt": "cs-help-center",
         "support_copilot/listing-quality-sop.txt": "cs-procedures",
         "hr_onboarding/onboarding-process.txt": "hr-policies",
         "hr_onboarding/leave-and-benefits-policy.txt": "hr-policies",
+    }
+    # legal-playbooks is one document per playbook RULE, globbed rather than
+    # listed. The granularity is the point, not a filing preference: with the
+    # three original rule-group documents the ingest chunker packed each into a
+    # single ~150-word chunk, and the local reviewer both missed a blatant
+    # unlimited non-compete and flagged a conforming jurisdiction clause —
+    # measured, 85% vs 100% on the same eval set. One rule per document also
+    # makes the citation counsel reads point at the rule, not at a whole
+    # playbook.
+    for path in sorted((FIXTURES_ROOT / "legal_review").glob("*.txt")):
+        targets[f"legal_review/{path.name}"] = "legal-playbooks"
+    collection_policies = {
+        "legal-playbooks": ("confidential", "allow-local-only"),
     }
 
     for rel_path, collection_name in targets.items():
@@ -100,6 +119,9 @@ async def seed_docs() -> None:
             session_factory, collection_id=collection_id, uri=object_key, sha256=sha256
         )
 
+        sensitivity, pii_policy = collection_policies.get(
+            collection_name, ("internal", "redact")
+        )
         outcome = await ingest_document(
             {
                 "session_factory": session_factory,
@@ -112,8 +134,8 @@ async def seed_docs() -> None:
             collection_id=collection_id,
             object_key=object_key,
             filename=filename,
-            sensitivity="internal",
-            pii_policy="redact",
+            sensitivity=sensitivity,
+            pii_policy=pii_policy,
         )
         print(f"{filename} -> {collection_name}: {outcome['chunks_embedded']} chunks embedded")
 

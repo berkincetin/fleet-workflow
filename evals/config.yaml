@@ -28,6 +28,24 @@ agents:
     # OCR-level noise on long VINs is expected; the guardrails (missing→incomplete,
     # band-contains-median, redaction) are the hard asserts.
     threshold: 0.85
+  dealer_onboarding:
+    dataset: datasets/dealer_onboarding.jsonl
+    # 0.85, same rationale as vehicle_intake plus one more: extraction runs on
+    # local tesseract OCR *and* the local 7B (the pii lane admits no cloud
+    # model), so long digit strings (10-digit tax numbers, 26-char IBANs) carry
+    # OCR-level noise. The hard asserts are the guardrails — mismatch → flag with
+    # no email, missing docs → approval-gated email that names exactly the right
+    # items, nothing sent or moved before approval.
+    threshold: 0.85
+  legal_review:
+    dataset: datasets/legal_review.jsonl
+    # 0.85: clause extraction runs on the local 14B-class lane (contracts are
+    # confidential and never leave the machine), which is less consistent than
+    # the cloud reasoning models the 0.90 agents use. Recall of the planted
+    # clause and the citation-resolution guardrail are the hard asserts —
+    # schema and playbook_ref validity are checked on every case, not only the
+    # "schema" ones.
+    threshold: 0.85
   insights_publisher:
     dataset: datasets/insights_publisher.jsonl
     # 0.90: numbers-match + no-invent are deterministic hard checks; brand-voice

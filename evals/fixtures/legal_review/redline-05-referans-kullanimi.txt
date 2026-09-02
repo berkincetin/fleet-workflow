@@ -1,0 +1,7 @@
+Geçmiş Redline Notları — Referans ve Tanıtım Kullanımı
+
+STANDART (uygun, bulgu değildir): Unvanımızın, logomuzun veya işbirliğinin tanıtım amacıyla kullanılması önceden yazılı onayımıza bağlanmıştır.
+
+SAPMA (bulgu): Karşı tarafa onay şartı olmaksızın referans/tanıtım kullanma hakkı veren madde.
+
+RISK: low

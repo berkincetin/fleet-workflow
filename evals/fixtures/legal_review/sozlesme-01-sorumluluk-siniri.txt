@@ -1,0 +1,7 @@
+Sözleşme Standartları — Sorumluluk Sınırı
+
+STANDART (uygun, bulgu değildir): Tarafların sorumluluğu, sözleşme kapsamında son 12 ayda ödenen toplam bedel ile sınırlandırılır. Sorumluluğun belirli bir üst limitle sınırlandırıldığını söyleyen madde uygundur.
+
+SAPMA (bulgu): Sorumluluğun sınırsız olduğunu, üst limit uygulanmadığını veya tarafın "her türlü zarardan" sorumlu olduğunu söyleyen madde.
+
+RISK: high

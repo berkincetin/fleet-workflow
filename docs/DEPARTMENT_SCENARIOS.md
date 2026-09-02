@@ -19,8 +19,8 @@
 | 6 | Listing Quality | Listings Ops | 1 | internal | cloud | multimodal, n8n triggers | task 11.1 | live |
 | 7 | Vehicle Intake | Trink sat! | 1 | confidential | mixed | multimodal, OCR, SQL | task 11.2 | live |
 | 8 | Insights Publisher | Marketing | 1 | internal | cloud | n8n cron, SQL, brand voice | task 11.3 | live |
-| 9 | Dealer Onboarding | Corporate Sales | 2 | pii | local OCR + approval emails | OCR, email MCP | task 12.1 | coming soon |
-| 10 | Legal Document Review | Legal | 2 | confidential | local | RAG, clause extraction | task 12.2 | coming soon |
+| 9 | Dealer Onboarding | Corporate Sales | 2 | pii | local OCR + approval emails | OCR, email MCP | task 12.1 | live |
+| 10 | Legal Document Review | Legal | 2 | confidential | local | RAG, clause extraction | task 12.2 | live |
 
 Wave 0 = built during the MVP sprints (task numbers reference IMPLEMENTATION_PLAN.md). Waves 1–2 = post-MVP onboarding, ~3–5 days each using the checklist at the end of this document. "Ships when" cites the IMPLEMENTATION_PLAN.md task that flips the scenario from planned to built; "UI status" reflects the `/scenarios` department hub introduced in Sprint 6.5.
 
@@ -124,6 +124,7 @@ Wave 0 = built during the MVP sprints (task numbers reference IMPLEMENTATION_PLA
 **Evals (≥12):** field extraction on synthetic certificates; mismatch fixture (application name ≠ certificate) → flag; email template correctness (right missing items listed, TR formal tone).
 **Rollout:** approval on all outbound email first month → template auto-send.
 **Metrics:** onboarding cycle time ↓, incomplete-application loops ↓.
+**As built (task 12.1):** the missing-document email is rendered from a fixed TR formal template, not generated — the approval item in the queue is then byte-identical to what gets sent, and no model can invent a document requirement. The cloud utility lane this spec permits for orchestration text is therefore unused: the agent makes exactly one LLM call, the pii-lane dossier extraction. A name mismatch takes a third path the spec did not name: `manual_review` via `crm.update_status`, with **no email composed at all** — an applicant whose certificate names a different company is never written to on the agent's own initiative.
 
 ## 10. Legal Document Review — Legal [Wave 2]
 
@@ -134,6 +135,7 @@ Wave 0 = built during the MVP sprints (task numbers reference IMPLEMENTATION_PLA
 **Evals (≥12):** planted risky-clause fixtures (unlimited liability, missing KVKK annex) → must catch with citation; clean contract → no false alarms beyond threshold; output schema (clause, risk level, playbook reference) validated.
 **Rollout:** assist permanently (advisory).
 **Metrics:** first-pass review time ↓ 50%.
+**As built (task 12.2):** `legal-playbooks` is one document per rule, each written as STANDART (conforming clause) / SAPMA (deviating clause) / RISK. The structure is load-bearing, not cosmetic — with prose rules packed into one chunk per playbook the local model matched clauses on topic rather than polarity, restating a playbook prohibition as a finding against a clause that already complied. Findings additionally carry a `contract_excerpt` quoted verbatim from the contract, checked to actually appear in it, so a finding is grounded in both the playbook and the contract. The local lane runs the 14B this spec calls for (see gateway/litellm/config.yaml); the 7B it previously held could not do this job.
 
 ---
 

@@ -53,9 +53,12 @@ the "matches" field: "STANDART" if the clause complies, "SAPMA" if it deviates. 
 Never answer "SAPMA" just because the excerpt mentions a risk — the quoted \
 contract text itself has to match the SAPMA description.
 
-Go through EVERY excerpt before you answer, and do not stop at the first conflict \
-you find — a contract usually breaches more than one rule. Skip an excerpt only \
-when the contract says nothing at all about that topic.
+Emit an entry ONLY for clauses you judge "SAPMA". A clause that complies, or a \
+topic the contract does not mention, produces no entry at all — keep the output \
+short. But go through EVERY excerpt before you answer, and do not stop at the \
+first conflict you find: a contract usually breaches more than one rule, and a \
+review that reports one problem and misses the rest is worse than useless to \
+counsel.
 
 Risk level must be the excerpt's RISK value, one of: {", ".join(RISK_LEVELS)}.
 
@@ -73,10 +76,10 @@ Respond with exactly one JSON object and nothing else — no markdown, no commen
   ]
 }}
 
-Entries marked "STANDART" are discarded before anyone reads the review, so \
-listing them costs nothing — what matters is that "matches" is honest. Do not \
-invent clauses that are not in the contract text. This is a first-pass advisory \
-review for a lawyer, not legal advice."""
+Fill "matches" honestly even so: an entry marked "STANDART" is discarded before \
+anyone reads the review, so if you find yourself writing one, say so there \
+rather than mislabelling it. Do not invent clauses that are not in the contract \
+text. This is a first-pass advisory review for a lawyer, not legal advice."""
 
 
 class ReasoningClient(Protocol):

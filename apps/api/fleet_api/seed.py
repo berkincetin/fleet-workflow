@@ -12,14 +12,16 @@ from sqlalchemy import text
 
 _DEMO_AGENTS = [
     "support_copilot", "analytics", "dev_agent", "invoice_agent", "hr_agent", "hr_onboarding",
-    "listing_quality",
+    "listing_quality", "vehicle_intake",
 ]
 _DEMO_MODELS = ["utility", "reasoning", "utility-fallback-1"]
 
 # evals/ lives at the repo root, three levels above apps/api/fleet_api/.
 _EVALS_DIR = Path(__file__).resolve().parents[3] / "evals"
 
-_DEPARTMENTS = ["Customer Service", "Data", "Finance", "HR", "IT", "Listings Ops"]
+_DEPARTMENTS = [
+    "Customer Service", "Data", "Finance", "HR", "IT", "Listings Ops", "Trink sat",
+]
 
 # Default model matrix (TRD §4.2), mirrored from gateway/litellm/config.yaml.
 # Seeded into the registry so Admin → Models and the gateway client have rows to
@@ -302,6 +304,40 @@ async def seed_listing_quality_agent() -> None:
     await engine.dispose()
 
 
+_FIXTURE_COMPARABLES_VIEW = """
+CREATE OR REPLACE VIEW fixture_comparables AS
+SELECT * FROM (VALUES
+  ('sedan-2018', 480000), ('sedan-2018', 500000), ('sedan-2018', 520000),
+  ('sedan-2018', 460000), ('sedan-2018', 540000),
+  ('suv-2020', 700000), ('suv-2020', 800000), ('suv-2020', 750000),
+  ('suv-2020', 820000), ('suv-2020', 780000),
+  ('hatchback-2019', 420000), ('hatchback-2019', 450000), ('hatchback-2019', 480000)
+) AS t(segment, price);
+"""
+
+
+async def seed_vehicle_intake_agent() -> None:
+    """Vehicle Intake agent (task 11.2, dept scenario 07). Confidential; local
+    OCR + redact + cloud reasoning; no write tools; advisory."""
+    engine = get_engine(database_url())
+    async with engine.begin() as conn:
+        dept_id = (
+            await conn.execute(
+                text("SELECT id FROM departments WHERE name = 'Trink sat'")
+            )
+        ).scalar_one()
+        await conn.execute(
+            text(
+                "INSERT INTO agents (name, dept_id, reasoning_model, utility_model, "
+                "sensitivity, semantic_cache, semantic_cache_threshold, max_context_tokens, "
+                "collection_ids) VALUES ('vehicle_intake', :d, 'reasoning', 'utility', "
+                "'confidential', false, 0.95, 8000, '{}') ON CONFLICT (name) DO NOTHING"
+            ),
+            {"d": dept_id},
+        )
+    await engine.dispose()
+
+
 async def seed_eval_cases() -> None:
     """Import evals/datasets/*.jsonl into `eval_cases` (source='seed'), task
     6.5.2. Idempotent on (agent_name, case_id) via ON CONFLICT DO NOTHING —
@@ -435,10 +471,13 @@ async def seed() -> None:
         await conn.execute(text(_FIXTURE_PURCHASE_ORDERS_VIEW))
         # Listing-quality price-index fixture consumed by 11.1 (dept scenario 06).
         await conn.execute(text(_FIXTURE_PRICE_INDEX_VIEW))
+        # Vehicle-intake comparables fixture consumed by 11.2 (dept scenario 07).
+        await conn.execute(text(_FIXTURE_COMPARABLES_VIEW))
         await conn.execute(
             text(
                 "GRANT SELECT ON fixture_sales, fixture_orders, "
-                "fixture_purchase_orders, fixture_price_index TO fleet_readonly"
+                "fixture_purchase_orders, fixture_price_index, fixture_comparables "
+                "TO fleet_readonly"
             )
         )
     await engine.dispose()
@@ -452,6 +491,7 @@ def main() -> None:
     asyncio.run(seed_invoice_agent())
     asyncio.run(seed_hr_agents())
     asyncio.run(seed_listing_quality_agent())
+    asyncio.run(seed_vehicle_intake_agent())
     asyncio.run(seed_eval_cases())
     asyncio.run(seed_observability_demo())
 

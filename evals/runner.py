@@ -1028,6 +1028,159 @@ async def run_listing_quality_eval() -> tuple[list[CaseResult], float, float]:
     return results, pass_rate, threshold
 
 
+# --- Vehicle Intake (task 11.2, dept scenario 07) ----------------------------
+
+
+@dataclass(frozen=True)
+class VehicleCase:
+    id: str
+    case_type: str  # "extraction" | "price_band" | "missing"
+    report_lines: list[str]
+    segment: str
+    expect_chassis: str | None = None
+    expect_km: int | None = None
+    expect_damage_contains: str | None = None
+    expect_redaction: bool = False
+    comparables: list[float] = field(default_factory=list)
+    expect_band_contains_median: bool = False
+    expect_incomplete: bool = False
+
+
+def load_vehicle_dataset(path: Path) -> list[VehicleCase]:
+    cases: list[VehicleCase] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        row = json.loads(line)
+        cases.append(
+            VehicleCase(
+                id=row["id"], case_type=row["case_type"],
+                report_lines=row["report_lines"], segment=row["segment"],
+                expect_chassis=row.get("expect_chassis"),
+                expect_km=row.get("expect_km"),
+                expect_damage_contains=row.get("expect_damage_contains"),
+                expect_redaction=row.get("expect_redaction", False),
+                comparables=row.get("comparables", []),
+                expect_band_contains_median=row.get("expect_band_contains_median", False),
+                expect_incomplete=row.get("expect_incomplete", False),
+            )
+        )
+    return cases
+
+
+class _StaticComparables:
+    def __init__(self, prices: list[float]) -> None:
+        self._prices = prices
+
+    async def top_prices(self, *, segment: str, limit: int = 5) -> list[float]:
+        return self._prices[:limit]
+
+
+async def _run_vehicle_case(case: VehicleCase) -> dict[str, Any]:
+    """Run one case through the real vehicle_intake graph — real local
+    tesseract OCR on a rendered report, real redaction, real cloud reasoning
+    extraction, deterministic band from the case's comparables."""
+    import base64
+
+    from agents.vehicle_intake.graph import build_vehicle_intake_graph
+    from core.llm.factory import build_client
+    from fleet_rag.ingest.ocr import tesseract_ocr
+    from langgraph.checkpoint.memory import InMemorySaver
+    from synthetic_images import render_document_image_base64
+
+    class _OcrAdapter:
+        async def extract_text(self, image_base64: str) -> dict[str, str]:
+            text = tesseract_ocr(base64.b64decode(image_base64))
+            return {"text": text, "source": "tesseract"}
+
+    llm_client = await build_client()
+    graph = build_vehicle_intake_graph(
+        llm_client=llm_client, ocr=_OcrAdapter(),
+        comparables=_StaticComparables(case.comparables), checkpointer=InMemorySaver(),
+    )
+    image_b64 = render_document_image_base64(case.report_lines)
+    result = await graph.ainvoke(
+        {"image_base64": image_b64, "segment": case.segment},
+        {"configurable": {"thread_id": f"eval-{case.id}"}},
+    )
+    return result
+
+
+def evaluate_vehicle_case(case: VehicleCase, result: dict[str, Any]) -> CaseResult:
+    if case.case_type == "missing":
+        passed = bool(result.get("incomplete"))
+        band = result.get("price_band")
+        if passed and band is not None:
+            return CaseResult(id=case.id, passed=False, reason="incomplete report invented a band")
+        return CaseResult(
+            id=case.id, passed=passed,
+            reason="ok" if passed else f"expected incomplete, got {result.get('brief')!r}",
+        )
+
+    brief = result.get("brief", {})
+    if case.case_type in ("extraction", "price_band"):
+        if result.get("incomplete"):
+            return CaseResult(id=case.id, passed=False, reason="unexpectedly incomplete")
+        # chassis: exact (alphanumeric VIN, no OCR-diacritic tolerance needed but
+        # allow case/space noise).
+        if case.expect_chassis is not None:
+            got = (brief.get("chassis") or "").replace(" ", "").upper()
+            want = case.expect_chassis.replace(" ", "").upper()
+            if got != want:
+                return CaseResult(
+                    id=case.id, passed=False,
+                    reason=f"chassis: expected {want!r}, got {got!r}",
+                )
+        if case.expect_km is not None and brief.get("km") != case.expect_km:
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=f"km: expected {case.expect_km}, got {brief.get('km')!r}",
+            )
+        if case.expect_damage_contains is not None:
+            damage_text = _fold(" ".join(brief.get("damage", [])))
+            if _fold(case.expect_damage_contains) not in damage_text:
+                return CaseResult(
+                    id=case.id, passed=False,
+                    reason=(
+                        f"damage missing {case.expect_damage_contains!r}: "
+                        f"{brief.get('damage')!r}"
+                    ),
+                )
+        if case.expect_redaction and not brief.get("redaction_applied"):
+            return CaseResult(
+                id=case.id, passed=False, reason="expected PII redaction to fire, it did not"
+            )
+
+    if case.case_type == "price_band":
+        band = result.get("price_band")
+        if band is None:
+            return CaseResult(id=case.id, passed=False, reason="no price band produced")
+        contains = band["low"] <= band["median"] <= band["high"]
+        if case.expect_band_contains_median and not contains:
+            return CaseResult(
+                id=case.id, passed=False,
+                reason=(
+                    f"band {band['low']}-{band['high']} excludes median {band['median']}"
+                ),
+            )
+
+    return CaseResult(id=case.id, passed=True, reason="ok")
+
+
+async def run_vehicle_intake_eval() -> tuple[list[CaseResult], float, float]:
+    config = yaml.safe_load((EVALS_DIR / "config.yaml").read_text(encoding="utf-8"))
+    agent_config = config["agents"]["vehicle_intake"]
+    threshold = float(agent_config["threshold"])
+    cases = load_vehicle_dataset(EVALS_DIR / agent_config["dataset"])
+    results: list[CaseResult] = []
+    for case in cases:
+        result = await _run_vehicle_case(case)
+        results.append(evaluate_vehicle_case(case, result))
+    pass_rate = sum(1 for r in results if r.passed) / len(results) if results else 0.0
+    return results, pass_rate, threshold
+
+
 def main() -> None:
     import asyncio
 
@@ -1048,6 +1201,8 @@ def main() -> None:
         results, pass_rate, threshold = asyncio.run(run_hr_agent_eval())
     elif args.agent == "listing_quality":
         results, pass_rate, threshold = asyncio.run(run_listing_quality_eval())
+    elif args.agent == "vehicle_intake":
+        results, pass_rate, threshold = asyncio.run(run_vehicle_intake_eval())
     else:
         results, pass_rate, threshold = asyncio.run(run_agent_eval(args.agent))
 

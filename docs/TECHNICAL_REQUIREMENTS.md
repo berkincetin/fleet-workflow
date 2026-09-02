@@ -100,7 +100,7 @@ Seeded into the registry on `make seed` (exact provider model IDs pinned at Day 
 | Utility | Gemini Flash | GPT-4o-mini → Claude Haiku | `internal` | classification, extraction, routing, summaries |
 | Vision/OCR (cloud, non-PII) | Gemini Flash | GPT-4o | `internal` | listing photos, non-sensitive invoice OCR |
 | Embeddings (cloud) | OpenAI text-embedding-3-small | Gemini embedding | `internal` | 1536-dim |
-| Local LLM (pii lane) | Ollama `qwen2.5:14b-instruct-q4_K_M` (7b only where RAM/VRAM cannot hold 14b) | — | `pii` | GPU host-native |
+| Local LLM (pii lane) | Ollama `qwen2.5:7b-instruct-q4_K_M`; 14b where VRAM ≥ 12 GB (task 12.2: 14b thrashes on an 8 GB card) | — | `pii` | GPU host-native |
 | Local embeddings (pii lane) | Ollama `bge-m3` | — | `pii` | 1024-dim; **pii collections never embed via cloud** |
 
 **Clearance rules:** `sensitivity_clearance` is ordered `public < internal < confidential < pii`; a model may serve requests whose effective sensitivity is at or below its clearance. Cloud models default to `internal`. Raising a cloud model to `confidential` is an explicit platform_admin action (in-region / DPA-cleared providers only) recorded in audit; no cloud model is ever cleared for `pii`. `confidential`/`pii` **content** reaches cloud models only via the redaction-downgrade rule (§8) — i.e., after the PII pipeline has produced a redacted variant whose effective sensitivity is `internal`.

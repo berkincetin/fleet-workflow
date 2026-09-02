@@ -48,10 +48,10 @@ _DEFAULT_MODELS = [
      ["tools", "json"], 8192, "internal", "us"),
     ("embeddings", "openai", "openai/text-embedding-3-small", 0.00002, 0.0, 8191,
      ["json"], 1, "internal", "us"),
-    # 14B (task 12.2): the local lane serves confidential/pii reasoning, and
-    # dept scenario 10's contract review is the hardest job on it. See the note
-    # in gateway/litellm/config.yaml for the measurement that drove the bump.
-    ("local-reasoning", "ollama", "ollama/qwen2.5:14b-instruct-q4_K_M", 0.0, 0.0, 32768,
+    # 7B, not the 14B dept scenario 10 asks for: the 14B was pulled and measured
+    # in task 12.2 and does not fit this machine's 8 GB of VRAM. See the note in
+    # gateway/litellm/config.yaml.
+    ("local-reasoning", "ollama", "ollama/qwen2.5:7b-instruct-q4_K_M", 0.0, 0.0, 32768,
      ["tools", "json"], 4096, "pii", "local"),
     ("local-embeddings", "ollama", "ollama/bge-m3", 0.0, 0.0, 8192,
      ["json"], 1, "pii", "local"),

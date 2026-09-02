@@ -114,19 +114,23 @@ model_list:
   # model easily takes minutes to generate a full JSON response, and the request
   # must be allowed to finish rather than time out.
   #
-  # 14B, not the 7B this lane started on (task 12.2): dept scenario 10 specifies
-  # a local 14B for contract clause extraction, and the 7B measurably could not
-  # do that job — on the legal_review eval it scored anywhere from 69% to 100%
-  # across runs of the same set, because it matched clauses on *topic* rather
-  # than polarity (reading a conforming liability cap, then restating the
-  # playbook's unlimited-liability prohibition as the finding). No prompt
-  # phrasing fixed it. The cost is latency: a full contract review (15 playbook
-  # excerpts in, ~440 tokens out) measured ~200s on CPU, and the timeout below
-  # went 300 -> 900s because the 14B overshot 300 on the longer prompts. The
-  # matching client-side ceiling is FLEET_LITELLM_TIMEOUT in .env.
+  # Stays on the 7B. Dept scenario 10 specifies a local 14B for contract clause
+  # extraction, and task 12.2 tried it: qwen2.5:14b-instruct-q4_K_M pulled,
+  # registered here and measured. It does not fit this reference machine — 14 GB
+  # resident against 8 GB of VRAM means a 53%/47% GPU/CPU split, and under
+  # sustained eval load a *trivial* four-field extraction that the 7B answers in
+  # ~30s did not return inside 600s. The 14B is the right model where the VRAM
+  # exists (see the TRD §4.2 note); on this box it is unusable, so the lane
+  # stays on the 7B.
+  #
+  # The quality gap the 14B was meant to close was closed a different way, which
+  # is the more durable finding: the legal_review agent now makes the model emit
+  # a STANDART/SAPMA verdict per clause and filters on it in code, rather than
+  # trusting the model to withhold a conforming clause. See
+  # apps/runtime/agents/legal_review/findings.py.
   - model_name: local-reasoning
     litellm_params:
-      model: ollama/qwen2.5:14b-instruct-q4_K_M
+      model: ollama/qwen2.5:7b-instruct-q4_K_M
       api_base: os.environ/OLLAMA_BASE_URL
       timeout: 900
       input_cost_per_token: 0.0

@@ -84,9 +84,10 @@ terminal paths:
 review (local lane clause extraction) → END`. No tools, no HITL, no writes —
 the rollout is "assist permanently".
 
-**Guardrails.** A finding is surfaced only if it (1) carries a risk level inside
-the closed vocabulary, (2) cites a playbook excerpt that was actually retrieved
-this run, and (3) quotes contract text that actually appears in the contract.
+**Guardrails.** A finding is surfaced only if it (1) is not one the model itself
+classified as `STANDART` (conforming), (2) carries a risk level inside the closed
+vocabulary, (3) cites a playbook excerpt that was actually retrieved this run,
+and (4) quotes contract text that actually appears in the contract.
 Anything else lands in `uncited` — reported, but not as advice. An empty
 retrieval **blocks**: with no playbook to compare against, a zero-finding review
 would read as "this contract is clean", which is the dangerous failure mode for
@@ -97,9 +98,12 @@ a legal first pass.
 - **`legal-playbooks` is one document per rule, structured as STANDART /
   SAPMA / RISK** rather than three prose playbook documents. This is
   load-bearing — see the findings below.
-- **Findings carry a `contract_excerpt`** beyond the spec's
-  clause/risk/playbook-ref schema, because the citation-to-playbook check alone
-  did not stop the model asserting things about clauses that were fine.
+- **Findings carry a `contract_excerpt` and a `matches` verdict** beyond the
+  spec's clause/risk/playbook-ref schema. The citation-to-playbook check alone
+  did not stop the model asserting things about clauses that were fine; the
+  verdict is what lets code drop them.
+- **The local lane is the 7B, not the 14B this spec names** — the 14B was pulled
+  and measured and does not fit this machine's VRAM. See finding 1.
 
 ### Verified
 
@@ -123,13 +127,13 @@ a legal first pass.
 
 ---
 
-## Findings — the local lane could not do this job as configured
+## Findings — putting judgement on the local lane
 
-This is the substance of the sprint. The two new agents are the first to put
-*judgement* on the local lane (previous local-lane work was extraction), and it
-did not hold up.
+This is the substance of the sprint. The two new agents are the first to ask the
+local lane for a *judgement* rather than an extraction, and that turned out to
+need a different shape of guardrail.
 
-### 1. The 7B matched clauses on topic, not on polarity
+### 1. A small model judges a clause correctly and reports it anyway
 
 The `legal_review` eval scored **100%, 85%, 69%, 77%, 85%** across runs of the
 same set while only prompt wording changed. Inspecting the outputs showed a
@@ -144,31 +148,41 @@ to report conforming clauses "even at low risk" made it re-rate the same
 conforming clauses as *high*). `temperature=0` removed some but not all of the
 variance — two identical runs still diverged on one case.
 
-**Resolution: the local reasoning lane moved from qwen2.5:7b to qwen2.5:14b**
-(`gateway/litellm/config.yaml`, `seed.py:_DEFAULT_MODELS`, `models` registry
-row). Dept scenario 10 specified a local 14B for exactly this step; the 7B was
-what the lane happened to hold from Sprint 8, and it was measurably below the
-job. This is a shared-lane change — see the regression note below.
+**The 14B the scenario asks for was tried and rejected on this hardware.**
+`qwen2.5:14b-instruct-q4_K_M` was pulled (~9 GB), registered as
+`local-reasoning` in `gateway/litellm/config.yaml`, `seed.py:_DEFAULT_MODELS`
+and the `models` table, and measured. Two things came out of it:
 
-**The model swap alone was not the fix, and it is worth being precise about
-that.** The first 14B run scored **62%** — *worse* than the 7B's best. Reading
-its raw responses (rather than iterating on the score) showed two distinct
-problems that the pass rate had been averaging together:
+- **It scored worse, not better: 62%.** Reading its raw responses rather than
+  iterating on the score showed the pass rate had been averaging two unrelated
+  problems: it obeyed the injected contract clause and returned an empty review
+  (finding 4), and it reported exactly **one** finding per contract and stopped
+  — output was not truncated (`tok_out` 99–119, complete JSON), it simply
+  answered the first conflict and quit. With those two prompt problems fixed it
+  reached 85%.
+- **It does not fit this machine.** 14 GB resident against 8 GB of VRAM gives a
+  53%/47% GPU/CPU split. A first review ran in ~200s; under sustained eval load
+  it degraded until a *trivial* four-field dealer extraction — the kind the 7B
+  answers in ~30s — did not return inside 600s, cascading `httpx.ReadTimeout`
+  through two eval runs.
 
-1. It obeyed the injected contract clause and returned an empty review — see
-   finding 4.
-2. It reported exactly **one** finding per contract and stopped, so every case
-   needing two or more was scored as a miss. Output was not truncated
-   (`tok_out` 99–119, complete JSON); it simply answered the first conflict and
-   quit.
+**The lane therefore stays on the 7B**, with the deviation recorded in
+`gateway/litellm/config.yaml`, `seed.py` and the TRD §4.2 row: the 14B is the
+right model where the VRAM exists, and this reference box does not have it.
 
-Fixing (1) with the missing data-not-instructions paragraph and (2) with an
-explicit "go through every excerpt, do not stop at the first conflict" took the
-same 14B to **85%**, with all six planted clauses and the injection case caught
-with resolvable citations. The lesson for the next local-lane agent: on a small
-model, read the outputs. Three earlier prompt rewrites tuned against the *score*
-made things worse each time, because the score could not distinguish "missed the
-clause" from "found it and stopped".
+**What actually closed the quality gap is the more durable finding.** The 14B
+was chasing a symptom — a small model that judges a clause correctly and then
+reports it anyway. The fix is to stop asking the model to withhold anything:
+it now emits a `matches` verdict (`STANDART` / `SAPMA`) per clause and
+`findings.py` drops the conforming ones in code. That is the same division of
+labour as every other guardrail here — model classifies, code decides — and it
+works on the 7B. The trigger was a `lr-clean-4` response whose own rationale
+read *"bu cümle SAPMA kriterini karşılamaz"* (this sentence does not meet the
+deviation criterion), attached to a `high` finding.
+
+The process lesson: on a small model, read the outputs. Three prompt rewrites
+tuned against the *score* made things worse each time, because a pass rate
+cannot distinguish "missed the clause" from "found it and stopped".
 
 ### 2. Chunk granularity was worth ~15 points on its own
 

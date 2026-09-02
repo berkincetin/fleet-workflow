@@ -19,6 +19,19 @@ if [ -n "${API_PORT}" ]; then
 fi
 
 kubectl create namespace "${NS}" --dry-run=client -o yaml | kubectl apply -f -
+
+# CloudNativePG operator (cluster-scoped, owns CRDs) must exist before the chart
+# renders its Cluster CR (TRD §14 Backup/DR). Idempotent: re-applying the
+# operator manifest and waiting is a no-op on an already-installed cluster.
+CNPG_VERSION="${CNPG_VERSION:-1.24.1}"
+if ! kubectl get crd clusters.postgresql.cnpg.io >/dev/null 2>&1; then
+  echo "installing CloudNativePG operator ${CNPG_VERSION}..."
+  kubectl apply --server-side -f \
+    "https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.24/releases/cnpg-${CNPG_VERSION}.yaml"
+fi
+kubectl -n cnpg-system wait --for=condition=available --timeout=180s \
+  deploy/cnpg-controller-manager || true
+
 helm upgrade --install fleet infra/helm/fleet \
   -f infra/helm/fleet/values-dev.yaml \
   --namespace "${NS}"

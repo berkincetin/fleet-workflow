@@ -51,6 +51,10 @@ scan: ## security scans (bandit + gitleaks; trivy in CI)
 	-uv run bandit -r apps packages -ll
 	-gitleaks detect --no-banner --redact
 
+load: ## k6 load scenario (make load TEST=chat_smoke | mixed_day); writes a JSON summary to tests/load/reports/
+	@mkdir -p tests/load/reports
+	k6 run --summary-export tests/load/reports/$(TEST).json tests/load/$(TEST).js
+
 openapi: ## dump the API OpenAPI schema to packages/shared/openapi.json
 	uv run python -m fleet_api.export_openapi packages/shared/openapi.json
 

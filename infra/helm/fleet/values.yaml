@@ -2,21 +2,46 @@
 namespace: fleet
 
 postgres:
-  image: postgres:16
+  # CloudNativePG-flavoured Postgres image (bundles barman-cloud for WAL
+  # archiving / PITR). Plain postgres:16 lacks the backup tooling CNPG needs.
+  image: ghcr.io/cloudnative-pg/postgresql:16.4
   user: fleet
   password: fleet_dev_pw
   db: fleet
+  instances: 1
+  storageSize: 2Gi
+  # storageClass: ""   # set per-env; empty uses the cluster default
+  backup:
+    enabled: true
+    bucket: fleet-pg-backups
+    retention: 7d
+    schedule: "0 0 2 * * *"   # CNPG cron (6 fields): nightly 02:00 base backup
 
 redis:
   image: redis:7
 
 qdrant:
   image: qdrant/qdrant:v1.12.4
+  snapshot:
+    enabled: true
+    bucket: fleet-qdrant-snapshots
+    schedule: "0 3 * * *"      # k8s CronJob (5 fields): nightly 03:00
+    # mc client image used by the snapshot CronJob to push into MinIO
+    mcImage: minio/mc:RELEASE.2024-11-21T17-21-54Z
+    # curl image for the init container that calls Qdrant's snapshot API
+    # (the mc image ships no HTTP client).
+    curlImage: curlimages/curl:8.11.0
 
 minio:
   image: minio/minio:RELEASE.2024-12-13T22-19-12Z
   rootUser: fleet
   rootPassword: fleet_dev_pw
+  # Buckets created + versioned at install (TRD §14 "MinIO versioning enabled").
+  versioning: true
+  buckets:
+    - fleet-documents
+    - fleet-pg-backups
+    - fleet-qdrant-snapshots
 
 keycloak:
   image: quay.io/keycloak/keycloak:26.0

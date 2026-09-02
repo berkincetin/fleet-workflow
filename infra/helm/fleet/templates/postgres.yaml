@@ -1,31 +1,96 @@
-apiVersion: apps/v1
-kind: Deployment
+{{- /*
+Postgres via CloudNativePG (TRD §14 Backup/DR: PITR, WAL→MinIO, scheduled
+backups). The CNPG *operator* is installed cluster-scoped out of band (see
+infra/k3d/up.sh / the runbook) because it owns CRDs and a namespace of its own;
+this chart declares only the per-tenant Cluster + its backup wiring.
+
+Consumers still reach the database at the stable name `postgres:5432` — CNPG
+publishes `<name>-rw` (read-write, primary) and `<name>-ro`; we alias `postgres`
+to the `-rw` service so nothing downstream needs rewiring when migrating off the
+plain Deployment.
+*/ -}}
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
 metadata:
   name: postgres
   namespace: {{ include "fleet.namespace" . }}
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: postgres
-  template:
-    metadata:
-      labels:
-        app: postgres
-    spec:
-      containers:
-        - name: postgres
-          image: {{ .Values.postgres.image }}
-          env:
-            - name: POSTGRES_USER
-              value: {{ .Values.postgres.user | quote }}
-            - name: POSTGRES_PASSWORD
-              value: {{ .Values.postgres.password | quote }}
-            - name: POSTGRES_DB
-              value: {{ .Values.postgres.db | quote }}
-          ports:
-            - containerPort: 5432
+  instances: {{ .Values.postgres.instances | default 1 }}
+  imageName: {{ .Values.postgres.image }}
+  primaryUpdateStrategy: unsupervised
+
+  bootstrap:
+    initdb:
+      database: {{ .Values.postgres.db | quote }}
+      owner: {{ .Values.postgres.user | quote }}
+      secret:
+        name: postgres-credentials
+
+  storage:
+    size: {{ .Values.postgres.storageSize | default "2Gi" }}
+    {{- with .Values.postgres.storageClass }}
+    storageClass: {{ . | quote }}
+    {{- end }}
+
+  {{- if .Values.postgres.backup.enabled }}
+  # WAL archiving + scheduled base backups to MinIO (S3-compatible), the
+  # substrate for point-in-time recovery. Retention gives the §14 RPO headroom.
+  backup:
+    retentionPolicy: {{ .Values.postgres.backup.retention | default "7d" | quote }}
+    barmanObjectStore:
+      destinationPath: s3://{{ .Values.postgres.backup.bucket }}/
+      endpointURL: http://minio:9000
+      s3Credentials:
+        accessKeyId:
+          name: minio-backup-credentials
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: minio-backup-credentials
+          key: ACCESS_SECRET_KEY
+      wal:
+        compression: gzip
+      data:
+        compression: gzip
+  {{- end }}
 ---
+{{- /* Credentials the Cluster bootstrap and apps use. In dev these come from
+values; test/staging/prod supply them via a sealed/external secret instead. */}}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-credentials
+  namespace: {{ include "fleet.namespace" . }}
+type: kubernetes.io/basic-auth
+stringData:
+  username: {{ .Values.postgres.user | quote }}
+  password: {{ .Values.postgres.password | quote }}
+---
+{{- if .Values.postgres.backup.enabled }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: minio-backup-credentials
+  namespace: {{ include "fleet.namespace" . }}
+stringData:
+  ACCESS_KEY_ID: {{ .Values.minio.rootUser | quote }}
+  ACCESS_SECRET_KEY: {{ .Values.minio.rootPassword | quote }}
+---
+{{- /* Scheduled base backup (WAL archiving is continuous; this pins a nightly
+full so PITR has a recent base to replay from). */}}
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: postgres-nightly
+  namespace: {{ include "fleet.namespace" . }}
+spec:
+  schedule: {{ .Values.postgres.backup.schedule | default "0 0 2 * * *" | quote }}
+  backupOwnerReference: self
+  cluster:
+    name: postgres
+---
+{{- end }}
+{{- /* Stable `postgres` Service so consumers keep using postgres:5432. CNPG
+labels the primary pod role=primary; select it directly. */}}
 apiVersion: v1
 kind: Service
 metadata:
@@ -33,7 +98,8 @@ metadata:
   namespace: {{ include "fleet.namespace" . }}
 spec:
   selector:
-    app: postgres
+    cnpg.io/cluster: postgres
+    cnpg.io/instanceRole: primary
   ports:
     - port: 5432
       targetPort: 5432

@@ -1,0 +1,1 @@
+{"nodes": [{"id": "infra_helm_fleet_templates_minio", "label": "MinIO Helm Template", "file_type": "code", "source_file": "infra/helm/fleet/templates/minio.yaml", "rationale": "Implements bucket versioning and initialization as required by TRD \u00a714."}], "edges": [], "hyperedges": []}

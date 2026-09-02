@@ -1066,3 +1066,20 @@ Verified: `legal_review` **100%**, `dealer_onboarding` **100%** (both 13/13, thr
 Issues (symptom → root cause → resolution):
 - **`hr_agent` eval died on `Vector dimension error: expected dim: 1024, got 1536`.** Pre-existing environment state, not a Sprint 12 regression: `cs-help-center`, `cs-procedures` and `hr-policies` were ingested on an earlier session with **local** embeddings (bge-m3, 1024-dim) while their `internal` sensitivity now routes queries to the cloud embedding model (1536-dim) — the gotcha the README already documents. Resolved by clearing and re-ingesting those three collections; `legal-playbooks` is confidential/local on both sides and was correctly left alone.
 - **`invoice_agent` 89% vs its 90% threshold — OPEN, not fixed.** Both failures are the same thing: the two fixtures whose vendor names carry Turkish diacritics (`Boğaziçi Danışmanlık`, `Sakarya Matbaacılık`) OCR as `Bogazici Danigmanlik` / `Sakarya Matbaacilik`, so the agent's vendor cross-check reports a mismatch against the PO fixture. This is diacritic fidelity in the rendered-image OCR path, it predates this sprint, and nothing in Sprint 12 touches invoice extraction (its lane and model are unchanged). **Deliberately not fixed here** — loosening another agent's vendor matcher is outside the assigned tasks and wants its own decision.
+
+## 2026-09-02 — Sprint 12 close (gate, graph, report, PR) — DONE
+
+Sprint 12 (Wave 2 Scenarios) feature-complete: 12.1 and 12.2 both DONE. Close-out per protocol step 7.
+
+Verified (final gate, against the live compose stack):
+- `ruff` clean · `mypy apps` 18 errors (the documented pre-existing baseline, 0 new) · `pnpm -r lint` clean.
+- **Unit: 508 passed** (was 475). **Security: 67 passed** (was 55; +12 from the legal_review injection corpus).
+- **Evals:** `dealer_onboarding` **100%**, `legal_review` **100%** (both 13/13, threshold 0.85); regression checks `hr_agent` **93%** and `support_copilot` **100%** (threshold 0.90). `invoice_agent` **89% — fails its 0.90 threshold**, pre-existing and out of scope (see the prior entry).
+- **Integration:** full suite 63 passed / 7 failed / 10 skipped; **all 7 pass on a quiet re-run (29.63s, no code change)** — every failure was a testcontainers connect/timeout while the 14B was still resident alongside the compose stack, not an assertion. The two new agents' 6 e2e tests pass in both runs.
+- Knowledge graph refreshed via `/graphify . --update`: **4371 nodes / 7790 edges / 388 communities**.
+
+Issues (symptom → root cause → resolution):
+- **Graphify semantic extraction returned 0 nodes on the first attempt.** `the 'openai' package is required for this backend` — the Gemini backend needs the `graphifyy[gemini]` extra, which this install lacked. Reinstalled with the extra; the re-run produced 28 semantic nodes. It still reports 35/57 docs omitted by the model, so doc-side coverage of this run is partial — the AST side (1185 nodes) is complete and the graph is usable.
+- **Re-ingested `cs-help-center`, `cs-procedures`, `hr-policies`** to fix the 1024-vs-1536 embedding-dimension mismatch described in the previous entry.
+
+Report: `docs/reports/sprint-12.md`. Commits are on `feat/sprint-12-wave-2-scenarios`; PR opened against `main` and merged after the required CI checks.

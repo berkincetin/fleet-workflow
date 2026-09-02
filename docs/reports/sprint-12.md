@@ -299,7 +299,23 @@ gate section.
 | `make eval AGENT=hr_agent` | **93%** (threshold 0.90) — local-lane regression check |
 | `make eval AGENT=support_copilot` | **100%** (threshold 0.90) — post-re-ingest check |
 | `make eval AGENT=invoice_agent` | **89%** (threshold 0.90) — **fails, pre-existing**, see below |
-| Integration (live stack) | new agents' e2e green; see the per-task Verified sections |
+| `pytest tests/integration` (full) | 63 passed / **7 failed** / 10 skipped — all 7 pass on re-run, see below |
+| `pytest tests/integration` (the 7, re-run quiet) | **7 passed in 29s** |
+| New agents' integration tests | **6 passed** (`test_dealer_onboarding_e2e_live.py`, `test_legal_review_e2e_live.py`) |
+| Knowledge graph | refreshed — 4371 nodes / 7790 edges / 388 communities |
+
+### The 7 integration failures were load, not code
+
+Every one failed on a **testcontainers connection**, not an assertion:
+`OSError: [Errno 10061] Connect call failed ('127.0.0.1', 53276)`,
+`redis.exceptions.TimeoutError: Timeout connecting to server`,
+`ConnectionError: unexpected connection_lost()`. The full suite ran while the
+14B was still resident in Ollama (14 GB) alongside the 15-container compose
+stack, and the ephemeral Redis containers these tests spin up could not be
+reached. Re-running the same seven after the 14B was unloaded: **7 passed in
+29.63s**, no changes to any of them. This is the same load-sensitivity
+`docs/runbooks/local-lane-ollama-tuning.md` already documents, with a clearer
+signature.
 
 ### The one red gate: `invoice_agent` at 89%
 

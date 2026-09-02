@@ -1,0 +1,1 @@
+{"nodes": [{"id": "apps_api_fastapi_gateway", "label": "FastAPI Gateway", "file_type": "code", "source_file": "apps/api/README.md", "rationale": "Central API gateway for auth, routing, and service orchestration."}], "edges": [], "hyperedges": []}

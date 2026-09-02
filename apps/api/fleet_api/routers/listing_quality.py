@@ -83,10 +83,10 @@ async def start_run(
     class _PriceIndex:
         """Reference band via governed read-only SQL over the price-index view.
 
-        The segment is validated against the view's own rows (it is used only in
-        a WHERE literal after passing the pg_ro SELECT-only guardrail), so a
-        crafted segment string cannot become anything but a filter value against
-        a read-only role."""
+        The query is a fixed SELECT with NO interpolated input — every band is
+        read and the segment is matched in Python. This keeps the caller's
+        segment string out of the SQL entirely (no injection surface), at the
+        cost of reading the whole tiny fixture view."""
 
         def __init__(self) -> None:
             self._pg = PgReadOnlyTool(
@@ -95,17 +95,16 @@ async def start_run(
             )
 
         async def reference_band(self, *, segment: str) -> dict[str, Any] | None:
-            safe = segment.replace("'", "''")
             rows = await self._pg.query(
-                "SELECT band_low, band_high, band_median, currency "
-                f"FROM fixture_price_index WHERE segment = '{safe}'"
+                "SELECT segment, band_low, band_high, band_median, currency "
+                "FROM fixture_price_index"
             )
-            if not rows:
+            match = next((r for r in rows if r.get("segment") == segment), None)
+            if match is None:
                 return None
-            r = rows[0]
             return {
-                "low": r["band_low"], "high": r["band_high"],
-                "median": r["band_median"], "currency": r["currency"],
+                "low": match["band_low"], "high": match["band_high"],
+                "median": match["band_median"], "currency": match["currency"],
             }
 
     if body.shadow:

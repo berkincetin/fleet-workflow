@@ -982,3 +982,28 @@ Verified: `ruff` clean; unit+security 494 passed; demo dry-run 16s (<15min AC). 
 Report: docs/reports/sprint-10.md. Graph refresh: graphify installed but loads next session (skill not in this session's registry) — deferred.
 PR: opening against main; merges after CI green per branch convention.
 Open: v0.1.0 tag (triggers GHCR publish) — user to cut later; screenshots/GIFs for deck (UI live on :3000).
+
+## 2026-09-02 — Sprint 11 (Wave 1 Scenarios) — DONE
+
+All three Wave-1 scenario agents onboarded, each implement→test→verify, each card flipped to live. Done all three then reported (user's chosen pace). Eval lane: cloud vision via gpt-4o-mini (user's choice) — required a gateway fix first.
+
+Built (branch `feat/sprint-11-wave-1-scenarios`):
+- **Gateway vision fix (db585da):** retired gemini-1.5-flash/pro (404 from Google) → primary utility now openai/gpt-4o-mini (vision-capable, reliable); Gemini fallbacks bumped to gemini-3.6-flash. config.yaml + seed.py `_DEFAULT_MODELS` mirrored.
+- **11.1 Listing Quality (8ec776c):** listing_quality vision flag-only agent, listings MCP (get_new read / flag write:internal, no unpublish tool), closed reason-code vocabulary, /v1/listing-quality/runs shadow-mode endpoint, n8n webhook+nightly, 22-case eval + precision metric. Live shadow-mode + clean-control integration tests.
+- **11.2 Vehicle Intake (f6b4c26):** vehicle_intake agent (local OCR→pii-redact→cloud reasoning, deterministic price band, missing→incomplete no-invent), comparables fixture, 16-case eval. Live redaction + incomplete integration tests.
+- **11.3 Insights Publisher (2741bfa):** insights_publisher agent (data→brand-voice draft→numbers-match grounding→write:external approval→publish), cms MCP, mkt-brand collection, /v1/insights-publisher/runs, monthly n8n cron+Slack alert, 11-case eval with a 3-sample anchored LLM judge. Live grounded-draft-reaches-approval integration test.
+
+Verified:
+- **Evals: 11.1 95% (100% precision) · 11.2 94% · 11.3 100%** — all above their thresholds (0.85/0.85/0.90).
+- **Unit + security: 516 passed** (was 494; +22). Each agent's guardrail proven structurally in unit tests.
+- **Live integration tests: all green** (shadow flagging; redaction+incomplete; grounded→approval with publish held behind it).
+- `make lint` clean; mypy 18-baseline (0 new); OpenAPI/TS client regenerated. Scenario cards + both wave-plan doc layers → live.
+
+Issues (symptom → root cause → resolution):
+- **Cloud vision broken at start:** gemini-1.5 models retired (404), Gemini key free-tier 429. Fixed by routing the vision utility lane to gpt-4o-mini (user chose gpt-4o vision). Verified a real vision call returns through the gateway.
+- **Insights eval 36% → 100%:** (1) years embedded in segment labels (`sedan-2018`) weren't extracted from string data cells → `_data_values` now pulls every number from strings; (2) drafter paraphrased `500000`→"500 bin" and computed deltas the grounding check couldn't follow → tightened the prompt to quote numbers verbatim, never compute; (3) bare 1-5 judge was noisy on subjective voice → anchored rubric + 3-sample average. All legitimate, not threshold-gaming.
+- **Tesseract OCR missing on the new machine** (local-OCR evals need it) → installed via winget (5.4).
+- **Windows ProactorEventLoop/psycopg** affects HITL-checkpointer run endpoints (invoice + insights) through the live uvicorn server — pre-existing, a uvicorn-startup concern, not an agent defect. ACs verified via integration tests that set WindowsSelectorEventLoopPolicy (same as invoice's e2e). listing_quality has no checkpointer (flag-only) so it runs on the live server directly (verified).
+
+Notes:
+- Report: docs/reports/sprint-11.md. Graph refresh deferred (graphify loads next session). Remaining close: commit report + PR.

@@ -1007,3 +1007,25 @@ Issues (symptom → root cause → resolution):
 
 Notes:
 - Report: docs/reports/sprint-11.md. Graph refresh deferred (graphify loads next session). Remaining close: commit report + PR.
+
+## 2026-09-02 — 12.1 Dealer Onboarding (Corporate Sales) — DONE
+
+Built (branch `feat/sprint-12-wave-2-scenarios`):
+- `apps/runtime/agents/dealer_onboarding/{graph,extractor,crosscheck,email_template}.py` — CRM fetch → LOCAL tesseract OCR → LOCAL pii-lane field extraction → deterministic cross-check → one of three terminal paths (mismatch → `manual_review` with **no email**; incomplete → TR template email behind a **write:external** HITL; clean → `ready_for_sales`).
+- `apps/mcp/fleet_mcp/servers/crm.py` — `crm.get_application` (read, INTEGRATION-POINT) + `crm.update_status` (write:internal, closed status vocabulary).
+- `apps/api/fleet_api/routers/dealer_onboarding.py` + `_resume_dealer_onboarding_run` in `routers/approvals.py` (approving is what actually sends the mail).
+- Seed: `Corporate Sales` department + `dealer_onboarding` agent (sensitivity **pii**, cache off, no collections).
+- Evals: `evals/datasets/dealer_onboarding.jsonl` (13 cases) + runner section + threshold 0.85.
+- Tests: `tests/unit/test_dealer_onboarding_graph.py` (16), `tests/unit/test_crm_mcp.py` (5), `tests/integration/test_dealer_onboarding_e2e_live.py` (3).
+
+Verified: see the 12.1 section of `docs/reports/sprint-12.md` for the full AC record (eval pass rate, unit assertions, and the live mailpit approval-gate proof).
+
+Issues (symptom → root cause → resolution):
+- **`normalize_company_name` split "A.Ş." into two stray single letters** → abbreviation dots were being converted to separators, so the legal-form token `as` never formed and a matching dossier would have been routed to fraud review. Dots are now deleted (not replaced) and single-character tokens dropped. Caught by a unit test before it reached the eval.
+- **`pytesseract.TesseractNotFoundError` on the first eval run** → tesseract is installed at `C:\Program Files\Tesseract-OCR` (Sprint 11) but is not on this shell's PATH. Exported it for the run; not a code defect.
+- **Extraction re-ran on the 14B** after task 12.2 replaced the shared local reasoning model — `dealer_onboarding` routes at `sensitivity="pii"`, so it is on that lane. Re-run recorded in the sprint report.
+
+Notes / deviations:
+- **The missing-document email is rendered from a fixed TR template, not model-generated.** The spec permits the cloud utility lane for "non-PII orchestration text"; it is deliberately unused. An approval-gated *external* email must be byte-identical to what the approver read, and a template makes that true by construction. Net: the agent makes exactly one LLM call, the pii-lane dossier extraction.
+- **Name mismatch takes a third path the spec did not name:** `manual_review` with the email suppressed entirely, rather than emailing an applicant whose certificate names a different company.
+- Both doc layers updated (`docs/DEPARTMENT_SCENARIOS.md` + `docs/split/department-scenarios/09-dealer-onboarding.md`), scenario card flipped to live.

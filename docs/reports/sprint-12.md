@@ -150,6 +150,26 @@ row). Dept scenario 10 specified a local 14B for exactly this step; the 7B was
 what the lane happened to hold from Sprint 8, and it was measurably below the
 job. This is a shared-lane change — see the regression note below.
 
+**The model swap alone was not the fix, and it is worth being precise about
+that.** The first 14B run scored **62%** — *worse* than the 7B's best. Reading
+its raw responses (rather than iterating on the score) showed two distinct
+problems that the pass rate had been averaging together:
+
+1. It obeyed the injected contract clause and returned an empty review — see
+   finding 4.
+2. It reported exactly **one** finding per contract and stopped, so every case
+   needing two or more was scored as a miss. Output was not truncated
+   (`tok_out` 99–119, complete JSON); it simply answered the first conflict and
+   quit.
+
+Fixing (1) with the missing data-not-instructions paragraph and (2) with an
+explicit "go through every excerpt, do not stop at the first conflict" took the
+same 14B to **85%**, with all six planted clauses and the injection case caught
+with resolvable citations. The lesson for the next local-lane agent: on a small
+model, read the outputs. Three earlier prompt rewrites tuned against the *score*
+made things worse each time, because the score could not distinguish "missed the
+clause" from "found it and stopped".
+
 ### 2. Chunk granularity was worth ~15 points on its own
 
 With the playbooks written as three prose documents, the ingest chunker packed

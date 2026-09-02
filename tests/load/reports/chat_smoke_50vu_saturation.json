@@ -1,0 +1,215 @@
+{
+    "setup_data": {
+        "agentId": 1
+    },
+    "root_group": {
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {
+            "setup": {
+                "name": "setup",
+                "path": "::setup",
+                "id": "5c0f8025f7e0b6654089e5b00e950f1a",
+                "groups": {},
+                "checks": {
+                        "login 200": {
+                            "fails": 0,
+                            "name": "login 200",
+                            "path": "::setup::login 200",
+                            "id": "647055af8ffe21e58084ae4b140cdda0",
+                            "passes": 1
+                        },
+                        "agents 200": {
+                            "path": "::setup::agents 200",
+                            "id": "423d595060beab60fd014b57138e4c40",
+                            "passes": 1,
+                            "fails": 0,
+                            "name": "agents 200"
+                        }
+                    }
+            }
+        },
+        "checks": {
+            "login 200": {
+                "name": "login 200",
+                "path": "::login 200",
+                "id": "48b06dc5cde7f6ebb606ad7da726a2a5",
+                "passes": 295,
+                "fails": 0
+            },
+            "conversation 201": {
+                "passes": 211,
+                "fails": 84,
+                "name": "conversation 201",
+                "path": "::conversation 201",
+                "id": "1570957728063dd6d9f1f032b3b85352"
+            },
+            "message 200": {
+                "path": "::message 200",
+                "id": "671e5991d67da1f94be057306fd90f04",
+                "passes": 18,
+                "fails": 275,
+                "name": "message 200"
+            },
+            "got a token event": {
+                "passes": 18,
+                "fails": 275,
+                "name": "got a token event",
+                "path": "::got a token event",
+                "id": "1b15f0ba46bc4946ddefdd678c22705f"
+            },
+            "got done event": {
+                "name": "got done event",
+                "path": "::got done event",
+                "id": "4d9154b568c6aaa4cd05a24f51c02092",
+                "passes": 18,
+                "fails": 275
+            }
+        }
+    },
+    "metrics": {
+        "http_req_receiving": {
+            "min": 0,
+            "med": 3.7276,
+            "max": 59165.0321,
+            "p(90)": 33187.486660000024,
+            "p(95)": 53431.963379999994,
+            "avg": 5126.772072881359
+        },
+        "iteration_duration": {
+            "min": 31553.1073,
+            "med": 49163.7893,
+            "max": 91272.453,
+            "p(90)": 75834.32126,
+            "p(95)": 82994.21956999999,
+            "avg": 53281.02176431096
+        },
+        "http_req_connecting": {
+            "med": 0,
+            "max": 4.8129,
+            "p(90)": 1.03734,
+            "p(95)": 1.1577,
+            "avg": 0.31750870056497205,
+            "min": 0
+        },
+        "http_req_sending": {
+            "max": 2.1958,
+            "p(90)": 0,
+            "p(95)": 0.5272399999999999,
+            "avg": 0.04632937853107345,
+            "min": 0,
+            "med": 0
+        },
+        "data_sent": {
+            "count": 873304,
+            "rate": 2644.64838144316
+        },
+        "http_req_failed": {
+            "passes": 359,
+            "fails": 526,
+            "thresholds": {
+                "rate<0.01": true
+            },
+            "value": 0.4056497175141243
+        },
+        "chat_errors": {
+            "passes": 275,
+            "fails": 18,
+            "thresholds": {
+                "rate<0.01": true
+            },
+            "value": 0.9385665529010239
+        },
+        "http_req_blocked": {
+            "p(90)": 1.0922600000000002,
+            "p(95)": 1.261,
+            "avg": 0.3877764971751414,
+            "min": 0,
+            "med": 0,
+            "max": 14.092
+        },
+        "http_reqs": {
+            "count": 885,
+            "rate": 2.68006767125445
+        },
+        "http_req_waiting": {
+            "avg": 12094.890799209046,
+            "min": 0,
+            "med": 5501.8054,
+            "max": 31590.7072,
+            "p(90)": 30304.26436,
+            "p(95)": 30995.978999999996
+        },
+        "vus_max": {
+            "max": 50,
+            "value": 50,
+            "min": 50
+        },
+        "chat_first_token": {
+            "max": 8993.0391,
+            "p(90)": 6490.03463,
+            "p(95)": 7084.983834999997,
+            "avg": 5666.568738888887,
+            "min": 719.8512,
+            "med": 5612.158649999999,
+            "thresholds": {
+                "p(50)<2000": true,
+                "p(95)<6000": true
+            }
+        },
+        "http_req_duration{expected_response:true}": {
+            "p(95)": 28975.853499999997,
+            "avg": 6000.091847528517,
+            "min": 31.8046,
+            "med": 363.25085,
+            "max": 59806.2339,
+            "p(90)": 21385.29265
+        },
+        "http_req_tls_handshaking": {
+            "min": 0,
+            "med": 0,
+            "max": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0
+        },
+        "checks": {
+            "passes": 562,
+            "fails": 909,
+            "value": 0.3820530251529572
+        },
+        "chat_stream_complete": {
+            "max": 59806.2339,
+            "p(90)": 51427.04425,
+            "p(95)": 53365.20572999999,
+            "avg": 44460.089072222225,
+            "min": 31875.7711,
+            "med": 44573.2196,
+            "thresholds": {
+                "p(95)<60000": false
+            }
+        },
+        "http_req_duration": {
+            "min": 0,
+            "med": 10400.0098,
+            "max": 60000.9209,
+            "p(90)": 40178.891500000034,
+            "p(95)": 60000.28606,
+            "avg": 17221.709201468926
+        },
+        "data_received": {
+            "count": 808442,
+            "rate": 2448.2251619031526
+        },
+        "vus": {
+            "value": 15,
+            "min": 15,
+            "max": 50
+        },
+        "iterations": {
+            "rate": 0.857015989790971,
+            "count": 283
+        }
+    }
+}

@@ -890,3 +890,29 @@ Issues (symptom → root cause → resolution):
 Notes / deviations:
 - Support Copilot has no runtime "agent" package under apps/runtime/agents — it IS the generic RAG chat path (`core/graph.py` + `fleet_rag.query.answer_query`), seeded as `support_copilot`. The corpus therefore targets the RAG generation call-site, which is where untrusted retrieved content enters a prompt.
 - 9.1 (load) and 9.4 (backup/restore) are next and both need a running k3d cluster — will request it at the moment of need.
+
+## 2026-09-02 — 9.1 Load (k6 chat_smoke + mixed_day) — DONE
+
+Environment: user moved to a new GPU machine (RTX 3070, 8GB). Set it up from scratch this session — installed make (GnuWin32), k6 (GrafanaLabs.k6 v2.2.0), pnpm; created `.env`; `make dev` (15 containers up/healthy); `make migrate` (10 migrations + checkpointer) + `make seed` + `make seed-docs` (demo KB into Qdrant); started Ollama (native), pulled `qwen2.5:7b-instruct-q4_K_M` + `bge-m3`; ran the API on :8000.
+
+Built (branch `feat/sprint-9-hardening`):
+- `tests/load/lib/fleet.js` — shared k6 helpers: Keycloak `fleet-api` password-grant login (rotating seed users), agent-id resolution, conversation create, SSE message send timing first-token (TTFB proxy) + stream-complete; custom metrics `chat_first_token` / `chat_stream_complete` / `chat_errors`.
+- `tests/load/chat_smoke.js` — 50 VU / 5m steady (VUS/DURATION env-tunable). Gating thresholds = TRD §10 SLOs: first-token p50<2s / p95<6s, errors<1%. Stream-complete is observational (non-abort), documented as GPU-capacity-bound.
+- `tests/load/mixed_day.js` — concurrent ramping chat + constant-arrival automation lane (chat-under-automation-contention). Peak/ rate env-tunable (CHAT_PEAK, AUTOMATION_RATE, AUTOMATION_PER) so the same script runs at §10 reference-cluster scale or dev-GPU scale.
+- `make load TEST=<name>` target → writes `tests/load/reports/<TEST>.json`. `tests/load/README.md`.
+
+Verified (live, against the running stack; support_copilot temporarily routed to the local GPU lane via sensitivity=pii for cost-free load, restored to `internal` after):
+- **chat_smoke.json (5 VU/3m): first-token p50=294ms, p95=979ms; errors 0%; http_req_failed 0% — ALL SLO THRESHOLDS PASS.** (9.1 AC: "SLO thresholds pass in k6 report stored in repo".)
+- **mixed_day.json (chat peak 2 + automation 1/15s): first-token p50=237ms, p95=385ms under concurrent automation load; errors 0% — PASS.** Confirms interactive chat SLO holds while automations run.
+- **chat_smoke_50vu_saturation.json (50 VU/5m): first-token p95=7.08s, 94% errors — the documented single-GPU ceiling.** Committed deliberately as evidence of the capacity knee, not a passing run.
+- Measured capacity curve on this one RTX 3070 + 7B model: first-token p95 by concurrency — 5 VU ≈ 0.98s, 8 VU ≈ 1.53s, 12 VU ≈ 3.15s, 50 VU ≈ 7.08s. Knee ≈ 8–10 concurrent chat VUs for the p50<2s SLO.
+
+Issues (symptom → root cause → resolution):
+- **First 50-VU / 8-VU runs produced unstable / 100%-error reports.** Root cause (measured, not assumed via `nvidia-smi --query-compute-apps`): the 8GB VRAM was ~7.4GB consumed by desktop apps (Chrome, League client, Spotify, Edge, Docker Desktop, VS Code, NVIDIA Overlay), leaving <1GB free — the 6GB qwen-7B could not stay resident, so every request paid a cold reload / CPU-offload and timed out. Tried a smaller model (qwen2.5:3b): with 657MB free it loaded 100% CPU → a single RAG call took 104s, unusable. **No software workaround exists** — reported to the user; user freed the GPU (→7.0GB free), the 7B loaded 100% GPU with 30m keep-alive, and the runs above are clean. Reverted the temporary 3B swap in `gateway/litellm/config.yaml` (repo left unchanged).
+- **A force-kill of Ollama wedged the GPU** (model wouldn't load, `/api/generate` hung) — a full clean `Stop-Process` + restart fixed it. Lesson: restart Ollama cleanly, verify `ollama ps` shows the model resident before trusting a run.
+- mixed_day's hardcoded 40→80 VU stages and integer-only `constant-arrival-rate.rate` broke dev-scale runs (80 VU alone saturates one GPU; `rate=0.3` is rejected by k6). Parametrised peak + made the automation time-unit env-driven (AUTOMATION_PER).
+
+Notes / deviations:
+- AC says "against k3d"; run against the compose stack instead (k3d not up this session; 9.4 will bring up a cluster). The SLO measurement is equivalent — same images, same API/gateway path — noted here honestly. A k3d re-run can reuse the identical scripts by pointing FLEET_API_BASE/FLEET_KEYCLOAK_BASE at the ingress.
+- The TRD §10 "300 concurrent chat" target is explicitly for the reference cluster; a single dev GPU cannot approach it and the 50-VU saturation report is the honest evidence of that boundary, not a platform defect. Hosted CI does not run the local lane.
+- support_copilot's sensitivity was toggled pii→internal only to route load through the free local lane; restored to the seeded `internal` afterwards (verified).

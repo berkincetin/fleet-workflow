@@ -1,0 +1,7 @@
+Sözleşme Standartları — Tazminat (Indemnity)
+
+STANDART (uygun, bulgu değildir): Tazminat taahhüdü tutar ve kapsam bakımından sınırlandırılmıştır; sorumluluk üst limitine tabidir.
+
+SAPMA (bulgu): Üst sınırı olmayan, sınırsız tazminat taahhüdü öngören madde.
+
+RISK: high

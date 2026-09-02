@@ -1,0 +1,7 @@
+Sözleşme Standartları — Ödeme Vadesi
+
+STANDART (uygun, bulgu değildir): Fatura ödeme vadesi 30 ile 60 gün arasındadır.
+
+SAPMA (bulgu): 30 günden kısa ödeme vadesi veya peşin ödeme talep eden madde.
+
+RISK: low

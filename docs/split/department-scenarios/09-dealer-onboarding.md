@@ -11,3 +11,4 @@
 **Evals (≥12):** field extraction on synthetic certificates; mismatch fixture (application name ≠ certificate) → flag; email template correctness (right missing items listed, TR formal tone).
 **Rollout:** approval on all outbound email first month → template auto-send.
 **Metrics:** onboarding cycle time ↓, incomplete-application loops ↓.
+**As built (task 12.1):** the missing-document email is rendered from a fixed TR formal template, not generated — the approval item in the queue is then byte-identical to what gets sent, and no model can invent a document requirement. The cloud utility lane this spec permits for orchestration text is therefore unused: the agent makes exactly one LLM call, the pii-lane dossier extraction. A name mismatch takes a third path the spec did not name: `manual_review` via `crm.update_status`, with **no email composed at all** — an applicant whose certificate names a different company is never written to on the agent's own initiative.

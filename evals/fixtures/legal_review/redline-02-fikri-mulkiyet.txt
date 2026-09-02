@@ -1,0 +1,7 @@
+Geçmiş Redline Notları — Fikri Mülkiyet
+
+STANDART (uygun, bulgu değildir): Sözleşme kapsamında üretilen iş ürününün hakları bize aittir; tarafların sözleşme öncesi mevcut hakları kendilerinde kalır.
+
+SAPMA (bulgu): Sözleşme öncesinde sahip olduğumuz mevcut fikri mülkiyet haklarının karşı tarafa devrini ya da bunlar üzerinde geniş/sınırsız lisans verilmesini öngören madde.
+
+RISK: high

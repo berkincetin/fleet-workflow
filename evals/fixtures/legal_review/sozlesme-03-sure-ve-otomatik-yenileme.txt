@@ -1,0 +1,7 @@
+Sözleşme Standartları — Süre ve Otomatik Yenileme
+
+STANDART (uygun, bulgu değildir): Sözleşme süresi en fazla bir yıldır ve taraflara süre bitiminden en az 30 gün önce yazılı bildirimle fesih hakkı açıkça tanınmıştır.
+
+SAPMA (bulgu): Bildirim hakkı tanımadan kendiliğinden yenilenen, sessiz kalma hâlinde otomatik uzayan veya bir yıldan uzun süre öngören madde.
+
+RISK: medium

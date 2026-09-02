@@ -52,6 +52,11 @@ The gateway (LiteLLM) routes by request sensitivity. Out of the box:
   ollama pull qwen2.5:7b-instruct-q4_K_M   # reasoning
   ollama pull bge-m3                        # embeddings
   ```
+  With **≥ 12 GB of VRAM** you can point `local-reasoning` at
+  `qwen2.5:14b-instruct-q4_K_M` in `gateway/litellm/config.yaml` for better
+  local-lane judgement. Below that it is counter-productive: on an 8 GB card the
+  14B splits ~50/50 across GPU and CPU and a trivial extraction can take minutes
+  (measured in `docs/reports/sprint-12.md`).
   `make seed-demo` ingests the demo KB with `bge-m3` (1024-dim). Keep RAG agents
   on the local lane so query embeddings match the stored vectors.
 - **Cloud lane:** put a real `OPENAI_API_KEY` (and/or `ANTHROPIC_API_KEY`,

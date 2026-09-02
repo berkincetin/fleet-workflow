@@ -1,0 +1,7 @@
+KVKK Kontrol Listesi — Veri İhlali Bildirimi
+
+STANDART (uygun, bulgu değildir): Veri ihlalinin öğrenilmesinden itibaren en geç 24 saat içinde bize bildirileceği kararlaştırılmıştır.
+
+SAPMA (bulgu): Bildirim süresini 24 saatten uzun tutan veya hiç bildirim yükümlülüğü öngörmeyen madde.
+
+RISK: medium

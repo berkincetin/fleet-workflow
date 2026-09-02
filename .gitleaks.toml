@@ -1,0 +1,28 @@
+# gitleaks config for Fleet (CI: .github/workflows/ci.yml security job).
+#
+# Extends the stock ruleset — every default rule stays active. The only
+# additions are path allowlists for generated files whose *content hashes* trip
+# the entropy-based `generic-api-key` heuristic. Scoped by path, never by rule
+# alone, so a real credential committed anywhere else still fails the build.
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+description = "Generic API Key (stock rule, with Fleet path allowlists)"
+regex = '''(?i)(?:key|api|token|secret|client|passwd|password|auth|access)(?:[0-9a-z\-_\t .]{0,20})(?:[\s|']|[\s|"]){0,3}(?:=|>|:{1,3}=|\|\||:|<=|=>|:=|\?=|,)(?:'|\"|\s|=|\x60){0,5}([0-9a-z\-_.=]{10,150})(?:['|\"|\n|\r|\s|\x60|;|\\]|$)'''
+keywords = [
+    "key", "api", "token", "secret", "client", "passwd", "password", "auth", "access",
+]
+
+  [[rules.allowlists]]
+  description = """
+  graphify's incremental-build cache. `stat-index.json` maps every scanned file
+  path to the sha256 of its contents, so it is a JSON object full of 64-char
+  hex strings sitting next to keys like `"apps/api/fleet_api/auth.py"` — the
+  `auth` keyword plus the entropy is enough for the generic heuristic, and both
+  2026-09-02 findings were exactly that. These are content digests of files
+  already in this repo; there is nothing secret in them by construction.
+  """
+  paths = ['''graphify-out/cache/.*''']

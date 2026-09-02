@@ -1,0 +1,7 @@
+KVKK Kontrol Listesi — Alt Veri İşleyen
+
+STANDART (uygun, bulgu değildir): Alt veri işleyen kullanımı önceden yazılı onayımıza bağlanmıştır.
+
+SAPMA (bulgu): Karşı tarafa genel ve süresiz alt veri işleyen kullanma yetkisi veren madde.
+
+RISK: medium

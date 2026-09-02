@@ -1,0 +1,7 @@
+KVKK Kontrol Listesi — Veri Saklama ve İmha
+
+STANDART (uygun, bulgu değildir): Sözleşme sona erdiğinde kişisel verilerin en geç 30 gün içinde silineceği veya iade edileceği kararlaştırılmıştır.
+
+SAPMA (bulgu): Kişisel veri işlenmesine rağmen saklama/imha süresi belirtmeyen madde.
+
+RISK: medium

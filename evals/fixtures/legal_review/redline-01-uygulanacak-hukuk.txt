@@ -1,0 +1,7 @@
+Geçmiş Redline Notları — Uygulanacak Hukuk ve Yetkili Mahkeme
+
+STANDART (uygun, bulgu değildir): Türk hukukunun uygulanacağını ve İstanbul mahkemelerinin yetkili olduğunu söyleyen madde uygundur.
+
+SAPMA (bulgu): Yabancı bir ülkenin hukukunu (örn. İngiliz hukuku) uygulayan ya da yurt dışı mahkeme veya tahkim (örn. Londra Tahkim) yetkisi öngören madde.
+
+RISK: high

@@ -2,9 +2,24 @@
 
 **Applies to:** any GPU-less development machine running the local model lane
 (`local-reasoning` = `qwen2.5:7b-instruct-q4_K_M`, `local-embeddings` = `bge-m3`).
+
 **Symptom it fixes:** integration tests that pass individually but fail in the
 full suite with `GatewayError: gateway call failed for model 'local-reasoning'`
 and an HTTP **500** from the litellm proxy.
+
+## Two corrections from task 12.2
+
+- **The per-model `timeout:` on the Ollama lane does nothing.** litellm's Ollama
+  path reads the global `litellm.request_timeout`, so a local call was dying at
+  ~180s (3 attempts × the old 60s) no matter what the model block said — which
+  means the `timeout: 300` this lane carried since Sprint 8 was never in effect.
+  `request_timeout` is now 900s, matched by `FLEET_LITELLM_TIMEOUT` on the
+  client.
+- **Do not run a 14B on a card smaller than it.** With 14 GB resident against
+  8 GB of VRAM, Ollama splits ~53/47 GPU/CPU; a first call ran in ~200s and
+  sustained load degraded until a four-field extraction did not return inside
+  600s. Check `ollama ps` — if the PROCESSOR column shows a CPU share, the model
+  is too big for the card and you want the smaller one.
 
 ## Why this happens
 

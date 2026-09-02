@@ -1,0 +1,7 @@
+KVKK Kontrol Listesi — Yurt Dışına Veri Aktarımı
+
+STANDART (uygun, bulgu değildir): Yurt dışına veri aktarımı yoktur ya da KVKK m.9 kapsamındaki aktarım mekanizması sözleşmede açıkça gösterilmiştir.
+
+SAPMA (bulgu): Kişisel verilerin yurt dışına aktarılacağını söyleyen ancak aktarım mekanizmasına yer vermeyen madde.
+
+RISK: high

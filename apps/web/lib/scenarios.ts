@@ -27,6 +27,6 @@ export const SCENARIOS: Scenario[] = [
   { slug: "listing_quality", department: "Listings Ops", status: "live", href: "/examples?agent=listing_quality" },
   { slug: "vehicle_intake", department: "Trink sat!", status: "live", href: "/examples?agent=vehicle_intake" },
   { slug: "insights_publisher", department: "Marketing", status: "live", href: "/examples?agent=insights_publisher" },
-  { slug: "dealer_onboarding", department: "Corporate Sales", status: "coming_soon", targetTask: "12.1" },
-  { slug: "legal_review", department: "Legal", status: "coming_soon", targetTask: "12.2" },
+  { slug: "dealer_onboarding", department: "Corporate Sales", status: "live", href: "/examples?agent=dealer_onboarding" },
+  { slug: "legal_review", department: "Legal", status: "live", href: "/examples?agent=legal_review" },
 ];

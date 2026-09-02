@@ -571,6 +571,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/listing-quality/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Run */
+        post: operations["start_run_v1_listing_quality_runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/insights-publisher/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Run */
+        post: operations["start_run_v1_insights_publisher_runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dealer-onboarding/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Run */
+        post: operations["start_run_v1_dealer_onboarding_runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/legal-review/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Run */
+        post: operations["start_run_v1_legal_review_runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/examples": {
         parameters: {
             query?: never;
@@ -1181,6 +1249,13 @@ export interface components {
             /** Dept Id */
             dept_id: number | null;
         };
+        /** DocumentIn */
+        DocumentIn: {
+            /** Kind */
+            kind: string;
+            /** Image Base64 */
+            image_base64: string;
+        };
         /** DocumentOut */
         DocumentOut: {
             /** Id */
@@ -1248,6 +1323,25 @@ export interface components {
             score: number;
             /** Reason */
             reason?: string | null;
+        };
+        /** FindingOut */
+        FindingOut: {
+            /** Clause */
+            clause: string;
+            /** Risk Level */
+            risk_level: string;
+            /** Playbook Ref */
+            playbook_ref: string;
+            /**
+             * Contract Excerpt
+             * @default
+             */
+            contract_excerpt: string;
+            /**
+             * Rationale
+             * @default
+             */
+            rationale: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1373,17 +1467,6 @@ export interface components {
             /** Dept Id */
             dept_id: number | null;
         };
-        /** RunOut */
-        RunOut: {
-            /** Run Id */
-            run_id: string;
-            /** Status */
-            status: string;
-            /** Detail */
-            detail: {
-                [key: string]: unknown;
-            };
-        };
         /** RunResultOut */
         RunResultOut: {
             /** Status */
@@ -1463,9 +1546,41 @@ export interface components {
             } | null;
         };
         /** RunIn */
+        fleet_api__routers__dealer_onboarding__RunIn: {
+            /** Application Id */
+            application_id: string;
+            /**
+             * Documents
+             * @default []
+             */
+            documents: components["schemas"]["DocumentIn"][];
+        };
+        /** RunOut */
+        fleet_api__routers__dealer_onboarding__RunOut: {
+            /** Run Id */
+            run_id: string;
+            /** Status */
+            status: string;
+            /** Detail */
+            detail: {
+                [key: string]: unknown;
+            };
+        };
+        /** RunIn */
         fleet_api__routers__dev_agent__RunIn: {
             /** Ticket Key */
             ticket_key: string;
+        };
+        /** RunOut */
+        fleet_api__routers__dev_agent__RunOut: {
+            /** Run Id */
+            run_id: string;
+            /** Status */
+            status: string;
+            /** Detail */
+            detail: {
+                [key: string]: unknown;
+            };
         };
         /** RunIn */
         fleet_api__routers__hr_agent__RunIn: {
@@ -1477,10 +1592,117 @@ export interface components {
              */
             criteria: string[];
         };
+        /** RunOut */
+        fleet_api__routers__hr_agent__RunOut: {
+            /** Run Id */
+            run_id: string;
+            /** Status */
+            status: string;
+            /** Detail */
+            detail: {
+                [key: string]: unknown;
+            };
+        };
+        /** RunOut */
+        fleet_api__routers__insights_publisher__RunOut: {
+            /** Run Id */
+            run_id: string;
+            /** Status */
+            status: string;
+            /** Detail */
+            detail: {
+                [key: string]: unknown;
+            };
+        };
         /** RunIn */
         fleet_api__routers__invoice_agent__RunIn: {
             /** Image Base64 */
             image_base64: string;
+        };
+        /** RunOut */
+        fleet_api__routers__invoice_agent__RunOut: {
+            /** Run Id */
+            run_id: string;
+            /** Status */
+            status: string;
+            /** Detail */
+            detail: {
+                [key: string]: unknown;
+            };
+        };
+        /** RunIn */
+        fleet_api__routers__legal_review__RunIn: {
+            /** Contract Text */
+            contract_text: string;
+            /**
+             * Top K
+             * @default 15
+             */
+            top_k: number;
+        };
+        /** RunOut */
+        fleet_api__routers__legal_review__RunOut: {
+            /** Run Id */
+            run_id: string;
+            /** Status */
+            status: string;
+            /**
+             * Findings
+             * @default []
+             */
+            findings: components["schemas"]["FindingOut"][];
+            /**
+             * Uncited
+             * @default []
+             */
+            uncited: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Detail
+             * @default {}
+             */
+            detail: {
+                [key: string]: unknown;
+            };
+        };
+        /** RunIn */
+        fleet_api__routers__listing_quality__RunIn: {
+            /** Listing Id */
+            listing_id: string;
+            /** Image Base64 */
+            image_base64: string;
+            /** Description */
+            description: string;
+            /** Price */
+            price: number;
+            /** Segment */
+            segment: string;
+            /**
+             * Currency
+             * @default TRY
+             */
+            currency: string;
+            /**
+             * Shadow
+             * @default true
+             */
+            shadow: boolean;
+        };
+        /** RunOut */
+        fleet_api__routers__listing_quality__RunOut: {
+            /** Run Id */
+            run_id: string;
+            /** Status */
+            status: string;
+            /** Flags */
+            flags: {
+                [key: string]: string;
+            }[];
+            /** Detail */
+            detail: {
+                [key: string]: unknown;
+            };
         };
     };
     responses: never;
@@ -2478,7 +2700,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RunOut"];
+                    "application/json": components["schemas"]["fleet_api__routers__dev_agent__RunOut"];
                 };
             };
             /** @description Validation Error */
@@ -2663,7 +2885,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RunOut"];
+                    "application/json": components["schemas"]["fleet_api__routers__invoice_agent__RunOut"];
                 };
             };
             /** @description Validation Error */
@@ -2698,7 +2920,141 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RunOut"];
+                    "application/json": components["schemas"]["fleet_api__routers__hr_agent__RunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_run_v1_listing_quality_runs_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-fleet-api-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["fleet_api__routers__listing_quality__RunIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["fleet_api__routers__listing_quality__RunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_run_v1_insights_publisher_runs_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-fleet-api-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["fleet_api__routers__insights_publisher__RunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_run_v1_dealer_onboarding_runs_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-fleet-api-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["fleet_api__routers__dealer_onboarding__RunIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["fleet_api__routers__dealer_onboarding__RunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_run_v1_legal_review_runs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["fleet_api__routers__legal_review__RunIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["fleet_api__routers__legal_review__RunOut"];
                 };
             };
             /** @description Validation Error */

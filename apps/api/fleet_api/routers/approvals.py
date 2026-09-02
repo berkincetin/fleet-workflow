@@ -156,6 +156,30 @@ async def _resume_hr_agent_run(run_id: str, *, approved: bool) -> None:
         await graph.ainvoke(Command(resume={"approved": approved}), config)
 
 
+async def _resume_dealer_onboarding_run(run_id: str, *, approved: bool) -> None:
+    """Same rebuild-fresh-and-resume mechanism as Dev/Invoice/HR Agent, for
+    Dealer Onboarding's email.send interrupt (task 12.1). Approving here is what
+    actually puts the missing-document email on the wire — the run that queued
+    it composed the message but never sent it."""
+    from agents.dealer_onboarding.graph import build_dealer_onboarding_graph
+    from core.llm.factory import build_client
+    from fleet_api.db import database_url as api_database_url
+    from fleet_api.routers.dealer_onboarding import build_dealer_onboarding_deps
+    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
+    llm_client = await build_client()
+    ocr, crm_tool, email_tool = build_dealer_onboarding_deps(llm_client)
+
+    checkpoint_dsn = api_database_url().replace("postgresql+asyncpg://", "postgresql://")
+    async with AsyncPostgresSaver.from_conn_string(checkpoint_dsn) as checkpointer:
+        graph = build_dealer_onboarding_graph(
+            llm_client=llm_client, ocr=ocr, crm=crm_tool, email=email_tool,
+            checkpointer=checkpointer,
+        )
+        config = {"configurable": {"thread_id": run_id}}
+        await graph.ainvoke(Command(resume={"approved": approved}), config)
+
+
 class _OcrToolAdapter:
     """`build_ocr_tool` returns a bare callable (`image_base64 -> {text, source}`);
     `InvoiceAgentState`'s OcrLike Protocol expects an `.extract_text(...)`
@@ -176,6 +200,7 @@ _RESUMERS: dict[str, Callable[..., Awaitable[None]]] = {
     "dev_agent": _resume_dev_agent_run,
     "invoice_agent": _resume_invoice_agent_run,
     "hr_agent": _resume_hr_agent_run,
+    "dealer_onboarding": _resume_dealer_onboarding_run,
 }
 
 

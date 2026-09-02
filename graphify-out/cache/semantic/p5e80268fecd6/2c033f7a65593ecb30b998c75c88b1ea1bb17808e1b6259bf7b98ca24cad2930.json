@@ -1,0 +1,1 @@
+{"nodes": [{"id": "gateway_litellm_config", "label": "LiteLLM Proxy Config", "file_type": "code", "source_file": "gateway/litellm/config.yaml", "rationale": "Canonical source of truth for model list and fallback chains (TRD \u00a74.2)."}], "edges": [], "hyperedges": []}

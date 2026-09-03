@@ -240,10 +240,18 @@ up from 7 passed / 1 failed.
 
 **One environmental finding worth carrying.** The builder e2e failed mid-run with a Next.js
 server-side exception on `/automations`. Not a regression: the API had been started as plain
-`uvicorn … --port 8000`, which binds `127.0.0.1` only, while Node 18+ resolves `localhost` to
-`::1` first — `ECONNREFUSED` from the web server's `fetch`. Restarting with `--host 0.0.0.0`
-fixed it. **`make api` also omits `--host`**, so this will recur for anyone whose resolver
-prefers IPv6; a one-word Makefile change would prevent it, left unmade as out of scope.
+`uvicorn … --port 8000`, which binds `127.0.0.1` only, and restarting it with `--host 0.0.0.0`
+fixed it. **`make api` also omits `--host`**, so the same failure was reproducible there — since
+addressed (see the §4 update).
+
+> **Correction (2026-09-03).** The mechanism first recorded here — that Node 18+ resolves
+> `localhost` to `::1` and so gets `ECONNREFUSED` against a `127.0.0.1`-only bind — **did not
+> reproduce when it was actually measured.** `0.0.0.0` is IPv4-only (nothing answers on
+> `[::1]`), and Node's `fetch('http://localhost:…')` succeeded against the *default* bind too,
+> because undici tries every resolved address and falls back to IPv4. So the `ECONNREFUSED`
+> had some other trigger, and the IPv6 story should not be carried forward as the cause.
+> `--host 0.0.0.0` is kept for reachability (containers, other hosts on the LAN), not for that
+> mechanism.
 
 ---
 

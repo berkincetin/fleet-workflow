@@ -1691,3 +1691,42 @@ Notes:
 - Still open, unchanged: `FLEET_SLACK_WEBHOOK_URL` empty (no live `slack.post` verification),
   superpowers plugin enabled in settings but not installed on this machine, and the
   `hr_agent` eval needing `PROFILE=ollama`.
+
+## 2026-09-03 - Graph refresh + a doc correction the extraction caught - DONE
+
+Built: no application code. Closing steps for the leftover-items batch above.
+
+Verified:
+- **Knowledge graph refreshed** (`/graphify . --update`). 4 changed files re-extracted
+  (2 code via AST = 118 nodes / 318 edges; 2 docs via one semantic subagent = 56 nodes /
+  63 edges / 3 hyperedges, ~84k input tokens). Merged into the existing graph, replacing
+  139 nodes in place for the re-extracted sources: **4,973 nodes / 9,003 edges /
+  415 communities** (was 4,939 / 9,003 / 401). Health check clean - 0 dangling, 0 missing,
+  0 collapsed edges. Diff confirms this batch landed: new nodes include
+  `_purge_live_chat_agents()` and "evals/runner.py reads the agent's real sensitivity".
+  Community labels were inherited from the prior run by member-majority vote so naming
+  stayed stable (community 0 is still "Workflow Catalog API / n8n REST Client", not
+  "Unit Tests"); the 4 unlabelled leftovers were single-node isolates, named by hand.
+- **CI green on `f0305fa`**: all five required checks (lint, unit, integration, security,
+  build-image) pass. PR #19 remains open and MERGEABLE/CLEAN, not merged.
+
+Issues (symptom -> root cause -> resolution):
+- **The extraction subagent caught a contradiction I had introduced in the docs.** Reading
+  both files, it reported that `sprint-13.md` §4b still asserted the IPv6/`::1`
+  `ECONNREFUSED` mechanism as fact, while the §4 update block and the PROGRESS entry above
+  both record that it did not reproduce under measurement. Root cause: I appended the
+  correction to §4 but left the original §4b paragraph untouched, so the report argued with
+  itself. **Fixed** - §4b now states what was actually observed and carries an explicit
+  `Correction (2026-09-03)` block; the graph consequently holds the corrected version
+  (`docs_progress_ipv6_localhost_claim_not_reproduced`) rather than the superseded claim.
+  Worth noting that the graph build surfaced a documentation defect, not a code one.
+- `GRAPH_REPORT.md` sections could not be printed through the default Windows console
+  codepage (`UnicodeEncodeError` on `\u2192`); re-read with `PYTHONIOENCODING=utf-8`.
+  Cosmetic, no effect on the outputs.
+- The same 2 pre-existing `missing required field 'source_file'` warnings
+  (`concept_sensitivity_routing` et al.) recurred. Unchanged, harmless to traversal.
+
+Notes:
+- Graph god nodes are unchanged in character: `CurrentUser` (57 edges), `KillSwitch` (51),
+  `Agent` (38), `Settings` (38), `LLMClient` (35), `compile_recipe()` (29).
+- Cumulative graphify cost after 14 runs: 2,197,541 input / 160,296 output tokens.

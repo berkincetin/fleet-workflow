@@ -1730,3 +1730,33 @@ Notes:
 - Graph god nodes are unchanged in character: `CurrentUser` (57 edges), `KillSwitch` (51),
   `Agent` (38), `Settings` (38), `LLMClient` (35), `compile_recipe()` (29).
 - Cumulative graphify cost after 14 runs: 2,197,541 input / 160,296 output tokens.
+
+## 2026-09-03 - Sprint 13 merged to main (PR #19) - DONE
+
+Built: no code. Merge of the Sprint 13 branch at the user's explicit instruction.
+
+Verified:
+- **PR #19 squash-merged into `main`** as `dc13dcc`, merged at 2026-09-03T16:54:39Z.
+  Pre-merge state checked first: MERGEABLE / mergeStateStatus CLEAN, and all five required
+  checks green on the head commit `020776c` (lint, unit, integration, security, build-image).
+- **Feature branch `feat/sprint-13-ui-automation-builder` deleted** on the remote by
+  `--delete-branch`. The local tracking ref lingered and looked like a surviving branch;
+  `gh api .../branches` confirmed it was already gone server-side and `git remote prune
+  origin` cleared the stale ref (it also pruned the long-dead sprint-9 and sprint-12 refs).
+- **The three leftover fixes are present in the merged tree** - re-grepped on `main`:
+  `sensitivity=sensitivity` + the widened `SELECT` in both eval paths,
+  `_purge_live_chat_agents()` and its `finally` call site, and `--host 0.0.0.0` in `make api`.
+- **Gate re-run against merged `main`**: ruff clean, unit **578 passed**, security **85 passed**.
+
+Issues (symptom -> root cause -> resolution):
+- First merge attempt failed with `git: 'sh' is not a git command`. Root cause: I wrapped the
+  `gh` call in the `git -c credential.helper=... sh -c` pattern this repo needs for *pushes*,
+  but `gh` authenticates on its own and does not want that wrapper. Re-ran `gh pr merge`
+  directly and it succeeded. Nothing was half-applied by the failed attempt.
+
+Notes:
+- `main` is now at `dc13dcc`; local and remote agree. Working tree clean.
+- Sprint 13 is fully closed: 13.1-13.7 DONE, sprint report written, graph refreshed, merged.
+- Still open and untouched by this merge: `FLEET_SLACK_WEBHOOK_URL` empty (no live
+  `slack.post` verification), superpowers plugin not installed on this machine, and
+  `make eval AGENT=hr_agent` requiring `PROFILE=ollama`.

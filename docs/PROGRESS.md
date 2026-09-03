@@ -1083,3 +1083,65 @@ Issues (symptom → root cause → resolution):
 - **Re-ingested `cs-help-center`, `cs-procedures`, `hr-policies`** to fix the 1024-vs-1536 embedding-dimension mismatch described in the previous entry.
 
 Report: `docs/reports/sprint-12.md`. Commits are on `feat/sprint-12-wave-2-scenarios`; PR opened against `main` and merged after the required CI checks.
+
+## 2026-09-03 — n8n enablement + 3 workflow-catalog defects + Sprint 13 plan — DONE
+
+Triggered by hands-on UI testing: the Automations page was stuck in its "n8n unreachable"
+state. Enabling it uncovered three defects that had been latent since Sprint 6.5/11.
+
+Built (branch `feat/sprint-13-ui-automation-builder`):
+- `workflows/insights-publisher.json`, `workflows/listing-quality.json` — added the missing
+  top-level `"active": false`.
+- `apps/api/fleet_api/workflows_catalog.py` — `n8n_name` values corrected to the kebab-case
+  names the exports actually declare; docstring now states the exact-match contract.
+- `Makefile` — `n8n-import` runs under `MSYS_NO_PATHCONV=1`.
+- `tests/unit/test_workflows_router.py` — fixtures re-pointed at the real names, plus two new
+  regression tests reading `workflows/*.json` directly.
+- `docs/IMPLEMENTATION_PLAN.md` + `docs/split/implementation-plan/sprint-13-ui-automation-builder.md`
+  + `docs/split/INDEX.md` — Sprint 13 (UI Usability & Automation Builder) planned, both layers.
+
+Verified: ruff clean · mypy `apps` 18 (documented baseline, 0 new) · **unit 510 passed**
+(was 508) · **security 67 passed**. Live stack: all 4 workflows import and activate;
+`GET /v1/workflows` returns `reachable:true, active:true` for both catalog entries (was
+`active:null`); `POST /v1/workflows/weekly-summary/run` → `accepted` and n8n execution 1 ran
+3 of 4 nodes, the `pg_ro` step reaching Fleet and returning real fixture data
+("16 sales, $7576"). The regression test was proven to fail when the old name is reinstated.
+
+Issues (symptom → root cause → resolution):
+- **The n8n API key was pasted into the opposite variable.** `.env` carries two similarly named
+  keys pointing in opposite directions: `FLEET_N8N_API_KEY` (Fleet → n8n, an n8n-issued JWT) and
+  `N8N_FLEET_API_KEY` (n8n → Fleet, a Fleet-issued key wired to the containers' `FLEET_API_KEY`).
+  The JWT was in the latter. Moved it, and issued the missing Fleet key
+  (scopes `pg_ro`,`slack_post`) via the repo's own `generate_key()`/`hash_key()`. The naming is
+  a genuine footgun and is worth revisiting.
+- **`make n8n-import` was a silent no-op on this machine.** Git Bash/MSYS rewrote the
+  container-side `/import/workflows` into `C:/Program Files/Git/import/workflows`, so the n8n CLI
+  printed "Importing 0 workflows" and exited 0 — no error to notice. Fixed with
+  `MSYS_NO_PATHCONV=1`. (`make` itself is also not installed here; commands were run through the
+  compose CLI directly.)
+- **Two Sprint 11 exports had no `active` key** → n8n's importer violates a NOT NULL column, and
+  because directory import is all-or-nothing, *all four* workflows failed to import. This is why
+  n8n held 0 workflows despite the exports existing since Sprint 6/11.
+- **The catalog could never match its own workflows.** `workflows_catalog.py` searched for
+  `"Invoice intake"`/`"Weekly summary"` while the exports declare `invoice-intake`/`weekly-summary`;
+  the lookup is an exact string compare, so the API reported `active: null`, the UI showed
+  "inactive", and every run was refused with `workflow_inactive` — while both workflows were
+  imported and active in n8n. Latent because `test_workflows_router.py` builds its own fixtures
+  and mocks n8n, so it asserted the broken contract rather than catching it. Both new regression
+  tests read the real export files instead.
+- **A stale `.pyc` briefly masked the fix.** Restoring a file with `mv` from a backup gave it an
+  mtime older than the compiled cache, so Python kept the previous bytecode and the new test
+  failed against already-corrected source. Cleared `__pycache__`.
+- **`weekly-summary`'s Slack node still fails — OPEN, expected.** `FLEET_SLACK_WEBHOOK_URL` is
+  empty in `.env`, so `SlackWebhookSender` posts to an empty URL and the service returns 500. Not
+  a code defect and not in scope here; the workflow's first three nodes prove the whole
+  n8n → Fleet leg works. Needs a real Slack incoming-webhook URL from the user.
+
+Notes / deviations:
+- The three fixes went onto the Sprint 13 branch rather than a separate hotfix PR: 13.4/13.5
+  cannot be verified without a working n8n leg, so they are that sprint's prerequisite.
+- Sprint 13 scope was chosen by the user from three offered options: full visual refresh (not
+  just a polish pass), conditional branching in the builder (not linear-only), and masked
+  credentials revealed on demand for `platform_admin` (not plaintext, not hidden). It is
+  knowingly larger than a typical sprint here; the documented softener is dropping branching
+  from 13.4.

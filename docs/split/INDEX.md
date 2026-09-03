@@ -27,6 +27,7 @@
 | [sprint-10-demo-docs.md](implementation-plan/sprint-10-demo-docs.md) | 10.1 fresh-install rehearsal+README · 10.2 docs+release |
 | [sprint-11-wave-1-scenarios.md](implementation-plan/sprint-11-wave-1-scenarios.md) | 11.1 listing quality · 11.2 vehicle intake · 11.3 insights publisher |
 | [sprint-12-wave-2-scenarios.md](implementation-plan/sprint-12-wave-2-scenarios.md) | 12.1 dealer onboarding · 12.2 legal document review |
+| [sprint-13-ui-automation-builder.md](implementation-plan/sprint-13-ui-automation-builder.md) | 13.1 design system+shell · 13.2 explanatory layer · 13.3 admin services (closes 7.3) · 13.4 recipe model+compiler · 13.5 builder UI · 13.6 tests+docs |
 | [99-demo-script-and-deferrables.md](implementation-plan/99-demo-script-and-deferrables.md) | 15-min demo script; consolidated deferrable list |
 
 ## Technical Requirements (`docs/TECHNICAL_REQUIREMENTS.md`) — `technical-requirements/`

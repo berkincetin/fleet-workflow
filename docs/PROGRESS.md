@@ -1583,3 +1583,48 @@ Notes / deviations:
   structural half, which this change did not touch.
 - Leftover `live-chat-agent-*` rows from earlier integration runs still inflate Home's "active
   agents" count (18). Environment noise, unchanged from the 13.6 note.
+
+## 2026-09-03 - 13.7 close: graph refresh + commit - DONE
+
+Built: no new application code. Closing steps for 13.7 per the Task Execution Protocol.
+
+Verified:
+- **Knowledge graph refreshed** (`/graphify . --update`). 50 changed files re-extracted
+  (20 code, 30 docs): AST 142 nodes / 367 edges, plus two parallel semantic subagents over
+  the changed docs and the Turkish legal/HR eval fixtures giving 195 nodes / 246 edges /
+  6 hyperedges (~233k in / ~26k out tokens). Merged into the existing graph rather than
+  replacing it - 141 nodes replaced in place for re-extracted sources, 9 exact duplicates
+  collapsed - leaving **4,939 nodes / 9,003 edges / 401 communities**, no import cycles.
+  `graph.json`, `graph.html`, `GRAPH_REPORT.md`, manifest and cost tracker all rewritten.
+- **Committed** as `01ab23b` on `feat/sprint-13-ui-automation-builder`: 27 source/doc/test
+  files plus the graph outputs, single-sentence message, no AI byline (repo convention).
+
+Issues (symptom -> root cause -> resolution):
+- **The first community labelling named the largest communities "Unit Tests".** Root cause:
+  Louvain puts a module and its tests in one community, and the test nodes frequently
+  outnumber the module's own, so ranking labels by raw prefix count named each community
+  after whatever exercises it rather than what it *is*. Fixed by treating test/fixture
+  prefixes as subjectless - they win a label only when nothing else is present. Community 0
+  now reads "Workflow Catalog API / n8n REST Client" instead of "Unit Tests".
+  Labelling is scripted rather than hand-written because 401 communities is well past the
+  point where hand-naming is honest work.
+- **`git push` hung for 10 minutes and did not land - RESOLVED.** Symptom: the push timed
+  out with no output and the remote stayed at `c03ff14`. First guess (upload size, ~40 new
+  graphify cache blobs) was wrong. Root cause found by listing processes:
+  `git-credential-manager` was running and waiting on an **interactive credential prompt**
+  that cannot be displayed in a non-interactive session, so the push blocked forever rather
+  than failing. There is no pre-push hook. Fixed by killing the stuck git processes and
+  pushing with `gh auth token` supplied through an inline credential helper. Landed as
+  `c03ff14..01ab23b`; remote verified at `01ab23b`.
+  Worth knowing for future sessions in this repo: `credential.helper=manager` will hang a
+  non-interactive push whenever the cached credential needs refreshing.
+- Two graph nodes carry `missing required field 'source_file'` (e.g.
+  `concept_sensitivity_routing`). Pre-existing, harmless to traversal, recorded not hidden.
+
+Notes:
+- `docs/reports/sprint-13.md` gained section 7 recording the graph refresh; sections 1, 4,
+  4b and 6 were updated for 13.7 in the previous entry.
+- Pushed to `feat/sprint-13-ui-automation-builder` and **PR #19 updated** to cover 13.7
+  (its previously-open `chat-demo-path` item is now recorded as fixed).
+- **Remaining for the next session:** watch the required CI checks on PR #19 and merge only
+  once they are green. Everything else for Sprint 13 is done and verified.

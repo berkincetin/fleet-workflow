@@ -270,3 +270,28 @@ Added for 13.7, both layers again:
   values sit inside the compiler's own server-side allowlists.
 - `docs/IMPLEMENTATION_PLAN.md` + `docs/split/implementation-plan/sprint-13-ui-automation-builder.md`
   — task **13.7** with its AC.
+
+---
+
+## 7. Knowledge graph refreshed
+
+`/graphify . --update` after 13.7, per the Definition of Done.
+
+- **50 changed files re-extracted** (20 code, 30 docs). AST gave 142 nodes / 367 edges; two
+  parallel semantic subagents produced 195 nodes / 246 edges / 6 hyperedges over the changed
+  docs and the Turkish legal/HR eval fixtures. ~233k input / ~26k output tokens.
+- **Merged into the existing graph rather than replacing it**: 141 nodes were replaced in
+  place for the re-extracted sources and 9 exact duplicates collapsed, leaving
+  **4,939 nodes / 9,003 edges / 401 communities**. No import cycles.
+- **Community labelling was scripted, not hand-written.** At 401 communities hand-naming is
+  not honest work, so labels are derived from each community's dominant module path against a
+  table of known Fleet subsystems. One defect was worth fixing: Louvain places a module and
+  its tests in the same community, and the tests frequently outnumber the module, so ranking
+  by raw count named the largest communities "Unit Tests". Test/fixture prefixes are now only
+  used when nothing else is present, which is why community 0 reads *n8n REST Client* rather
+  than the tests that exercise it.
+- `compile_recipe()` now ranks among the graph's god nodes (29 edges), alongside `CurrentUser`,
+  `KillSwitch`, `LLMClient` and `N8nClient` — the recipe compiler has become a core abstraction
+  rather than a leaf, which matches what Sprint 13 actually built.
+- Two nodes carry an extraction warning (`missing required field 'source_file'`, e.g.
+  `concept_sensitivity_routing`). Pre-existing, harmless to traversal, noted rather than hidden.

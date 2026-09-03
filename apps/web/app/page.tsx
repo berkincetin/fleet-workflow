@@ -70,7 +70,7 @@ export default async function Home() {
             value={String(pendingApprovals)}
             hint={pendingApprovals > 0 ? t("tileApprovalsHint") : t("tileApprovalsHintEmpty")}
             href="/approvals"
-            tone={pendingApprovals > 0 ? "attention" : "default"}
+            tone={pendingApprovals > 0 ? "attention" : "work"}
           />
         )}
         <StatTile
@@ -79,6 +79,7 @@ export default async function Home() {
           value={String(workflows.filter((w) => w.active).length)}
           hint={t("tileAutomationsHint")}
           href="/automations"
+          tone="automation"
         />
         <StatTile
           icon={Bot}
@@ -86,6 +87,7 @@ export default async function Home() {
           value={String(agents.length)}
           hint={t("tileAgentsHint")}
           href="/scenarios"
+          tone="work"
         />
         {can(roles, "manage_platform") && (
           <StatTile
@@ -94,6 +96,7 @@ export default async function Home() {
             value={todaySpend === undefined ? "—" : `$${todaySpend.toFixed(2)}`}
             hint={t("tileSpendHint")}
             href="/admin/cost"
+            tone="admin"
           />
         )}
       </div>

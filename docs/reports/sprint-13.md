@@ -1,7 +1,8 @@
 # Sprint 13 — UI Usability & Automation Builder
 
 **Branch:** `feat/sprint-13-ui-automation-builder` · **Closed:** 2026-09-03
-**Scope:** 13.1–13.6, all non-deferrable. Also closes the long-deferred **7.3** (System health).
+**Scope:** 13.1–13.7, all non-deferrable. Also closes the long-deferred **7.3** (System health).
+**Reopened 2026-09-03** to add **13.7** — a colour pass and the in-app examples — after using the shipped shell; 13.7 also resolves the one open item this report closed with.
 
 The first sprint driven by hands-on use of the finished platform rather than the backlog.
 Every capability already existed; the web shell exposed them as eight unlabelled links, and
@@ -19,6 +20,7 @@ n8n automations could only be *run* from Fleet, never *defined*. This sprint clo
 | **13.4** Recipe model, compiler, deploy API | `automation_recipes` (migration 0011) + Pydantic v2 recipe schema with a 5-action allowlist and one level of `if/then/else`; compiler → n8n workflow JSON; `/v1/recipes` CRUD + preview + activate/run; three new `/v1/service/*` action endpoints; an `automation_recipe` approval resumer | ✅ **all four**, live against real n8n: a schedule recipe deploys, activates, fires, and calls back into Fleet; `email.send` queues an approval and Mailpit stays empty until it is approved; both-branch-writes still gated; 18 injection cases + a live 422 that leaves no workflow behind |
 | **13.5** Builder UI + reworked Automations page | Four-section wizard with server-rendered plain-language preview; Automations page split into built-in catalog + user recipes with run/activate/edit/delete | ✅ **all three.** A `builder` defines → saves → activates → runs → sees the n8n execution, entirely from the browser (Playwright); a `member` gets no entry point *and* is refused the route; the n8n-down state renders |
 | **13.6** Tests, e2e, docs | 51 new unit/security cases, 6 live integration cases, 7 e2e cases; TRD §11 + §12 updated in both layers; 3 new production-checklist items | ✅ lint/unit/security green, e2e green except one pre-existing failure (below), docs updated original + split together |
+| **13.7** Colour pass + in-app examples | Palette rebuilt on indigo-tinted neutrals with a per-section accent (Work indigo · Automation violet · Knowledge teal · Admin amber) derived from the nav and applied via `data-section`; gradient headers and accent rails; a **Guide** screen of four walkthroughs; four **ready-made automation templates** seeding the builder; per-agent **chat starters**; the `support_copilot` seed drift repaired | ✅ **all five.** WCAG AA holds on 8 screens in both themes measured against the *rendered* DOM (audit mutation-tested to prove it fails when it should); no untokenised colour remains; every template deploys to n8n unedited and is fenced by the server's own allowlists (also mutation-tested); TR/EN parity exact; **`chat-demo-path` passes again** |
 
 ---
 
@@ -128,6 +130,14 @@ carrying forward:
 
 ## 4. Open items
 
+> **Resolved in 13.7 (2026-09-03).** The `chat-demo-path` failure below is fixed: the
+> `support_copilot` insert in `seed.py` now re-asserts `sensitivity` on conflict
+> (`ON CONFLICT … DO UPDATE SET sensitivity`), so `make seed` repairs the drift instead of
+> skipping the row. Verified live — the row read `pii` before the seed and `internal` after,
+> and the e2e went green. **The second point below still stands**: `evals/runner.py` hard-codes
+> `sensitivity="internal"` for the RAG path, so the eval still cannot catch this class of bug.
+> The original diagnosis is kept verbatim for the record.
+
 **`chat-demo-path` e2e fails — pre-existing, needs a decision.**
 `support_copilot`'s row carries `sensitivity = 'pii'` while `seed.py` declares `'internal'`
 (and `ON CONFLICT DO NOTHING` means `make seed` will not repair it). The chat router passes
@@ -156,6 +166,67 @@ Two things follow from it:
 - The **superpowers** plugin is enabled in `.claude/settings.json` but is not installed on
   this machine, so its skills were unavailable; the Task Execution Protocol was followed
   directly.
+
+---
+
+## 4b. Task 13.7 — colour pass and in-app examples
+
+Added after the sprint's first close, driven by using the finished shell rather than by the
+backlog. Two gaps: the token system was correct but nearly monochrome (zinc plus one blue,
+colour reaching the screen only through badges), and while every screen explained *itself*,
+nothing explained how the screens fit *together*.
+
+**The colour work.** The palette is now indigo-tinted throughout — light on `#f6f7fc`, dark on
+a `#0b1020` navy rather than near-black — with four section accents (Work indigo, Automation
+violet, Knowledge teal, Admin amber). The accents are *derived*, not maintained by hand:
+`sectionFor(pathname)` maps any route to the sidebar group that owns it, `AppShell` stamps
+`data-section`, and CSS rebinds `--section*` beneath it. A screen therefore cannot be amber in
+the sidebar and teal in its own header. Colour is never load-bearing: every accent sits beside
+a label or icon that already carries the meaning, and amber-as-Admin is kept apart from
+amber-as-warning by role — section amber only ever appears as a rail or an icon, never as a
+badge fill.
+
+**How the contrast AC was proven.** Lighthouse is not installed on this machine, so the colour
+half of the a11y AC is checked directly instead: `tests/e2e/specs/contrast.spec.ts` walks the
+rendered DOM of 8 screens in pinned light and pinned dark, resolves each text node's real
+painted background (flattening translucency up the ancestor chain) and applies the WCAG AA
+split of 4.5:1, or 3:1 for large text. Zero failures. **The audit itself was mutation-tested** —
+lightening `--muted-foreground` to `#b8bfd0`, rebuilding and re-running made it report 1.8:1
+across every screen — so a green run means something. One real defect was caught this way
+before shipping: the first draft's dark-mode `--primary` (`#6366f1`) gave white button labels
+4.47:1, just under AA; `#585ae8` clears it at 5.19:1.
+
+**The examples.** A `/guide` screen at the top of Work carries four walkthroughs — ask an
+agent, add knowledge, build an automation, see the approval gate — each with numbered steps, a
+time estimate and a button into the screen it describes. The builder now opens on four
+ready-made templates that seed the form (through the existing `fromRecipe` path, so a template
+cannot produce a draft the editor fails to round-trip), and Chat offers per-agent starter
+questions on an empty thread.
+
+The templates are the part that could most easily have been decorative, so they are fenced
+twice. `tests/unit/test_recipe_templates.py` reads `_ALLOWLISTED_TABLES`,
+`_ALLOWLISTED_CHANNELS` and `_ALLOWED_EMAIL_DOMAINS` **out of `routers/service.py` itself** and
+checks every template against them, plus read-only SQL, slug validity, seeded agent names, and
+`needsApproval` tracking the actual `write:external` action rather than a hand-kept flag — so a
+change to the server's allowlists breaks the templates loudly. Mutation-tested: pointing a
+template at `users`, `#random` and `evil.com` failed exactly the three relevant cases. The live
+half is an e2e that picks the digest template, previews it through the *server's* compiler and
+saves it — the workflow appears in n8n unedited, then is deleted again. One template
+(`monthlyReport`) deliberately contains `email.send`, so the approval gate is demonstrated
+rather than described.
+
+**Gate.** ruff clean · mypy `apps` 18 (documented baseline, 0 new) · eslint + `tsc --noEmit`
+clean · `next build` clean (21 routes) · unit **578** (was 560) · security **85** ·
+integration **78 passed / 8 skipped** (the same 8 testcontainers contention failures as the
+Sprint 12 and 13 closes: all 8 pass on re-run in groups, none an assertion) · e2e **13 passed**,
+up from 7 passed / 1 failed.
+
+**One environmental finding worth carrying.** The builder e2e failed mid-run with a Next.js
+server-side exception on `/automations`. Not a regression: the API had been started as plain
+`uvicorn … --port 8000`, which binds `127.0.0.1` only, while Node 18+ resolves `localhost` to
+`::1` first — `ECONNREFUSED` from the web server's `fetch`. Restarting with `--host 0.0.0.0`
+fixed it. **`make api` also omits `--host`**, so this will recur for anyone whose resolver
+prefers IPv6; a one-word Makefile change would prevent it, left unmade as out of scope.
 
 ---
 
@@ -190,3 +261,12 @@ Both layers, in the same change:
 - `docs/PRODUCTION_CHECKLIST.md` — two new REQUIRED/RECOMMENDED items: re-scope (or drop)
   Admin → Services before it leaves dev, and review the recipe action allowlist per
   environment.
+
+Added for 13.7, both layers again:
+
+- `docs/TECHNICAL_REQUIREMENTS.md` + `docs/split/technical-requirements/12-screens.md` — the
+  section-accent palette and the rule that colour is never the sole carrier of meaning; the
+  Guide screen, chat starters and the builder's template gallery; and the note that template
+  values sit inside the compiler's own server-side allowlists.
+- `docs/IMPLEMENTATION_PLAN.md` + `docs/split/implementation-plan/sprint-13-ui-automation-builder.md`
+  — task **13.7** with its AC.

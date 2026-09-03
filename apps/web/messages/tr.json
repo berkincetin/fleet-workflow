@@ -14,7 +14,8 @@
       "automation": "Otomasyon",
       "knowledge": "Bilgi",
       "admin": "Yönetim"
-    }
+    },
+    "guide": "Rehber"
   },
   "auth": {
     "signIn": "Giriş yap",
@@ -35,7 +36,20 @@
       "Yanıtın altındaki başparmak simgeleriyle geri bildirim bırakın; bu geri bildirim Langfuse'a kaydedilir."
     ],
     "emptyTitle": "Henüz seçilebilecek bir ajan yok",
-    "emptyDesc": "Sohbet başlatmak için en az bir etkin ajan gerekir. Yönetim > Ajanlar ekranından bir ajan etkinleştirin."
+    "emptyDesc": "Sohbet başlatmak için en az bir etkin ajan gerekir. Yönetim > Ajanlar ekranından bir ajan etkinleştirin.",
+    "startersHeading": "Bu ajana ne sorabilirsiniz?",
+    "starters": {
+      "support_copilot": {
+        "q1": "Siparişimi nasıl iptal ederim?",
+        "q2": "İade süreci kaç gün sürüyor?",
+        "q3": "Kargo takip numaramı nereden bulurum?"
+      },
+      "analytics": {
+        "q1": "Son 30 günde hangi bölge en çok satış yaptı?",
+        "q2": "Toplam ciro bölgelere göre nasıl dağılıyor?",
+        "q3": "Kaç siparişte iade var?"
+      }
+    }
   },
   "knowledge": {
     "title": "Bilgi Bankası",
@@ -552,6 +566,85 @@
           "label": "Kayıt düş",
           "help": "Şirket dışına hiçbir şey göndermez; denetim kaydına bir not bırakır."
         }
+      }
+    },
+    "templates": {
+      "heading": "Hazır otomasyonlar",
+      "intro": "Boş bir formdan başlamak yerine çalışan bir örnekle başlayın. Şablonu seçtiğinizde form dolu gelir; adını ve alanlarını değiştirip kaydedebilirsiniz.",
+      "needsApproval": "Onay gerekir",
+      "weeklySalesDigest": {
+        "title": "Haftalık satış özeti",
+        "description": "Her pazartesi sabahı son 7 günün satışlarını bölgeye göre toplar ve Slack üzerinden #weekly-summary kanalına özet gönderir.",
+        "when": "Her pazartesi 09:00"
+      },
+      "refundWatch": {
+        "title": "İade takibi",
+        "description": "Her sabah iade edilen siparişleri sayar. Sadece iade varsa #dev-agent kanalına uyarı düşer — boş gün mesaj gitmez.",
+        "when": "Her gün 09:00"
+      },
+      "agentBriefing": {
+        "title": "Günlük analiz brifingi",
+        "description": "Analytics ajanına her sabah aynı soruyu sorar ve cevabı denetim kaydına yazar. Dışarıya hiçbir mesaj gitmez.",
+        "when": "Her gün 09:00"
+      },
+      "monthlyReport": {
+        "title": "Aylık rapor e-postası",
+        "description": "Ayın ilk günü satış özetini e-posta ile gönderir. E-posta hemen gitmez: önce Onaylarım kuyruğuna düşer, siz onayladıktan sonra gönderilir.",
+        "when": "Her ayın 1'i 09:00"
+      }
+    }
+  },
+  "guide": {
+    "title": "Rehber",
+    "intro": "Fleet ekranlarının birbirine nasıl bağlandığını gösteren kısa yollar: bir soru sorun, bilgi ekleyin, otomasyon kurun, onay akışını görün.",
+    "howToLabel": "Bu sayfa nasıl kullanılır?",
+    "howTo": [
+      "Aşağıdaki yollardan birini seçin — her biri kaç dakika süreceğini yazıyor.",
+      "Adımları okuyun, sonra düğmeye basarak doğrudan o ekrana gidin.",
+      "Takıldığınız bir terim olursa sayfanın altındaki sözlüğe bakın."
+    ],
+    "walkthroughsHeading": "Adım adım yollar",
+    "minutes": "~{count} dk",
+    "glossaryHeading": "Terimler",
+    "glossaryIntro": "Fleet ekranlarında geçen ve gündelik Türkçe olmayan dört terim.",
+    "walkthroughs": {
+      "askAgent": {
+        "title": "Bir ajana soru sorun",
+        "intro": "En kısa yol: bir ajana soru sorun ve cevabın hangi belgeye dayandığını görün.",
+        "s1": "Sohbet ekranını açın ve üstteki listeden support_copilot ajanını seçin.",
+        "s2": "Önerilen sorulardan birine tıklayın; soru yazı kutusuna gelir.",
+        "s3": "Gönderin ve cevabın akmasını izleyin.",
+        "s4": "Cevabın altındaki kaynak sayısına bakın — ajan bunu uydurmadı, bilgi bankasındaki belgelerden okudu.",
+        "cta": "Sohbeti aç"
+      },
+      "addKnowledge": {
+        "title": "Bilgi bankasına belge ekleyin",
+        "intro": "Ajanların cevap verdiği kaynağı siz belirlersiniz. Yüklediğiniz belge işlendikten sonra cevaplarda kaynak olarak görünür.",
+        "s1": "Bilgi Bankası ekranını açın.",
+        "s2": "Bir koleksiyon seçin ve PDF ya da metin dosyanızı yükleyin.",
+        "s3": "Durumun işleniyordan hazıra dönmesini bekleyin — belge parçalanır, kişisel veri taranır ve indekslenir.",
+        "s4": "Sohbete dönüp belgedeki bir konuyu sorun; cevabın kaynağında yeni belgeyi görmelisiniz.",
+        "cta": "Bilgi Bankasını aç"
+      },
+      "buildAutomation": {
+        "title": "Otomasyon kurun",
+        "intro": "Zamanlanmış bir iş kurun: veriyi okusun, özetlesin, Slack üzerinden yazsın. Kod yok, form var.",
+        "s1": "Hazır Haftalık satış özeti şablonuyla başlayın — form dolu gelir.",
+        "s2": "Adımları okuyun: bir sorgu, bir Slack mesajı. İsterseniz metni değiştirin.",
+        "s3": "Önizleme ile ne yapacağını düz Türkçe okuyun.",
+        "s4": "Kaydedin — otomasyon n8n üzerinde kurulur.",
+        "s5": "Şimdi çalıştır deyip sonucu kartın üzerinde görün; cron zamanını beklemeniz gerekmez.",
+        "cta": "Şablonla başla"
+      },
+      "approvalFlow": {
+        "title": "Onay akışını görün",
+        "intro": "Dışarıya çıkan her işlem (e-posta, dış sisteme yazma) doğrudan yapılmaz. Bu yol, o duvarı çalışırken gösterir.",
+        "s1": "Aylık rapor e-postası şablonunu açın — içinde bir e-posta adımı var.",
+        "s2": "Formda e-posta adımının yanındaki onay gerekir uyarısını görün.",
+        "s3": "Kaydedin ve Şimdi çalıştır deyin.",
+        "s4": "Onaylarım ekranına gidin: e-posta gönderilmedi, kuyruğa düştü ve neden beklediği yazıyor.",
+        "s5": "Onaylayın; işlem ancak o zaman tamamlanır.",
+        "cta": "Şablonu aç"
       }
     }
   }

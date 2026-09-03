@@ -68,3 +68,14 @@ n8n editor stays admin-only behind SSO for anything the builder deliberately can
   both layers for the Services screen and the builder.
   **AC:** `make lint && make test` green; e2e green against the compose stack; docs updated in
   original and split part together.
+- **13.7 Colour pass + in-app examples.** Driven by using the finished shell: the token system
+  was correct but almost monochrome (zinc + one blue, colour only in badges), and the screens
+  explained themselves individually while nothing explained how they fit together. Recolour the
+  palette (indigo-tinted neutrals, a section accent per sidebar group reused by that section's
+  headers/rails/tiles, gradients) with every pair contrast-checked; add a **Guide** screen of
+  short walkthroughs, **ready-made automation templates** that seed the builder, and per-agent
+  **chat starter questions**. Repair the `support_copilot` seed drift that made the chat e2e fail.
+  **AC:** WCAG AA contrast holds on every screen in both themes, proven against the rendered DOM;
+  no colour referenced that is not a defined token; every template deploys to n8n unedited and
+  stays inside the server's action/table/channel allowlists; TR/EN complete; the chat demo e2e
+  passes again.

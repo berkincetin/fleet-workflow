@@ -12,6 +12,7 @@
 import {
   BookOpen,
   CheckSquare,
+  Compass,
   FileText,
   Home,
   LayoutGrid,
@@ -24,6 +25,13 @@ import type { Permission } from "@/lib/permissions";
 
 export type NavIcon = typeof Home;
 
+/**
+ * The four colour families in globals.css. A group's key *is* its section, and
+ * `sectionFor()` below maps any route back to one, so the accent a screen
+ * paints and the sidebar group it lives under can never disagree.
+ */
+export type Section = "work" | "automation" | "knowledge" | "admin";
+
 export interface NavItem {
   href: string;
   /** Key under the `nav` i18n namespace. */
@@ -34,8 +42,8 @@ export interface NavItem {
 }
 
 export interface NavGroup {
-  /** Key under the `nav.groups` i18n namespace. */
-  key: string;
+  /** Key under the `nav.groups` i18n namespace — also the section accent. */
+  key: Section;
   items: NavItem[];
 }
 
@@ -44,6 +52,7 @@ export const NAV_GROUPS: NavGroup[] = [
     key: "work",
     items: [
       { href: "/", key: "home", icon: Home },
+      { href: "/guide", key: "guide", icon: Compass },
       { href: "/chat", key: "chat", icon: MessageSquare },
       { href: "/scenarios", key: "scenarios", icon: LayoutGrid },
       { href: "/approvals", key: "approvals", icon: CheckSquare, permissions: ["approve"] },
@@ -95,6 +104,7 @@ const ROUTE_TITLES: { prefix: string; namespace: "nav" | "admin"; key: string }[
   { prefix: "/automations/new", namespace: "nav", key: "newAutomation" },
   { prefix: "/automations", namespace: "nav", key: "automations" },
   { prefix: "/chat", namespace: "nav", key: "chat" },
+  { prefix: "/guide", namespace: "nav", key: "guide" },
   { prefix: "/scenarios", namespace: "nav", key: "scenarios" },
   { prefix: "/examples", namespace: "nav", key: "examples" },
   { prefix: "/knowledge", namespace: "nav", key: "knowledge" },
@@ -129,4 +139,26 @@ export function breadcrumbFor(pathname: string): Crumb[] {
   if (parent) crumbs.push({ namespace: parent.namespace, key: parent.key, href: parent.prefix });
   crumbs.push({ namespace: match.namespace, key: match.key, href: match.prefix });
   return crumbs;
+}
+
+/**
+ * The section accent a route paints, derived from the sidebar group that owns
+ * it (longest matching href wins, so `/automations/new` and `/automations`
+ * both resolve to Automation). Routes with no nav entry of their own — the
+ * admin sub-pages, `/automations/:id/edit` — fall through to their prefix.
+ *
+ * Deriving this rather than hard-coding a second table is the point: a screen
+ * cannot end up amber in the sidebar and teal in its own header.
+ */
+export function sectionFor(pathname: string): Section {
+  let best: { section: Section; len: number } | undefined;
+  for (const group of NAV_GROUPS) {
+    for (const item of group.items) {
+      const hit = pathname === item.href || pathname.startsWith(`${item.href}/`);
+      if (hit && (!best || item.href.length > best.len)) {
+        best = { section: group.key, len: item.href.length };
+      }
+    }
+  }
+  return best?.section ?? "work";
 }

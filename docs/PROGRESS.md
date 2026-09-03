@@ -1473,3 +1473,113 @@ Issues (symptom → root cause → resolution):
 - **Leftover test agents pollute the Home dashboard.** "Active agents" counts 18, of which 7
   are `live-chat-agent-*` rows created by integration runs and never cleaned up. Environment
   noise, not a code defect; worth a cleanup pass or a teardown in the chat live test.
+
+## 2026-09-03 - 13.7 Colour pass + in-app examples - DONE
+
+Built:
+- **Palette rebuilt** (`app/globals.css`). Indigo-tinted neutrals instead of flat zinc (light
+  sits on `#f6f7fc`, dark on a `#0b1020` navy rather than near-black); primary indigo with a
+  violet partner for gradients; four **section accents** - Work indigo, Automation violet,
+  Knowledge teal, Admin amber - plus `--gradient-header`/`--gradient-primary`. The two dark
+  blocks are generated from one source so the OS-preference and explicit-choice entry points
+  cannot drift.
+- **Section theming is derived, not hand-maintained.** `sectionFor(pathname)` in `lib/nav.ts`
+  resolves any route to the sidebar group that owns it; `AppShell` stamps `data-section` on the
+  top bar and `<main>`, and `[data-section=...]` in globals.css rebinds `--section`,
+  `--section-bg` and `--section-fg`. A screen therefore cannot be amber in the sidebar and teal
+  in its own header.
+- Recoloured consumers: sidebar (accent group labels, per-item icon tint, active rail),
+  gradient logo mark, top-bar section hairline, role chip, `PageHeader` (gradient band + accent
+  rail), `StatTile` (per-tone icon chip + rail, `tone` now names a section), `EmptyState`.
+- **Guide screen** (`/guide`, `lib/guide.ts`, top of the Work group): four walkthroughs -
+  ask an agent, add knowledge, build an automation, see the approval gate - each with
+  numbered steps, a time estimate and a button into the screen it describes, plus the glossary.
+  Static and server-rendered, so it still reads when the API or n8n is down.
+- **Automation templates** (`lib/recipe-templates.ts`, `components/automations/template-picker.tsx`):
+  four ready-made recipes offered above a blank builder, seeding the form through the existing
+  `fromRecipe` path via `?template=`. One (`monthlyReport`) deliberately contains `email.send`
+  so the approval gate is demonstrated rather than described.
+- **Chat starters** (`lib/chat-starters.ts`): per-agent suggested first questions on an empty
+  thread, keyed off the *selected* agent so switching the dropdown swaps them.
+- i18n: 3 new namespaces/branches (`guide`, `builder.templates`, `chat.starters`), TR authored
+  first; 475 keys, TR/EN parity exact.
+- `seed.py`: the `support_copilot` insert is now `ON CONFLICT ... DO UPDATE SET sensitivity` -
+  see Issues.
+- Tests: `tests/unit/test_recipe_templates.py` (17 cases), `tests/e2e/specs/contrast.spec.ts`
+  (2), `tests/e2e/specs/guide-and-templates.spec.ts` (3).
+
+Verified:
+- **AC WCAG AA contrast in both themes - PASS.** Two ways. (1) A static check of all 30
+  foreground/background token pairs. (2) `contrast.spec.ts` walks the *rendered* DOM of 8
+  screens in pinned light and pinned dark, computes each text node's ratio against the real
+  painted background (flattening translucency), and requires 4.5:1, or 3:1 for large text - 0
+  failures. **The audit was mutation-tested**: lightening `--muted-foreground` to `#b8bfd0` made
+  it report 1.8:1 against a required 4.5 across every screen, so a pass is meaningful.
+- **AC no colour referenced that is not a defined token - PASS.** The bare-palette-class and
+  `dark:` greps return only two false positives, both inside explanatory text (`bg-green-100`
+  named in a globals.css comment; `dark: Moon` as an icon-map key).
+- **AC every template deploys unedited and stays inside the allowlists - PASS.**
+  `test_recipe_templates.py` reads `_ALLOWLISTED_TABLES`, `_ALLOWLISTED_CHANNELS` and
+  `_ALLOWED_EMAIL_DOMAINS` out of `routers/service.py` itself and checks every template against
+  them (also: read-only SQL, valid slug, seeded agents, `needsApproval` tracking the actual
+  `write:external` action). Mutation-tested - pointing a template at `users`, `#random` and
+  `evil.com` failed exactly the three relevant cases. Live half: the e2e picks the digest
+  template, renames it, previews it through the *server's* compiler and saves; the workflow
+  appears in n8n unedited and is deleted again.
+- **AC TR/EN complete - PASS.** Key-set diff is empty both ways; `test_i18n_messages.py` 5
+  passed. Every dynamic key (templates/starters/walkthroughs) is resolved explicitly by the new
+  unit test, since the existing i18n test skips template literals by design.
+- **AC the chat demo e2e passes again - PASS.** `chat-demo-path` green.
+- Full gate: ruff clean, mypy `apps` 18 (documented baseline, **0 new**), eslint clean,
+  `tsc --noEmit` clean, `next build` clean (21 routes), **unit 578 passed** (was 560),
+  **security 85 passed**, **integration 78 passed / 8 skipped** (see Issues),
+  **e2e 13 passed** (was 7 passed / 1 failed).
+
+Issues (symptom -> root cause -> resolution):
+- **`chat-demo-path` was failing (carried over from 13.6, was OPEN) - now RESOLVED.**
+  Root cause as diagnosed then: the `support_copilot` row had drifted to `sensitivity='pii'`
+  while `seed.py` declares `'internal'`, so its RAG queries selected the 1024-dim local
+  embedder against collections holding 1536-dim cloud vectors. `ON CONFLICT DO NOTHING` meant
+  `make seed` could not repair it. Fixed by making that one insert `DO UPDATE SET sensitivity`
+  - narrowly, because an agent's sensitivity selects its *embedding* model and so must stay
+  consistent with the collections seeded ten lines above it. Verified against the live DB:
+  the row read `pii` before the seed ran and `internal` after; the e2e then passed.
+  *Not* addressed here: `evals/runner.py` still hard-codes `sensitivity="internal"` for the RAG
+  path, which is why the eval scored 100% while live chat was broken. Left as its own decision.
+- **The dark-mode primary failed contrast, caught before it shipped.** The first draft lifted
+  `--primary` to `#6366f1` for the dark ground, which gives white button labels only 4.47:1 -
+  just under AA. `#585ae8` clears it at 5.19:1 while still standing off the dark surface as a
+  shape (3.3:1); `--primary-hover` carries the lift instead.
+- **The builder e2e failed with a server-side exception - environmental, not a regression.**
+  Symptom: `/automations` returned a Next.js digest error, so the login helper's `h1` never
+  appeared. Root cause: the API had been started as plain `uvicorn ... --port 8000`, which binds
+  `127.0.0.1` only, and Node 18+ resolves `localhost` to `::1` first, giving `ECONNREFUSED` from
+  the web server's `fetch`. Restarting the API with `--host 0.0.0.0` fixed it. **Worth noting:
+  `make api` also omits `--host`**, so this is reproducible for anyone whose resolver prefers
+  IPv6 - a one-word Makefile change would prevent it, left unmade as out of scope.
+- **Two locator defects of my own in the new e2e.** A walkthrough's title also appears inside
+  its own intro sentence (strict-mode violation -> matched as a heading role instead), and the
+  preview prints the raw cron `0 9 * * 1` rather than a friendly "Monday", so the schedule
+  assertion now checks the cron the template actually carries.
+- **Integration: 8 failed in the full run, all 8 pass when re-run in three groups (78 passed).**
+  `test_rag_ingest_live`, `test_rag_query_live`, `test_rag_pii_collection_live`,
+  `test_services_admin_live`, `test_pii_logging_masked_live`, `test_vehicle_intake_e2e_live`
+  (x2) and `test_insights_publisher_e2e_live` - every one a testcontainers connect/timeout
+  while the suite ran alongside the compose stack, none an assertion. Same contention recorded
+  at the Sprint 12 and 13 closes.
+
+Notes / deviations:
+- **Section colour is always redundant.** Every accent sits alongside a label or an icon that
+  already carries the meaning, and no state is signalled by hue alone - which is what lets the
+  palette be this chromatic without the colour becoming load-bearing.
+- **Amber is both the Admin accent and the warning colour.** Kept apart by role: amber-as-section
+  only ever appears as a rail or an icon, never as a badge fill.
+- Templates are constrained by the *server's* allowlists, not by what reads nicely - the SQL
+  really only touches `fixture_sales`/`fixture_orders`, Slack only `#weekly-summary`/`#dev-agent`,
+  email only `example.com`. The unit test reads those lists out of `service.py` so a change
+  there breaks the templates loudly rather than silently.
+- `contrast.spec.ts` is the colour half of the a11y AC only. Lighthouse (labels, roles,
+  landmarks) is not installed on this machine; the previous sprint's 100s stand for the
+  structural half, which this change did not touch.
+- Leftover `live-chat-agent-*` rows from earlier integration runs still inflate Home's "active
+  agents" count (18). Environment noise, unchanged from the 13.6 note.

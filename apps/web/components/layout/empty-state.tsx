@@ -19,7 +19,7 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center gap-3 rounded-[var(--radius-lg)] border border-dashed border-[var(--border-strong)] bg-[var(--surface-2)] px-6 py-10 text-center">
-      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-3)] text-[var(--muted-foreground)]">
+      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--section-bg)] text-[var(--section)]">
         <Icon className="h-5 w-5" aria-hidden="true" />
       </span>
       <div className="flex flex-col gap-1">

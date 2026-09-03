@@ -8,7 +8,7 @@ import { ChevronRight, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { ThemeSwitcher } from "@/components/theme-switcher";
-import { breadcrumbFor, NAV_GROUPS, type NavItem } from "@/lib/nav";
+import { breadcrumbFor, NAV_GROUPS, sectionFor, type NavItem, type Section } from "@/lib/nav";
 import { can, type Permission } from "@/lib/permissions";
 import type { Theme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
@@ -27,7 +27,7 @@ function visible(item: NavItem, roles: string[] | undefined): boolean {
   return required.length === 0 || required.some((p) => can(roles, p));
 }
 
-function NavLink({ item, label }: { item: NavItem; label: string }) {
+function NavLink({ item, label, section }: { item: NavItem; label: string; section: Section }) {
   const pathname = usePathname();
   // `/automations/new` must not light up `/automations` as well, so a nested
   // route only activates the deepest nav entry that matches it.
@@ -37,18 +37,36 @@ function NavLink({ item, label }: { item: NavItem; label: string }) {
   const active = deepest?.href === item.href;
   const Icon = item.icon;
 
+  // The active row is filled with its own group's accent, and its icon keeps
+  // that accent even when idle — so the four groups stay tellable apart while
+  // scanning, not only once something in them is selected.
   return (
     <Link
       href={item.href}
+      data-section={section}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex items-center gap-2.5 rounded-[var(--radius-md)] px-3 py-2 text-sm transition-colors",
+        "group/nav relative flex items-center gap-2.5 rounded-[var(--radius-md)] px-3 py-2 text-sm transition-colors",
         active
-          ? "bg-[var(--accent-soft)] font-medium text-[var(--accent-foreground)]"
+          ? "bg-[var(--section-bg)] font-medium text-[var(--section-fg)]"
           : "text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]",
       )}
     >
-      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+      {active && (
+        <span
+          aria-hidden="true"
+          className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-[var(--section)]"
+        />
+      )}
+      <Icon
+        className={cn(
+          "h-4 w-4 shrink-0 transition-colors",
+          active
+            ? "text-[var(--section)]"
+            : "text-[var(--section)] opacity-60 group-hover/nav:opacity-100",
+        )}
+        aria-hidden="true"
+      />
       <span className="truncate">{label}</span>
     </Link>
   );
@@ -94,6 +112,8 @@ function Breadcrumb() {
 }
 
 export function AppShell({ children, theme }: { children: React.ReactNode; theme: Theme }) {
+  const pathname = usePathname();
+  const section = sectionFor(pathname);
   const t = useTranslations("nav");
   const tGroups = useTranslations("nav.groups");
   const tAuth = useTranslations("auth");
@@ -111,7 +131,7 @@ export function AppShell({ children, theme }: { children: React.ReactNode; theme
         >
           <span
             aria-hidden="true"
-            className="h-5 w-1.5 rounded-full bg-[var(--primary)]"
+            className="h-6 w-6 rounded-[var(--radius-md)] bg-[image:var(--gradient-primary)] shadow-[var(--shadow-sm)]"
           />
           Fleet
         </Link>
@@ -121,12 +141,21 @@ export function AppShell({ children, theme }: { children: React.ReactNode; theme
             const items = group.items.filter((i) => visible(i, roles));
             if (items.length === 0) return null;
             return (
-              <div key={group.key} className="flex flex-col gap-1">
-                <p className="px-3 pb-1 text-[0.6875rem] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+              <div key={group.key} data-section={group.key} className="flex flex-col gap-1">
+                <p className="flex items-center gap-1.5 px-3 pb-1 text-[0.6875rem] font-semibold uppercase tracking-wider text-[var(--section-fg)]">
+                  <span
+                    aria-hidden="true"
+                    className="h-1.5 w-1.5 rounded-full bg-[var(--section)]"
+                  />
                   {tGroups(group.key)}
                 </p>
                 {items.map((item) => (
-                  <NavLink key={item.href} item={item} label={t(item.key)} />
+                  <NavLink
+                    key={item.href}
+                    item={item}
+                    label={t(item.key)}
+                    section={group.key}
+                  />
                 ))}
               </div>
             );
@@ -152,7 +181,16 @@ export function AppShell({ children, theme }: { children: React.ReactNode; theme
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-4 border-b border-[var(--border)] bg-[var(--surface)] px-4 md:px-6">
+        <header
+          data-section={section}
+          className="relative sticky top-0 z-20 flex h-14 items-center justify-between gap-4 border-b border-[var(--border)] bg-[var(--surface)] px-4 md:px-6"
+        >
+          {/* A hairline of the current section's colour along the top bar:
+              the one always-visible cue for "which part of Fleet am I in". */}
+          <span
+            aria-hidden="true"
+            className="absolute inset-x-0 top-0 h-0.5 bg-[var(--section)]"
+          />
           <Breadcrumb />
           {status === "authenticated" && (
             <div className="flex shrink-0 items-center gap-2">
@@ -160,7 +198,7 @@ export function AppShell({ children, theme }: { children: React.ReactNode; theme
                 {session.user?.name ?? session.user?.email}
               </span>
               {role && (
-                <span className="rounded-full bg-[var(--surface-2)] px-2.5 py-0.5 text-xs font-medium text-[var(--muted-foreground)]">
+                <span className="rounded-full bg-[var(--accent-soft)] px-2.5 py-0.5 text-xs font-medium text-[var(--accent-foreground)]">
                   {tRoles.has(role) ? tRoles(role) : role}
                 </span>
               )}
@@ -171,14 +209,22 @@ export function AppShell({ children, theme }: { children: React.ReactNode; theme
         {/* Mobile nav: the sidebar is hidden under md, so the groups collapse
             into one horizontally scrolling strip rather than disappearing. */}
         <nav className="flex gap-1 overflow-x-auto border-b border-[var(--border)] bg-[var(--sidebar)] px-3 py-2 md:hidden">
-          {NAV_GROUPS.flatMap((g) => g.items)
-            .filter((i) => visible(i, roles))
-            .map((item) => (
-              <NavLink key={item.href} item={item} label={t(item.key)} />
+          {NAV_GROUPS.flatMap((g) => g.items.map((i) => ({ item: i, section: g.key })))
+            .filter(({ item }) => visible(item, roles))
+            .map(({ item, section }) => (
+              <NavLink
+                key={item.href}
+                item={item}
+                label={t(item.key)}
+                section={section}
+              />
             ))}
         </nav>
 
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 md:px-6 md:py-8">
+        <main
+          data-section={section}
+          className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 md:px-6 md:py-8"
+        >
           {children}
         </main>
       </div>

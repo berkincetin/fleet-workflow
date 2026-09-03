@@ -24,6 +24,7 @@ import {
   type ActionName,
   type Operator,
 } from "@/lib/recipe-actions";
+import { type RecipeTemplate } from "@/lib/recipe-templates";
 import { cn } from "@/lib/utils";
 import type { components } from "@fleet/shared";
 
@@ -198,9 +199,18 @@ function Field({
 export function RecipeBuilder({
   agents,
   existing,
+  template,
 }: {
   agents: AgentSummary[];
   existing?: RecipeOut;
+  /**
+   * Seeds a new draft from a ready-made recipe (task 13.7). It goes through
+   * the same `fromRecipe` path an edit does rather than a second parser, so a
+   * template can never produce a draft shape the editor cannot round-trip.
+   * `existing` wins: editing a saved recipe is never overridden by a stray
+   * ?template= in the URL.
+   */
+  template?: RecipeTemplate;
 }) {
   const t = useTranslations("builder");
   const tCommon = useTranslations("common");
@@ -209,7 +219,15 @@ export function RecipeBuilder({
   const { data: session } = useSession();
   const { show } = useToast();
 
-  const initial = existing ? fromRecipe(existing) : null;
+  const initial = existing
+    ? fromRecipe(existing)
+    : template
+      ? fromRecipe({
+          name: template.name,
+          description: t(`templates.${template.id}.description`),
+          definition: { trigger: template.trigger, steps: template.steps },
+        } as unknown as RecipeOut)
+      : null;
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [trigger, setTrigger] = useState<

@@ -14,7 +14,8 @@
       "automation": "Automation",
       "knowledge": "Knowledge",
       "admin": "Admin"
-    }
+    },
+    "guide": "Guide"
   },
   "auth": {
     "signIn": "Sign in",
@@ -35,7 +36,20 @@
       "Use the thumbs buttons under an answer to leave feedback — it is recorded in Langfuse."
     ],
     "emptyTitle": "No agent available yet",
-    "emptyDesc": "Starting a chat needs at least one active agent. Enable one under Admin > Agents."
+    "emptyDesc": "Starting a chat needs at least one active agent. Enable one under Admin > Agents.",
+    "startersHeading": "What can you ask this agent?",
+    "starters": {
+      "support_copilot": {
+        "q1": "How do I cancel my order?",
+        "q2": "How many days does a refund take?",
+        "q3": "Where do I find my tracking number?"
+      },
+      "analytics": {
+        "q1": "Which region sold the most in the last 30 days?",
+        "q2": "How is total revenue split across regions?",
+        "q3": "How many orders were refunded?"
+      }
+    }
   },
   "knowledge": {
     "title": "Knowledge",
@@ -552,6 +566,85 @@
           "label": "Record a note",
           "help": "Sends nothing outside the company; leaves a note in the audit log."
         }
+      }
+    },
+    "templates": {
+      "heading": "Ready-made automations",
+      "intro": "Start from a working example instead of a blank form. Picking a template fills the form in; rename it and edit the fields before saving.",
+      "needsApproval": "Needs approval",
+      "weeklySalesDigest": {
+        "title": "Weekly sales digest",
+        "description": "Every Monday morning, totals the last 7 days of sales by region and posts a summary to the #weekly-summary Slack channel.",
+        "when": "Mondays at 09:00"
+      },
+      "refundWatch": {
+        "title": "Refund watch",
+        "description": "Counts refunded orders each morning. It messages #dev-agent only when there are any — a quiet day sends nothing.",
+        "when": "Daily at 09:00"
+      },
+      "agentBriefing": {
+        "title": "Daily analytics briefing",
+        "description": "Puts the same question to the Analytics agent each morning and records the answer in the audit log. Nothing leaves the platform.",
+        "when": "Daily at 09:00"
+      },
+      "monthlyReport": {
+        "title": "Monthly report email",
+        "description": "Emails a sales summary on the first of the month. The email is not sent straight away: it queues in Approvals and goes out once you approve it.",
+        "when": "1st of the month at 09:00"
+      }
+    }
+  },
+  "guide": {
+    "title": "Guide",
+    "intro": "Short paths showing how Fleet's screens connect: ask a question, add knowledge, build an automation, and watch the approval gate work.",
+    "howToLabel": "How to use this page",
+    "howTo": [
+      "Pick one of the paths below — each says how long it takes.",
+      "Read the steps, then use the button to go straight to that screen.",
+      "If a term is unfamiliar, check the glossary at the bottom of the page."
+    ],
+    "walkthroughsHeading": "Step-by-step paths",
+    "minutes": "~{count} min",
+    "glossaryHeading": "Terms",
+    "glossaryIntro": "The four terms in Fleet's screens that are platform vocabulary rather than plain English.",
+    "walkthroughs": {
+      "askAgent": {
+        "title": "Ask an agent a question",
+        "intro": "The shortest path: ask an agent something and see which document the answer came from.",
+        "s1": "Open Chat and pick support_copilot from the list at the top.",
+        "s2": "Click one of the suggested questions — it drops into the composer.",
+        "s3": "Send it and watch the answer stream in.",
+        "s4": "Check the source count under the answer — the agent did not invent this, it read it from the knowledge base.",
+        "cta": "Open Chat"
+      },
+      "addKnowledge": {
+        "title": "Add a document to the knowledge base",
+        "intro": "You decide what the agents answer from. Once your document is processed it shows up as a source in answers.",
+        "s1": "Open the Knowledge screen.",
+        "s2": "Pick a collection and upload a PDF or text file.",
+        "s3": "Wait for the status to move from processing to ready — the document is chunked, scanned for personal data and indexed.",
+        "s4": "Go back to Chat and ask about something in it; the new document should appear among the answer's sources.",
+        "cta": "Open Knowledge"
+      },
+      "buildAutomation": {
+        "title": "Build an automation",
+        "intro": "Set up a scheduled job that reads data, summarises it and posts to Slack. No code — a form.",
+        "s1": "Start from the Weekly sales digest template — the form arrives filled in.",
+        "s2": "Read the steps: one query, one Slack message. Edit the text if you like.",
+        "s3": "Use Preview to read what it will do in plain language.",
+        "s4": "Save it — the automation is deployed to n8n.",
+        "s5": "Hit Run now and see the result on the card; you don't have to wait for the cron.",
+        "cta": "Start from a template"
+      },
+      "approvalFlow": {
+        "title": "See the approval gate",
+        "intro": "Anything that reaches outside the platform — an email, a write to another system — is never done directly. This path shows that wall working.",
+        "s1": "Open the Monthly report email template — it contains an email step.",
+        "s2": "Notice the needs approval warning beside that step in the form.",
+        "s3": "Save it and hit Run now.",
+        "s4": "Go to Approvals: no email was sent, it queued, and the row says why it is waiting.",
+        "s5": "Approve it; only then does the action complete.",
+        "cta": "Open the template"
       }
     }
   }

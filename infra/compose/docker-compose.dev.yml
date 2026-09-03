@@ -129,6 +129,22 @@ services:
       - ./loki/loki-config.yml:/etc/loki/loki-config.yml:ro
     ports: ["3100:3100"]
 
+  # Loki's log source (task 13.3). Loki has shipped in this stack since Sprint 1
+  # with nothing pushing to it: TRD §6's log lane had no input, and Loki's own
+  # /ready endpoint stayed 503 forever ("Ingester not ready") because the
+  # ingester never received a push — which is exactly what the Admin -> Services
+  # health board surfaced. Promtail discovers this compose project's containers
+  # over the Docker API and ships their stdout; see promtail-config.yml for why
+  # not a host log-path mount, and for what is and is not scraped in dev.
+  promtail:
+    image: grafana/promtail:3.3.2
+    command: ["-config.file=/etc/promtail/promtail-config.yml"]
+    volumes:
+      - ./promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports: ["9080:9080"]
+    depends_on: [loki]
+
   # Alertmanager has no native ${VAR} expansion for its config file (verified
   # against the real v0.28.0 binary, task 7.4) and refuses to start on a
   # truly empty api_url ("unsupported scheme for URL"), so the mounted file
@@ -221,6 +237,15 @@ services:
       # FLEET_API_BASE_URL/FLEET_API_KEY comment above for why these exist.
       FLEET_API_BASE_URL: ${FLEET_API_BASE_URL_FOR_N8N:-http://host.docker.internal:8000}
       FLEET_API_KEY: ${N8N_FLEET_API_KEY:-}
+      # A queue-mode worker has no HTTP surface unless this is on; with it, the
+      # worker serves its own /healthz, which is the only honest answer to
+      # "is the worker alive?" that the Admin -> Services screen (task 13.3)
+      # can give without guessing from Redis keys.
+      QUEUE_HEALTH_CHECK_ACTIVE: "true"
+    ports:
+      # Loopback-only, same reasoning as n8n-main's :5678 above — this port
+      # exists so the Fleet API can probe worker health from the host.
+      - "127.0.0.1:5680:5678"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

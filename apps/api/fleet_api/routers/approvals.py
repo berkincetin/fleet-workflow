@@ -46,6 +46,9 @@ class ApprovalOut(BaseModel):
     decided_by: str | None
     decided_at: dt.datetime | None
     sla_at: dt.datetime | None
+    # Surfaced so the approvals UI can show how long a decision has been
+    # outstanding (task 13.2's "why is this waiting" row).
+    created_at: dt.datetime
 
     model_config = {"from_attributes": True}
 
@@ -180,6 +183,50 @@ async def _resume_dealer_onboarding_run(run_id: str, *, approved: bool) -> None:
         await graph.ainvoke(Command(resume={"approved": approved}), config)
 
 
+async def _resume_automation_recipe(run_id: str, *, approved: bool) -> None:
+    """Carry out (or drop) a recipe step that was queued for approval (task 13.4).
+
+    Unlike every other entry in `_RESUMERS` this is not a LangGraph resume:
+    a compiled recipe runs in n8n, and the `email.send` step never started an
+    interruptible graph — `/v1/service/email-send` recorded the intended
+    message and returned. So "resuming" here means performing the queued action
+    itself, from the approval's own (possibly edited) payload.
+
+    The payload is re-read from the row rather than passed in, so an approver's
+    edit is what actually goes out — the same guarantee the graph-backed
+    resumers get from `Command(resume=...)` over persisted state.
+    """
+    from fleet_api.db import _app_session_factory
+    from fleet_api.routers.service import _ALLOWED_EMAIL_DOMAINS
+    from fleet_mcp.servers.email import EmailSendTool
+    from fleet_mcp.servers.smtp_sender import build_default_sender
+
+    if not approved:
+        return
+
+    async with _app_session_factory()() as session:
+        approval = (
+            await session.execute(select(Approval).where(Approval.run_id == run_id))
+        ).scalar_one_or_none()
+    if approval is None:  # pragma: no cover - decide_approval just wrote this row
+        return
+
+    if approval.action == "email.send":
+        tool = EmailSendTool(
+            sender=build_default_sender(), allowed_domains=_ALLOWED_EMAIL_DOMAINS
+        )
+        await tool.send(
+            to=str(approval.payload["to"]),
+            subject=str(approval.payload["subject"]),
+            body=str(approval.payload["body"]),
+        )
+        return
+
+    raise HTTPException(
+        status_code=500, detail=f"no handler for recipe action {approval.action!r}"
+    )
+
+
 class _OcrToolAdapter:
     """`build_ocr_tool` returns a bare callable (`image_base64 -> {text, source}`);
     `InvoiceAgentState`'s OcrLike Protocol expects an `.extract_text(...)`
@@ -201,6 +248,7 @@ _RESUMERS: dict[str, Callable[..., Awaitable[None]]] = {
     "invoice_agent": _resume_invoice_agent_run,
     "hr_agent": _resume_hr_agent_run,
     "dealer_onboarding": _resume_dealer_onboarding_run,
+    "automation_recipe": _resume_automation_recipe,
 }
 
 

@@ -7,7 +7,15 @@
     "examples": "Örnekler",
     "knowledge": "Bilgi Bankası",
     "approvals": "Onaylarım",
-    "admin": "Yönetim"
+    "admin": "Yönetim",
+    "newAutomation": "Yeni otomasyon",
+    "groups": {
+      "work": "Çalışma",
+      "automation": "Otomasyon",
+      "knowledge": "Bilgi",
+      "admin": "Yönetim"
+    },
+    "guide": "Rehber"
   },
   "auth": {
     "signIn": "Giriş yap",
@@ -17,20 +25,39 @@
   "chat": {
     "title": "Sohbet",
     "agent": "Ajan",
-    "noAgents": "Henüz kullanılabilir ajan yok.",
     "placeholder": "Bir soru sorun…",
     "send": "Gönder",
-    "citationsCount": "{count, plural, one {# kaynak} other {# kaynak}}"
+    "citationsCount": "{count, plural, one {# kaynak} other {# kaynak}}",
+    "intro": "Bir ajana soru sorun; yanıtı kaynak gösterilmiş şekilde alın.",
+    "howToLabel": "Bu ekran nasıl kullanılır?",
+    "howTo": [
+      "Üstten bir ajan seçin — her ajan farklı bir bilgi tabanına ve farklı araçlara sahiptir.",
+      "Sorunuzu yazın; yanıt akarken gelir ve altında kullandığı kaynaklar listelenir.",
+      "Yanıtın altındaki başparmak simgeleriyle geri bildirim bırakın; bu geri bildirim Langfuse'a kaydedilir."
+    ],
+    "emptyTitle": "Henüz seçilebilecek bir ajan yok",
+    "emptyDesc": "Sohbet başlatmak için en az bir etkin ajan gerekir. Yönetim > Ajanlar ekranından bir ajan etkinleştirin.",
+    "startersHeading": "Bu ajana ne sorabilirsiniz?",
+    "starters": {
+      "support_copilot": {
+        "q1": "Siparişimi nasıl iptal ederim?",
+        "q2": "İade süreci kaç gün sürüyor?",
+        "q3": "Kargo takip numaramı nereden bulurum?"
+      },
+      "analytics": {
+        "q1": "Son 30 günde hangi bölge en çok satış yaptı?",
+        "q2": "Toplam ciro bölgelere göre nasıl dağılıyor?",
+        "q3": "Kaç siparişte iade var?"
+      }
+    }
   },
   "knowledge": {
     "title": "Bilgi Bankası",
     "collections": "Koleksiyonlar",
-    "noCollections": "Henüz koleksiyon yok.",
     "upload": "Belge yükle",
     "uploadPrompt": "Bu koleksiyona yüklenecek bir dosya seçin.",
     "selectCollection": "Bir koleksiyon seçin",
     "documents": "Belgeler",
-    "noDocuments": "Bu koleksiyonda henüz belge yok.",
     "status": {
       "pending": "Beklemede",
       "queued": "Sırada",
@@ -39,11 +66,21 @@
     },
     "uploading": "Yükleniyor…",
     "uploadSuccess": "Yükleme tamamlandı — işleme başladı.",
-    "uploadError": "Yükleme başarısız."
+    "uploadError": "Yükleme başarısız.",
+    "intro": "Ajanların yanıtlarını dayandırdığı belgeler burada durur.",
+    "howToLabel": "Bu ekran nasıl kullanılır?",
+    "howTo": [
+      "Soldan bir koleksiyon seçin; her koleksiyonun kendi hassasiyet seviyesi ve saklama süresi vardır.",
+      "Belge yükleyin — sistem metni çıkarır, kişisel verileri işaretler, parçalara böler ve aranabilir hale getirir.",
+      "Durum 'Hazır' olduğunda belge sohbette kaynak olarak kullanılabilir."
+    ],
+    "emptyCollectionsTitle": "Henüz koleksiyon yok",
+    "emptyCollectionsDesc": "Koleksiyon, belgelerin hassasiyet ve saklama kuralına göre gruplandığı kutudur. İlk koleksiyonlar `make seed` ile gelir ya da yönetim tarafından oluşturulur.",
+    "emptyDocumentsTitle": "Bu koleksiyonda belge yok",
+    "emptyDocumentsDesc": "Yukarıdaki 'Belge yükle' ile ilk belgeyi ekleyin; yükleme bittiğinde arka planda işlenmeye başlar."
   },
   "approvals": {
     "title": "Onaylarım",
-    "noPending": "Bekleyen onay yok.",
     "agent": "Ajan",
     "action": "Eylem",
     "payload": "Veri",
@@ -54,7 +91,20 @@
     "cancel": "Vazgeç",
     "decided": "Karar kaydedildi.",
     "decideError": "Karar kaydedilemedi.",
-    "invalidJson": "Veri geçerli JSON olmalı."
+    "invalidJson": "Veri geçerli JSON olmalı.",
+    "intro": "Ajanların dışarıya çıkan işlemleri, siz onaylayana kadar burada bekler.",
+    "howToLabel": "Bu ekran nasıl kullanılır?",
+    "howTo": [
+      "Her kayıt, bir ajanın durdurulmuş bir adımıdır — işlem henüz yapılmadı.",
+      "İçeriği inceleyin; gerekirse 'İçeriği düzenle' ile göndermeden önce değiştirin.",
+      "Onayladığınızda akış kaldığı yerden devam eder ve işlem gerçekten yapılır; reddettiğinizde iptal edilir."
+    ],
+    "emptyTitle": "Bekleyen onay yok",
+    "emptyDesc": "Bir ajan dışarıya çıkan bir işlem denediğinde (örneğin e-posta göndermek) burada bir kayıt belirir ve sizin kararınızı bekler.",
+    "whyWaitingLabel": "Neden bekliyor?",
+    "whyWaiting": "Bu adım dışarıya çıkan bir işlem; Fleet bunları kendiliğinden çalıştırmaz, önce bir kişinin onayını ister.",
+    "waitingSince": "Bekleme süresi",
+    "slaDue": "Hedef karar zamanı"
   },
   "common": {
     "loading": "Yükleniyor…",
@@ -64,47 +114,99 @@
     "runNow": "Şimdi çalıştır",
     "create": "Oluştur",
     "tryIt": "Dene",
-    "advanced": "Gelişmiş"
+    "advanced": "Gelişmiş",
+    "back": "Geri",
+    "next": "İleri",
+    "save": "Kaydet",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "cancel": "Vazgeç",
+    "none": "—"
   },
   "home": {
     "greeting": "Merhaba{name, select, none {} other {, {name}}}",
-    "subtitle": "Fleet platformunda bugün ne yapmak istersiniz?",
-    "cardChatTitle": "Soru sor",
-    "cardChatDesc": "Ajanlarımızdan birine sorunuzu sorun, kaynaklı yanıt alın.",
-    "cardAutomationsTitle": "Bir otomasyon çalıştır",
-    "cardAutomationsDesc": "Fatura işleme veya haftalık özet gibi otomasyonları başlatın.",
-    "cardExamplesTitle": "Örnekleri deneyin",
-    "cardExamplesDesc": "Hazır örneklerle platformun neler yapabildiğini keşfedin.",
-    "cardApprovalsTitle": "Bekleyen onaylar",
-    "cardApprovalsDesc": "İncelemenizi bekleyen {count} kayıt var.",
-    "cardApprovalsDescEmpty": "Şu anda bekleyen onay yok.",
-    "cardAdminTitle": "Yönetim paneli",
-    "cardAdminDesc": "Ajanları, modelleri ve API anahtarlarını yönetin."
+    "intro": "Fleet'in bugünkü durumu: onay bekleyenler, son otomasyon çalıştırmaları ve konuşabileceğiniz ajanlar.",
+    "howToLabel": "Bu ekran nasıl kullanılır?",
+    "howTo": [
+      "Üstteki kutular yalnızca sizin rolünüzün görebileceği sayıları gösterir; her biri ilgili ekrana götürür.",
+      "Bir soru sormak için Sohbet'e, hazır bir örneği denemek için Örnekler'e gidin.",
+      "Bir otomasyonu elle çalıştırmak veya yenisini tanımlamak için Otomasyonlar'a gidin."
+    ],
+    "tileApprovals": "Bekleyen onay",
+    "tileApprovalsHint": "Sizin kararınızı bekliyor",
+    "tileApprovalsHintEmpty": "Bekleyen bir şey yok",
+    "tileAutomations": "Etkin otomasyon",
+    "tileAutomationsHint": "n8n üzerinde çalışmaya hazır",
+    "tileAgents": "Etkin ajan",
+    "tileAgentsHint": "Sohbette seçebilecekleriniz",
+    "tileSpend": "Bugünkü harcama",
+    "tileSpendHint": "Son 24 saatteki model maliyeti",
+    "recentRuns": "Son otomasyon çalıştırmaları",
+    "noRunsTitle": "Henüz çalıştırılmış bir otomasyon yok",
+    "noRunsDesc": "Otomasyonlar ekranından bir otomasyonu elle çalıştırdığınızda sonucu burada göreceksiniz.",
+    "activeAgents": "Etkin ajanlar",
+    "noAgentsTitle": "Etkin ajan yok",
+    "noAgentsDesc": "Bir ajan etkinleştirilene kadar sohbet başlatılamaz. Yönetim > Ajanlar ekranından etkinleştirilebilir."
   },
   "scenarios": {
     "title": "Departman Senaryoları",
-    "subtitle": "Fleet'in departmanlar için sunduğu ve sunacağı senaryolar.",
     "statusLive": "Aktif",
     "statusPartial": "Kısmen aktif",
     "statusComingSoon": "Yakında",
     "comingSoonAt": "Sprint {sprint}",
     "open": "Aç",
     "items": {
-      "support_copilot": { "name": "Müşteri Hizmetleri Asistanı", "desc": "Yardım merkezi bilgisiyle kaynaklı yanıtlar verir." },
-      "analytics": { "name": "Kendi Kendine Analitik", "desc": "Doğal dille soru sorun, SQL sorgusu ve sonuç tablosu alın." },
-      "dev_agent": { "name": "Geliştirme Ajanı", "desc": "Jira bileti alır, plan yapar, dal açar ve PR taslağı hazırlar." },
-      "invoice_agent": { "name": "Fatura Mutabakatı", "desc": "Fatura görselinden bilgi çıkarır, onaya sunar." },
-      "hr_talent": { "name": "İK Yetenek ve Oryantasyon", "desc": "Özgeçmiş analizinden rol eşleşme kısa listesi taslağı, ayrıca politika soruları." },
-      "listing_quality": { "name": "İlan Kalitesi", "desc": "Yeni ilanları fotoğraf-açıklama tutarlılığı için kontrol eder." },
-      "vehicle_intake": { "name": "Araç Kabul Değerlendirmesi", "desc": "Ekspertiz raporu ve fotoğraflardan ön değerlendirme hazırlar." },
-      "insights_publisher": { "name": "Pazarlama İçgörü Yayıncısı", "desc": "Aylık fiyat endeksi raporunu marka diliyle taslaklar." },
-      "dealer_onboarding": { "name": "Bayi Kaydı", "desc": "Bayi başvuru belgelerini kontrol eder, eksikleri e-posta ile talep eder." },
-      "legal_review": { "name": "Hukuk & Uyum İncelemesi", "desc": "Sözleşmeleri şirket oyun kitabına göre ön inceler, riskli maddeleri işaretler." }
-    }
+      "support_copilot": {
+        "name": "Müşteri Hizmetleri Asistanı",
+        "desc": "Yardım merkezi bilgisiyle kaynaklı yanıtlar verir."
+      },
+      "analytics": {
+        "name": "Kendi Kendine Analitik",
+        "desc": "Doğal dille soru sorun, SQL sorgusu ve sonuç tablosu alın."
+      },
+      "dev_agent": {
+        "name": "Geliştirme Ajanı",
+        "desc": "Jira bileti alır, plan yapar, dal açar ve PR taslağı hazırlar."
+      },
+      "invoice_agent": {
+        "name": "Fatura Mutabakatı",
+        "desc": "Fatura görselinden bilgi çıkarır, onaya sunar."
+      },
+      "hr_talent": {
+        "name": "İK Yetenek ve Oryantasyon",
+        "desc": "Özgeçmiş analizinden rol eşleşme kısa listesi taslağı, ayrıca politika soruları."
+      },
+      "listing_quality": {
+        "name": "İlan Kalitesi",
+        "desc": "Yeni ilanları fotoğraf-açıklama tutarlılığı için kontrol eder."
+      },
+      "vehicle_intake": {
+        "name": "Araç Kabul Değerlendirmesi",
+        "desc": "Ekspertiz raporu ve fotoğraflardan ön değerlendirme hazırlar."
+      },
+      "insights_publisher": {
+        "name": "Pazarlama İçgörü Yayıncısı",
+        "desc": "Aylık fiyat endeksi raporunu marka diliyle taslaklar."
+      },
+      "dealer_onboarding": {
+        "name": "Bayi Kaydı",
+        "desc": "Bayi başvuru belgelerini kontrol eder, eksikleri e-posta ile talep eder."
+      },
+      "legal_review": {
+        "name": "Hukuk & Uyum İncelemesi",
+        "desc": "Sözleşmeleri şirket oyun kitabına göre ön inceler, riskli maddeleri işaretler."
+      }
+    },
+    "intro": "Her departman için hazır olan ve yolda olan ajan senaryoları.",
+    "howToLabel": "Bu ekran nasıl kullanılır?",
+    "howTo": [
+      "'Yayında' etiketli kartlar bugün denenebilir; kartın üzerindeki bağlantı sizi doğrudan o ajana götürür.",
+      "'Yakında' kartları hangi sprintte geleceğini gösterir.",
+      "Bir senaryonun ne yaptığını görmek için Örnekler ekranındaki hazır girdileri kullanın."
+    ]
   },
   "automations": {
     "title": "Otomasyonlar",
-    "subtitle": "n8n üzerinde çalışan otomasyonları buradan başlatın ve izleyin.",
     "n8nDown": "Otomasyon sistemi (n8n) şu anda erişilemiyor. Lütfen yöneticinize bildirin veya daha sonra tekrar deneyin.",
     "n8nAuthError": "Otomasyon sistemine bağlanılamadı — API anahtarı eksik ya da hatalı. Yöneticinizle iletişime geçin.",
     "statusActive": "Aktif",
@@ -123,12 +225,30 @@
     "runQueuedForApproval": "Fatura kuyruğa alındı — Onaylar sayfasını kontrol edin.",
     "runInactive": "Bu otomasyon şu anda pasif — önce aktifleştirin.",
     "runUnreachable": "Otomasyon sistemine ulaşılamadı.",
-    "advancedEditorLink": "n8n editörünü aç"
+    "advancedEditorLink": "n8n editörünü aç",
+    "intro": "Zamanlanmış ve elle tetiklenen otomasyonlar; hepsi n8n üzerinde çalışır.",
+    "howToLabel": "Bu ekran nasıl kullanılır?",
+    "howTo": [
+      "Kartın durumu 'Etkin' ise otomasyon zamanı geldiğinde kendiliğinden çalışır.",
+      "'Şimdi çalıştır' ile beklemeden tetikleyebilirsiniz; sonucu 'Son çalıştırma' satırında görürsünüz.",
+      "Kendi otomasyonunuzu tanımlamak için 'Yeni otomasyon' adımlarını izleyin — dışarıya çıkan adımlar yine onaya düşer."
+    ],
+    "emptyTitle": "Henüz otomasyon yok",
+    "emptyDesc": "Otomasyon, bir tetikleyici (zamanlama veya elle) ile art arda çalışan adımlardan oluşur. 'Yeni otomasyon' ile ilkini tanımlayın.",
+    "catalogSection": "Hazır otomasyonlar",
+    "recipesSection": "Tanımladığınız otomasyonlar",
+    "newRecipe": "Yeni otomasyon",
+    "editRecipe": "Düzenle",
+    "deleteRecipe": "Sil",
+    "deleteConfirm": "Bu otomasyon silinsin mi? n8n'deki karşılığı da kaldırılır.",
+    "deleted": "Otomasyon silindi.",
+    "deleteError": "Otomasyon silinemedi.",
+    "notDeployed": "n8n'e gönderilmedi",
+    "deployFailed": "Otomasyon kaydedildi ama n8n'e gönderilemedi. n8n çalışıyor mu kontrol edip kaydı tekrar kaydedin."
   },
   "examples": {
     "title": "Örnekler",
     "subtitle": "Her ajan için örnek görevleri deneyin veya kendi örneğinizi ekleyin.",
-    "noExamples": "Bu ajan için henüz örnek yok.",
     "tryIt": "Dene",
     "addExample": "Örnek ekle",
     "addExampleTitle": "Yeni örnek ekle",
@@ -147,7 +267,16 @@
     "uploadCvImage": "Özgeçmiş görseli yükleyin",
     "candidateName": "Aday adı",
     "criteria": "Aranan kriterler (virgülle ayırın)",
-    "criteriaPlaceholder": "örn. Python, SQL, 3+ yıl"
+    "criteriaPlaceholder": "örn. Python, SQL, 3+ yıl",
+    "intro": "Her ajan için hazır örnek görevler — platformu denemenin en hızlı yolu.",
+    "howToLabel": "Bu ekran nasıl kullanılır?",
+    "howTo": [
+      "Üstten bir ajan seçin ve bir örneğin 'Dene' düğmesine basın.",
+      "Örnekler gerçek çalıştırmalardır: dışarıya çıkan adımlar yine onay kuyruğuna düşer.",
+      "Kendi örneğinizi eklerseniz aynı listede herkese görünür."
+    ],
+    "emptyTitle": "Bu ajan için örnek yok",
+    "emptyDesc": "'Örnek ekle' ile ilk örneği siz yazabilirsiniz; eklediğiniz örnek diğer kullanıcılara da görünür."
   },
   "admin": {
     "title": "Yönetim",
@@ -234,6 +363,289 @@
     "auditAction": "Eylem",
     "auditSearch": "Ara",
     "auditTime": "Zaman",
-    "auditTrace": "İz Kaydı"
+    "auditTrace": "İz Kaydı",
+    "intro": "Platformun ayarları: ajanlar, modeller, kullanıcılar, bütçeler ve servisler.",
+    "howToLabel": "Bu ekran nasıl kullanılır?",
+    "howTo": [
+      "Sekmeler rolünüze göre görünür; Ajanlar sekmesi builder rolüne, diğerleri platform yöneticisine açıktır.",
+      "Bir modelin hassasiyet yetkisi (clearance), o modelin hangi verileri görebileceğini belirler.",
+      "Servisler sekmesi tüm yığının canlı sağlık durumunu ve yerel adreslerini gösterir."
+    ],
+    "emptyAgentsTitle": "Kayıtlı ajan yok",
+    "emptyAgentsDesc": "Ajan; bir istem (prompt), bir model ve bir araç listesinden oluşur. 'Yeni ajan' ile ekleyin ya da `make seed` ile demo ajanları yükleyin.",
+    "emptyModelsTitle": "Kayıtlı model yok",
+    "emptyModelsDesc": "Model kaydı, LiteLLM ağ geçidindeki bir modeli ve onun hassasiyet yetkisini tanımlar. 'Model ekle' ile başlayın.",
+    "emptyUsersTitle": "Kullanıcı yok",
+    "emptyUsersDesc": "Kullanıcılar Keycloak'ta oluşur ve ilk girişte buraya yansır. `make seed` demo kullanıcılarını yükler.",
+    "emptyKeysTitle": "API anahtarı yok",
+    "emptyKeysDesc": "API anahtarı, n8n gibi servislerin Fleet'e kimlik göstermesini sağlar. 'Anahtar üret' ile oluşturun; değer yalnızca bir kez gösterilir.",
+    "emptyBudgetsTitle": "Tanımlı bütçe yok",
+    "emptyBudgetsDesc": "Bütçe; bir departman, ajan ya da kullanıcı için aylık veya günlük harcama sınırı koyar. 'Bütçe oluştur' ile ekleyin.",
+    "emptyAuditTitle": "Kayıt bulunamadı",
+    "emptyAuditDesc": "Denetim kaydı her API isteğinde yazılır. Filtreleri gevşetin ya da uygulamada birkaç işlem yapıp tekrar bakın.",
+    "services": "Servisler",
+    "servicesFooter": "Buradaki kimlik bilgileri yalnızca yerel geliştirme yığını içindir; ortam değişkenlerinden okunur ve depoya işlenmez."
+  },
+  "theme": {
+    "label": "Tema",
+    "system": "Sistem teması",
+    "light": "Açık tema",
+    "dark": "Koyu tema"
+  },
+  "glossary": {
+    "title": "Terimler",
+    "writeExternal": {
+      "term": "write:external",
+      "definition": "Şirket dışına çıkan bir yazma işlemi (e-posta göndermek, PR açmak gibi). Fleet bu tür adımları asla kendiliğinden çalıştırmaz; önce onay kuyruğuna düşer."
+    },
+    "sensitivityPii": {
+      "term": "sensitivity: pii",
+      "definition": "İçerikte kişisel veri var demektir. Bu istekler yalnızca yerel modellere yönlendirilir, hiçbir bulut modeline gönderilmez (KVKK)."
+    },
+    "riskClass": {
+      "term": "risk_class",
+      "definition": "Her aracın taşıdığı risk etiketi: read (okuma), write:internal (iç sistemlere yazma), write:external (dışarıya yazma). Onay gerekip gerekmediğini bu etiket belirler."
+    },
+    "hitl": {
+      "term": "HITL",
+      "definition": "Human-in-the-loop: riskli bir adımda akış durur, bir kişi görür ve onaylar ya da reddeder. Onaylar ekranındaki kayıtlar bu duraklamalardır."
+    }
+  },
+  "services": {
+    "refresh": "Yenile",
+    "healthyCount": "{count} servis çalışıyor",
+    "downCount": "{count} servis kapalı",
+    "statusHealthy": "Çalışıyor",
+    "statusDown": "Kapalı",
+    "statusNotRunning": "Başlatılmamış",
+    "statusUnknown": "Bilinmiyor",
+    "url": "Adres",
+    "latency": "Yanıt süresi",
+    "queueDepth": "Kuyruktaki iş",
+    "detail": "Ayrıntı",
+    "reveal": "Kimlik bilgilerini göster",
+    "hide": "Gizle",
+    "revealError": "Kimlik bilgileri gösterilemedi.",
+    "revealRestricted": "Kimlik bilgilerinin açık hali yalnızca platform yöneticisine gösterilir; burada maskeli görünür.",
+    "emptyTitle": "Servis durumu okunamadı",
+    "emptyDesc": "Fleet API'ye ulaşılamadı. API çalışıyor mu kontrol edin (`make api`) ve tekrar deneyin.",
+    "purposeUnknown": "Bu servisin açıklaması henüz yazılmadı.",
+    "optionalHintGeneric": "Bu servis varsayılan yığının parçası değil; kapalı olması normaldir.",
+    "optionalHint": {
+      "ollama": "Yerel model şeridi (KVKK) için gerekir. `make dev PROFILE=ollama` ile ya da doğrudan Ollama uygulamasıyla başlatılır.",
+      "arq": "Belge işleme kuyruğunu tüketen işçi. `uv run arq fleet_rag.ingest.worker.WorkerSettings` ile başlatılır."
+    },
+    "groups": {
+      "core": "Çekirdek",
+      "provider": "Model sağlayıcıları",
+      "automation": "Otomasyon",
+      "worker": "Kuyruk ve işçiler",
+      "observability": "Gözlemlenebilirlik"
+    },
+    "purpose": {
+      "postgres": "Platformun ana veritabanı: kullanıcılar, ajanlar, koleksiyonlar, onaylar, harcama kaydı ve denetim kayıtları.",
+      "redis": "Hız sınırlama, anlamsal önbellek ve iş kuyrukları (RAG ingest, n8n queue mode) burada tutulur.",
+      "qdrant": "Belge parçalarının vektörleri; RAG aramasının kaynağı.",
+      "minio": "Yüklenen belgelerin ham dosya deposu (S3 uyumlu).",
+      "keycloak": "Kimlik doğrulama ve rol yönetimi; web arayüzü ve API bu sunucudan gelen jetonlara güvenir.",
+      "litellm": "Tüm LLM çağrılarının geçtiği ağ geçidi; model yönlendirme, bütçe ve maliyet ölçümü burada.",
+      "ollama": "Yerel model şeridi: kişisel veri içeren istekler yalnızca bu makinedeki modellere gider.",
+      "langfuse": "LLM izleri: her çağrının istem, yanıt, maliyet ve gecikme kaydı.",
+      "prometheus": "Metrik toplama ve alarm kuralları.",
+      "grafana": "Metrik ve log panoları.",
+      "loki": "Uygulama loglarının toplandığı yer.",
+      "alertmanager": "Prometheus alarmlarını Slack gibi kanallara yönlendirir.",
+      "mailpit": "Geliştirme SMTP kutusu: ajanların gönderdiği e-postalar dışarı çıkmaz, buraya düşer.",
+      "n8n-main": "Otomasyon düzenleyici ve REST API'si; iş akışlarını saklar ve çalıştırmaları kuyruğa alır.",
+      "n8n-worker": "Kuyruktaki otomasyon çalıştırmalarını gerçekten işleyen işçi süreç.",
+      "arq": "Belge yükleme sonrası çalışan işçi: metin çıkarma, OCR, kişisel veri taraması, parçalama ve gömme.",
+      "promtail": "Konteyner loglarını toplayıp Loki'ye gönderen ajan. Loki'nin tek veri kaynağıdır."
+    }
+  },
+  "builder": {
+    "title": "Yeni otomasyon",
+    "editTitle": "{name} otomasyonunu düzenle",
+    "intro": "Bir tetikleyici ve birkaç adım seçin; Fleet bunu n8n'de çalışan bir iş akışına çevirir.",
+    "howToLabel": "Bu ekran nasıl kullanılır?",
+    "howTo": [
+      "Önce otomasyona bir ad verin — bu ad n8n'deki iş akışının kimliği olur ve sonradan değiştirilemez.",
+      "Tetikleyiciyi seçin: zamanlanmış (belirli saatlerde kendiliğinden) ya da elle (yalnızca siz çalıştırdığınızda).",
+      "Adımları sırayla ekleyin. Bir adımın çıktısını sonraki adımda {{steps.adım_kimliği.alan}} yazarak kullanabilirsiniz.",
+      "İsterseniz bir koşul ekleyin: koşul doğruysa bir dizi adım, değilse başka bir dizi adım çalışır.",
+      "'Önizle' ile ne yapacağını sade dille okuyun, sonra kaydedin. Kaydetmek otomasyonu n8n'e gönderir; çalışması için ayrıca etkinleştirmeniz gerekir."
+    ],
+    "sectionBasics": "1. Tanım",
+    "sectionTrigger": "2. Ne zaman çalışsın?",
+    "sectionSteps": "3. Ne yapsın?",
+    "sectionPreview": "4. Önizleme ve kayıt",
+    "name": "Ad",
+    "namePlaceholder": "haftalik-satis-ozeti",
+    "nameHint": "Küçük harf, rakam ve tire. n8n'deki iş akışının kimliği olur.",
+    "nameLocked": "Ad, n8n'deki iş akışının kimliğidir; sonradan değiştirilemez.",
+    "description": "Açıklama",
+    "triggerManual": "Elle",
+    "triggerSchedule": "Zamanlanmış",
+    "triggerManualHint": "Yalnızca Otomasyonlar ekranından 'Şimdi çalıştır' dediğinizde çalışır.",
+    "triggerScheduleHint": "Seçtiğiniz zamanlarda kendiliğinden çalışır; istediğinizde elle de tetikleyebilirsiniz.",
+    "cronExpression": "Cron ifadesi",
+    "cronPresets": {
+      "everyMorning": "Her sabah 09:00",
+      "everyMonday": "Her pazartesi 09:00",
+      "everyMonthFirst": "Her ayın 1'i 09:00",
+      "everyHour": "Saat başı"
+    },
+    "addStep": "Adım ekle",
+    "addCondition": "Koşul ekle",
+    "action": "İşlem",
+    "operator": "Karşılaştırma",
+    "ifLabel": "Eğer",
+    "thenLabel": "ise",
+    "elseLabel": "değilse",
+    "branchEmpty": "(adım yok)",
+    "needsApproval": "Onay gerekir",
+    "selectAgent": "Ajan seçin",
+    "referenceHint": "Bir adımın çıktısını sonraki adımlarda {{steps.adım_kimliği.alan}} yazarak kullanabilirsiniz. Başka bir ifade türü kabul edilmez.",
+    "preview": "Önizle",
+    "previewHint": "Kaydetmeden önce 'Önizle' ile otomasyonun ne yapacağını okuyun.",
+    "previewError": "Otomasyon geçerli değil. Alanları kontrol edin.",
+    "saveError": "Otomasyon kaydedilemedi.",
+    "saved": "Otomasyon kaydedildi ve n8n'e gönderildi.",
+    "savedButNotDeployed": "Otomasyon kaydedildi ama n8n'e gönderilemedi.",
+    "writeExternalWarning": "Bu otomasyonda şirket dışına çıkan bir adım var; çalıştığında doğrudan göndermez, Onaylar kuyruğuna düşer.",
+    "summaryScheduleTrigger": "Zamanlama: {cron}",
+    "summaryManualTrigger": "Elle çalıştırıldığında",
+    "summaryCondition": "Eğer {left} {operator} {right} ise",
+    "operators": {
+      "eq": "eşitse",
+      "ne": "eşit değilse",
+      "gt": "büyükse",
+      "gte": "büyük veya eşitse",
+      "lt": "küçükse",
+      "lte": "küçük veya eşitse",
+      "contains": "içeriyorsa"
+    },
+    "fields": {
+      "sql": "SQL sorgusu",
+      "agent": "Ajan",
+      "question": "Soru",
+      "channel": "Kanal",
+      "text": "Mesaj",
+      "to": "Alıcı",
+      "subject": "Konu",
+      "body": "İçerik",
+      "title": "Başlık",
+      "message": "Mesaj"
+    },
+    "actions": {
+      "pg": {
+        "query": {
+          "label": "Veritabanı sorgusu",
+          "help": "Yalnızca okuma yapan bir SQL sorgusu çalıştırır. İzin verilen tablolar, satır sınırı ve zaman aşımı Analytics ajanıyla aynıdır."
+        }
+      },
+      "agent": {
+        "run": {
+          "label": "Ajana sor",
+          "help": "Bir ajana soru sorar ve yanıtını sonraki adımlarda kullanılabilir hale getirir."
+        }
+      },
+      "slack": {
+        "post": {
+          "label": "Slack'e gönder",
+          "help": "İzin verilen bir Slack kanalına mesaj gönderir."
+        }
+      },
+      "email": {
+        "send": {
+          "label": "E-posta gönder",
+          "help": "E-postayı doğrudan göndermez: Onaylar kuyruğuna düşer, bir kişi onayladığında gönderilir."
+        }
+      },
+      "http": {
+        "notify": {
+          "label": "Kayıt düş",
+          "help": "Şirket dışına hiçbir şey göndermez; denetim kaydına bir not bırakır."
+        }
+      }
+    },
+    "templates": {
+      "heading": "Hazır otomasyonlar",
+      "intro": "Boş bir formdan başlamak yerine çalışan bir örnekle başlayın. Şablonu seçtiğinizde form dolu gelir; adını ve alanlarını değiştirip kaydedebilirsiniz.",
+      "needsApproval": "Onay gerekir",
+      "weeklySalesDigest": {
+        "title": "Haftalık satış özeti",
+        "description": "Her pazartesi sabahı son 7 günün satışlarını bölgeye göre toplar ve Slack üzerinden #weekly-summary kanalına özet gönderir.",
+        "when": "Her pazartesi 09:00"
+      },
+      "refundWatch": {
+        "title": "İade takibi",
+        "description": "Her sabah iade edilen siparişleri sayar. Sadece iade varsa #dev-agent kanalına uyarı düşer — boş gün mesaj gitmez.",
+        "when": "Her gün 09:00"
+      },
+      "agentBriefing": {
+        "title": "Günlük analiz brifingi",
+        "description": "Analytics ajanına her sabah aynı soruyu sorar ve cevabı denetim kaydına yazar. Dışarıya hiçbir mesaj gitmez.",
+        "when": "Her gün 09:00"
+      },
+      "monthlyReport": {
+        "title": "Aylık rapor e-postası",
+        "description": "Ayın ilk günü satış özetini e-posta ile gönderir. E-posta hemen gitmez: önce Onaylarım kuyruğuna düşer, siz onayladıktan sonra gönderilir.",
+        "when": "Her ayın 1'i 09:00"
+      }
+    }
+  },
+  "guide": {
+    "title": "Rehber",
+    "intro": "Fleet ekranlarının birbirine nasıl bağlandığını gösteren kısa yollar: bir soru sorun, bilgi ekleyin, otomasyon kurun, onay akışını görün.",
+    "howToLabel": "Bu sayfa nasıl kullanılır?",
+    "howTo": [
+      "Aşağıdaki yollardan birini seçin — her biri kaç dakika süreceğini yazıyor.",
+      "Adımları okuyun, sonra düğmeye basarak doğrudan o ekrana gidin.",
+      "Takıldığınız bir terim olursa sayfanın altındaki sözlüğe bakın."
+    ],
+    "walkthroughsHeading": "Adım adım yollar",
+    "minutes": "~{count} dk",
+    "glossaryHeading": "Terimler",
+    "glossaryIntro": "Fleet ekranlarında geçen ve gündelik Türkçe olmayan dört terim.",
+    "walkthroughs": {
+      "askAgent": {
+        "title": "Bir ajana soru sorun",
+        "intro": "En kısa yol: bir ajana soru sorun ve cevabın hangi belgeye dayandığını görün.",
+        "s1": "Sohbet ekranını açın ve üstteki listeden support_copilot ajanını seçin.",
+        "s2": "Önerilen sorulardan birine tıklayın; soru yazı kutusuna gelir.",
+        "s3": "Gönderin ve cevabın akmasını izleyin.",
+        "s4": "Cevabın altındaki kaynak sayısına bakın — ajan bunu uydurmadı, bilgi bankasındaki belgelerden okudu.",
+        "cta": "Sohbeti aç"
+      },
+      "addKnowledge": {
+        "title": "Bilgi bankasına belge ekleyin",
+        "intro": "Ajanların cevap verdiği kaynağı siz belirlersiniz. Yüklediğiniz belge işlendikten sonra cevaplarda kaynak olarak görünür.",
+        "s1": "Bilgi Bankası ekranını açın.",
+        "s2": "Bir koleksiyon seçin ve PDF ya da metin dosyanızı yükleyin.",
+        "s3": "Durumun işleniyordan hazıra dönmesini bekleyin — belge parçalanır, kişisel veri taranır ve indekslenir.",
+        "s4": "Sohbete dönüp belgedeki bir konuyu sorun; cevabın kaynağında yeni belgeyi görmelisiniz.",
+        "cta": "Bilgi Bankasını aç"
+      },
+      "buildAutomation": {
+        "title": "Otomasyon kurun",
+        "intro": "Zamanlanmış bir iş kurun: veriyi okusun, özetlesin, Slack üzerinden yazsın. Kod yok, form var.",
+        "s1": "Hazır Haftalık satış özeti şablonuyla başlayın — form dolu gelir.",
+        "s2": "Adımları okuyun: bir sorgu, bir Slack mesajı. İsterseniz metni değiştirin.",
+        "s3": "Önizleme ile ne yapacağını düz Türkçe okuyun.",
+        "s4": "Kaydedin — otomasyon n8n üzerinde kurulur.",
+        "s5": "Şimdi çalıştır deyip sonucu kartın üzerinde görün; cron zamanını beklemeniz gerekmez.",
+        "cta": "Şablonla başla"
+      },
+      "approvalFlow": {
+        "title": "Onay akışını görün",
+        "intro": "Dışarıya çıkan her işlem (e-posta, dış sisteme yazma) doğrudan yapılmaz. Bu yol, o duvarı çalışırken gösterir.",
+        "s1": "Aylık rapor e-postası şablonunu açın — içinde bir e-posta adımı var.",
+        "s2": "Formda e-posta adımının yanındaki onay gerekir uyarısını görün.",
+        "s3": "Kaydedin ve Şimdi çalıştır deyin.",
+        "s4": "Onaylarım ekranına gidin: e-posta gönderilmedi, kuyruğa düştü ve neden beklediği yazıyor.",
+        "s5": "Onaylayın; işlem ancak o zaman tamamlanır.",
+        "cta": "Şablonu aç"
+      }
+    }
   }
 }

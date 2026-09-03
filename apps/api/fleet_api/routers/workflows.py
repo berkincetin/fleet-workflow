@@ -43,6 +43,25 @@ class WorkflowOut(BaseModel):
     last_run: dict[str, Any] | None = None
 
 
+def _execution_status(row: dict[str, Any]) -> str:
+    """Derive a run's outcome from what n8n 1.71's executions list actually
+    carries.
+
+    That list omits `status` on each row and reports only `finished` +
+    `stoppedAt`. Passing the missing field straight through rendered every
+    completed run as a red "unknown" badge on the Home dashboard (task 13.1).
+    The mapping matches what n8n's own `?status=` filter concludes for the same
+    rows: finished -> success; not finished but already stopped -> error
+    (the run ended at a failing node); not finished and still open -> running.
+    """
+    status = row.get("status")
+    if isinstance(status, str) and status:
+        return status
+    if row.get("finished"):
+        return "success"
+    return "error" if row.get("stoppedAt") else "running"
+
+
 def _find_workflow(data: list[dict[str, Any]], n8n_name: str) -> dict[str, Any] | None:
     for wf in data:
         if wf.get("name") == n8n_name:
@@ -67,7 +86,7 @@ async def _catalog_entry(meta: WorkflowMeta, client: N8nClient) -> WorkflowOut:
     if executions.reachable and isinstance(executions.data, dict):
         rows = executions.data.get("data", [])
         if rows:
-            last_run = {"status": rows[0].get("status"), "at": rows[0].get("startedAt")}
+            last_run = {"status": _execution_status(rows[0]), "at": rows[0].get("startedAt")}
 
     return WorkflowOut(
         slug=meta.slug, kind=meta.kind, reachable=True, active=bool(wf.get("active")),

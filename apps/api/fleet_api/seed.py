@@ -138,12 +138,23 @@ async def seed_support_copilot() -> None:
             await conn.execute(text("SELECT id FROM collections WHERE name = 'cs-procedures'"))
         ).scalar_one()
 
+        # `sensitivity` is the one field this re-asserts on conflict, rather
+        # than DO NOTHING like every other seed below. It is not cosmetic: the
+        # agent's sensitivity selects the *embedding* model for its RAG queries
+        # (chat._rag_reply -> answer_query -> select_model), so a row that has
+        # drifted to 'pii' resolves to the local 1024-dim embedder while these
+        # two collections hold 1536-dim vectors from the cloud model — and
+        # every chat answer then dies on a Qdrant dimension error. DO NOTHING
+        # left `make seed` unable to repair that; the collections it must match
+        # are seeded 'internal' ten lines above, so this keeps the pair
+        # consistent. See docs/reports/sprint-13.md §4.
         await conn.execute(
             text(
                 "INSERT INTO agents (name, dept_id, reasoning_model, utility_model, "
                 "sensitivity, semantic_cache, semantic_cache_threshold, max_context_tokens, "
                 "collection_ids) VALUES (:n, :d, 'reasoning', 'utility', 'internal', "
-                "true, 0.95, 12000, :cids) ON CONFLICT (name) DO NOTHING"
+                "true, 0.95, 12000, :cids) "
+                "ON CONFLICT (name) DO UPDATE SET sensitivity = EXCLUDED.sensitivity"
             ),
             {"n": "support_copilot", "d": dept_id, "cids": [help_center_id, procedures_id]},
         )
@@ -597,6 +608,28 @@ async def seed() -> None:
     await engine.dispose()
 
 
+async def seed_automation_recipe_agent() -> None:
+    """Pseudo-agent that recipe-queued approvals are filed under (task 13.4).
+
+    `approvals.agent_id` is a NOT NULL FK and the resume registry keys on
+    `agents.name`, so a user-defined automation's `email.send` step needs a row
+    here to hang its approval off. Seeded `paused` on purpose: it is not
+    something anyone chats with, and `/v1/agents` only lists active agents.
+    """
+    engine = get_engine(database_url())
+    async with engine.begin() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO agents (name, dept_id, status, reasoning_model, utility_model, "
+                "sensitivity, semantic_cache, semantic_cache_threshold, max_context_tokens, "
+                "collection_ids) VALUES ('automation_recipe', NULL, 'paused', 'reasoning', "
+                "'utility', 'internal', false, 0.95, 8000, '{}') "
+                "ON CONFLICT (name) DO NOTHING"
+            )
+        )
+    await engine.dispose()
+
+
 def main() -> None:
     asyncio.run(seed())
     asyncio.run(seed_support_copilot())
@@ -609,6 +642,7 @@ def main() -> None:
     asyncio.run(seed_insights_publisher_agent())
     asyncio.run(seed_dealer_onboarding_agent())
     asyncio.run(seed_legal_review_agent())
+    asyncio.run(seed_automation_recipe_agent())
     asyncio.run(seed_eval_cases())
     asyncio.run(seed_observability_demo())
 

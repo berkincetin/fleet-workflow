@@ -5,7 +5,7 @@ export function Textarea({ className, ...props }: React.TextareaHTMLAttributes<H
   return (
     <textarea
       className={cn(
-        "w-full rounded-md border border-[var(--border)] bg-transparent p-2 text-sm",
+        "w-full rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--surface)] p-2 text-sm placeholder:text-[var(--muted-foreground)]",
         className,
       )}
       {...props}

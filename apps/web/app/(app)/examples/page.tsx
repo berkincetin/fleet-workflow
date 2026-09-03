@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { fleetClient } from "@/lib/fleet-client";
 import { ExamplesGallery } from "@/components/examples/examples-gallery";
+import { PageHeader } from "@/components/layout/page-header";
 
 export default async function ExamplesPage({
   searchParams,
@@ -16,10 +17,12 @@ export default async function ExamplesPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-semibold">{t("title")}</h1>
-        <p className="text-sm text-[var(--muted-foreground)]">{t("subtitle")}</p>
-      </div>
+      <PageHeader
+        title={t("title")}
+        intro={t("intro")}
+        howToLabel={t("howToLabel")}
+        howTo={t.raw("howTo") as string[]}
+      />
       <ExamplesGallery
         agents={agents ?? []}
         initialExamples={examples ?? []}

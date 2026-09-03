@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { fleetClient } from "@/lib/fleet-client";
 import { ChatWindow } from "@/components/chat/chat-window";
+import { PageHeader } from "@/components/layout/page-header";
 
 export default async function ChatPage({
   searchParams,
@@ -15,7 +16,12 @@ export default async function ChatPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold">{t("title")}</h1>
+      <PageHeader
+        title={t("title")}
+        intro={t("intro")}
+        howToLabel={t("howToLabel")}
+        howTo={t.raw("howTo") as string[]}
+      />
       <ChatWindow agents={agents ?? []} initialAgentName={agent} initialPrefill={prefill} />
     </div>
   );

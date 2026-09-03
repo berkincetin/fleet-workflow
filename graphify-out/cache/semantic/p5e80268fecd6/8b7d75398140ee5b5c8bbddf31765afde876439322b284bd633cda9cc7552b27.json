@@ -1,0 +1,1 @@
+{"nodes": [{"id": "infra_compose_docker_compose_dev", "label": "Docker Compose Dev Stack", "file_type": "code", "source_file": "infra/compose/docker-compose.dev.yml", "rationale": "Defines the 11-service local development environment."}], "edges": [], "hyperedges": []}

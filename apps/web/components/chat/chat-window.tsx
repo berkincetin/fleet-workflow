@@ -9,6 +9,9 @@ import { streamChatMessage } from "@/lib/chat-stream";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FeedbackButtons } from "@/components/chat/feedback-buttons";
+import { Bot, Sparkles } from "lucide-react";
+import { EmptyState } from "@/components/layout/empty-state";
+import { startersFor } from "@/lib/chat-starters";
 
 type AgentSummary = components["schemas"]["AgentSummaryOut"];
 
@@ -43,6 +46,11 @@ export function ChatWindow({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState(initialPrefill ?? "");
   const [busy, setBusy] = useState(false);
+
+  // Keyed off the *selected* agent, not the deep-linked one, so switching the
+  // dropdown swaps the suggestions too.
+  const selectedAgent = agents.find((a) => a.id === agentId);
+  const starters = startersFor(selectedAgent?.name);
 
   async function ensureConversation(): Promise<number> {
     if (conversationId != null) return conversationId;
@@ -116,15 +124,18 @@ export function ChatWindow({
   }
 
   if (agents.length === 0) {
-    return <p className="text-sm text-[var(--muted-foreground)]">{t("noAgents")}</p>;
+    return <EmptyState icon={Bot} title={t("emptyTitle")} description={t("emptyDesc")} />;
   }
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
-        <label className="text-sm text-[var(--muted-foreground)]">{t("agent")}</label>
+        <label htmlFor="chat-agent" className="text-sm text-[var(--muted-foreground)]">
+          {t("agent")}
+        </label>
         <select
-          className="rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-sm"
+          id="chat-agent"
+          className="h-9 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--surface)] px-2 text-sm"
           value={agentId ?? ""}
           disabled={conversationId != null}
           onChange={(e) => setAgentId(Number(e.target.value))}
@@ -142,6 +153,34 @@ export function ChatWindow({
           <CardTitle>{t("title")}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
+          {/* Starters replace the blank thread, not the composer: they are
+              suggestions for the *first* message only, and disappear once the
+              conversation has one, so they never compete with what was said. */}
+          {messages.length === 0 && starters && (
+            <div className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--section-bg)] p-3">
+              <p className="flex items-center gap-1.5 text-xs font-medium text-[var(--section-fg)]">
+                <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                {t("startersHeading")}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {Array.from({ length: starters.count }, (_, i) => {
+                  const question = t(`starters.${starters.agent}.q${i + 1}`);
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      disabled={busy}
+                      onClick={() => setInput(question)}
+                      className="rounded-full border border-[var(--border-strong)] bg-[var(--surface)] px-3 py-1.5 text-left text-xs transition-colors hover:border-[var(--section)] hover:text-[var(--section-fg)] disabled:opacity-50"
+                    >
+                      {question}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-col gap-3">
             {messages.map((m, i) => (
               <div

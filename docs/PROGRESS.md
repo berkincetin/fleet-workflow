@@ -1083,3 +1083,650 @@ Issues (symptom → root cause → resolution):
 - **Re-ingested `cs-help-center`, `cs-procedures`, `hr-policies`** to fix the 1024-vs-1536 embedding-dimension mismatch described in the previous entry.
 
 Report: `docs/reports/sprint-12.md`. Commits are on `feat/sprint-12-wave-2-scenarios`; PR opened against `main` and merged after the required CI checks.
+
+## 2026-09-03 — n8n enablement + 3 workflow-catalog defects + Sprint 13 plan — DONE
+
+Triggered by hands-on UI testing: the Automations page was stuck in its "n8n unreachable"
+state. Enabling it uncovered three defects that had been latent since Sprint 6.5/11.
+
+Built (branch `feat/sprint-13-ui-automation-builder`):
+- `workflows/insights-publisher.json`, `workflows/listing-quality.json` — added the missing
+  top-level `"active": false`.
+- `apps/api/fleet_api/workflows_catalog.py` — `n8n_name` values corrected to the kebab-case
+  names the exports actually declare; docstring now states the exact-match contract.
+- `Makefile` — `n8n-import` runs under `MSYS_NO_PATHCONV=1`.
+- `tests/unit/test_workflows_router.py` — fixtures re-pointed at the real names, plus two new
+  regression tests reading `workflows/*.json` directly.
+- `docs/IMPLEMENTATION_PLAN.md` + `docs/split/implementation-plan/sprint-13-ui-automation-builder.md`
+  + `docs/split/INDEX.md` — Sprint 13 (UI Usability & Automation Builder) planned, both layers.
+
+Verified: ruff clean · mypy `apps` 18 (documented baseline, 0 new) · **unit 510 passed**
+(was 508) · **security 67 passed**. Live stack: all 4 workflows import and activate;
+`GET /v1/workflows` returns `reachable:true, active:true` for both catalog entries (was
+`active:null`); `POST /v1/workflows/weekly-summary/run` → `accepted` and n8n execution 1 ran
+3 of 4 nodes, the `pg_ro` step reaching Fleet and returning real fixture data
+("16 sales, $7576"). The regression test was proven to fail when the old name is reinstated.
+
+Issues (symptom → root cause → resolution):
+- **The n8n API key was pasted into the opposite variable.** `.env` carries two similarly named
+  keys pointing in opposite directions: `FLEET_N8N_API_KEY` (Fleet → n8n, an n8n-issued JWT) and
+  `N8N_FLEET_API_KEY` (n8n → Fleet, a Fleet-issued key wired to the containers' `FLEET_API_KEY`).
+  The JWT was in the latter. Moved it, and issued the missing Fleet key
+  (scopes `pg_ro`,`slack_post`) via the repo's own `generate_key()`/`hash_key()`. The naming is
+  a genuine footgun and is worth revisiting.
+- **`make n8n-import` was a silent no-op on this machine.** Git Bash/MSYS rewrote the
+  container-side `/import/workflows` into `C:/Program Files/Git/import/workflows`, so the n8n CLI
+  printed "Importing 0 workflows" and exited 0 — no error to notice. Fixed with
+  `MSYS_NO_PATHCONV=1`. (`make` itself is also not installed here; commands were run through the
+  compose CLI directly.)
+- **Two Sprint 11 exports had no `active` key** → n8n's importer violates a NOT NULL column, and
+  because directory import is all-or-nothing, *all four* workflows failed to import. This is why
+  n8n held 0 workflows despite the exports existing since Sprint 6/11.
+- **The catalog could never match its own workflows.** `workflows_catalog.py` searched for
+  `"Invoice intake"`/`"Weekly summary"` while the exports declare `invoice-intake`/`weekly-summary`;
+  the lookup is an exact string compare, so the API reported `active: null`, the UI showed
+  "inactive", and every run was refused with `workflow_inactive` — while both workflows were
+  imported and active in n8n. Latent because `test_workflows_router.py` builds its own fixtures
+  and mocks n8n, so it asserted the broken contract rather than catching it. Both new regression
+  tests read the real export files instead.
+- **A stale `.pyc` briefly masked the fix.** Restoring a file with `mv` from a backup gave it an
+  mtime older than the compiled cache, so Python kept the previous bytecode and the new test
+  failed against already-corrected source. Cleared `__pycache__`.
+- **`weekly-summary`'s Slack node still fails — OPEN, expected.** `FLEET_SLACK_WEBHOOK_URL` is
+  empty in `.env`, so `SlackWebhookSender` posts to an empty URL and the service returns 500. Not
+  a code defect and not in scope here; the workflow's first three nodes prove the whole
+  n8n → Fleet leg works. Needs a real Slack incoming-webhook URL from the user.
+
+Notes / deviations:
+- The three fixes went onto the Sprint 13 branch rather than a separate hotfix PR: 13.4/13.5
+  cannot be verified without a working n8n leg, so they are that sprint's prerequisite.
+- Sprint 13 scope was chosen by the user from three offered options: full visual refresh (not
+  just a polish pass), conditional branching in the builder (not linear-only), and masked
+  credentials revealed on demand for `platform_admin` (not plaintext, not hidden). It is
+  knowingly larger than a typical sprint here; the documented softener is dropping branching
+  from 13.4.
+
+## 2026-09-03 — 13.1 Design system + app shell refresh — DONE
+
+Built (branch `feat/sprint-13-ui-automation-builder`):
+- `apps/web/app/globals.css` — the 8-variable stub replaced by a full token system:
+  surface ladder (background/surface/surface-2/-3/sidebar), text, border/border-strong,
+  a blue accent (`--primary`/`--primary-hover`/`--accent-soft`/`--accent-foreground`/`--ring`/
+  `--link`), four semantic triples (success/warning/danger/info as `X`/`X-bg`/`X-fg`),
+  `--overlay`, and radius + shadow scales — each defined in all three theme states.
+- `lib/theme.ts` + `components/theme-switcher.tsx` + `app/layout.tsx` — system/light/dark
+  switch stamped as `data-theme` on `<html>`, persisted in the `fleet_theme` cookie so the
+  *server* render already carries the choice (no flash on reload).
+- `components/app-shell.tsx` + `lib/nav.ts` — grouped, role-filtered sidebar
+  (Work · Automation · Knowledge · Admin) with lucide icons and deepest-match active state,
+  a top bar with breadcrumb + user/role chip, and a horizontal nav strip under `md`.
+- `app/page.tsx` + `components/home/stat-tile.tsx` — Home rebuilt as a role-aware dashboard:
+  pending approvals / active automations / active agents / today's spend, plus recent
+  automation runs and an agent quick-start row. Every query is gated by the same permission
+  its screen needs, so a `member` never fires a request that would 403.
+- Token pass over every primitive (`card`, `button`, `badge`, `input`, `select`, `table`,
+  `tabs`, `textarea`, `toast`, `dialog`, `locale-switcher`) and the 5 components that still
+  carried bare Tailwind palette classes; `components/admin/admin-tabs.tsx` extracted so the
+  admin tab bar has an active state.
+- `tests/e2e/specs/shell-roles.spec.ts` — nav filtering for user1/approver/builder/admin +
+  the theme switch.
+
+Verified:
+- **AC nav filters per role — PASS**, as 4 Playwright cases against real Keycloak logins:
+  `user1` sees neither Approvals nor Admin nor the builder; `approver` gains Approvals only;
+  `builder` gains Admin + New automation but not Approvals; `admin` sees all four groups and
+  the platform-only Services tab.
+- **AC light and dark both legible — PASS.** Theme spec proves system → dark → reload → dark
+  → light → system on `data-theme`. Lighthouse was run in both.
+- **AC no colour referenced that is not a defined token — PASS.** `grep -rnoE
+  '(bg|text|border|ring|fill|stroke)-(red|green|blue|amber|…)'` over `app/` + `components/`
+  returns nothing; no `dark:` variant remains anywhere.
+- **AC Lighthouse a11y ≥ 90 on Home and Automations — PASS: both 100**, in dark *and* in
+  explicit light. Method: Playwright login → session cookie → `lighthouse --only-categories=
+  accessibility --extra-headers` (an unauthenticated run would only score the sign-in prompt).
+  Full sweep: home 100 · automations 100 · knowledge 100 · chat 100 · admin/services 100 ·
+  approvals 100 · scenarios 100 · examples 100 · automations/new 100 · admin/agents 100 ·
+  admin/cost 99.
+- Unit 560 passed · ruff clean · mypy `apps` 18 (documented baseline, 0 new) · eslint clean ·
+  `tsc --noEmit` clean.
+
+Issues (symptom → root cause → resolution):
+- **`--primary` as link text failed contrast in dark mode.** Lighthouse scored
+  `/admin/services` 96: `#2563eb` on `#131316` is 3.58:1 against a 4.5 requirement, on all 15
+  service URLs. Root cause: `--primary` is a *background* token — it is contrast-checked
+  against `--primary-foreground` sitting on top of it, not against a surface behind it.
+  Added a separate `--link` token (`#1d4ed8` light / `#93c5fd` dark) checked as text, and
+  repointed the two `text-[var(--primary)]` call sites. Services → 100.
+- **Two pre-existing label defects on screens this sprint touches.** `/knowledge` scored 94
+  (`label`: the file input had no accessible name) and `/chat` 95 (`select-name`: the agent
+  `<select>` had a `<label>` beside it with no `htmlFor`). Both are Sprint 3/4 components,
+  neither is named in this AC, both fixed here since the sprint is overhauling those screens
+  — each → 100.
+- **The Home dashboard showed every finished automation run as a red badge.** n8n 1.71's
+  public executions list omits `status` per row and carries only `finished`/`stoppedAt`;
+  `_catalog_entry` passed the missing field through verbatim. Added `_execution_status`
+  mapping finished → success, stopped-but-unfinished → error, otherwise running, matching
+  what n8n's own `?status=` filter concludes for the same rows.
+- **`getByLabel` could not find the builder's fields** — a wrapping `<label>` folds its hint
+  text into the input's accessible name, so the name was "Name" plus a paragraph. Replaced
+  with an explicit `htmlFor` + `aria-describedby` `Field` helper: better for a screen reader
+  and findable by role.
+
+Notes / deviations:
+- Palette chosen with the user: zinc neutrals + a single blue accent, semantic colours kept
+  deliberately distinct from the accent (a green "active" badge must not read as an action).
+- The superpowers plugin is enabled in `.claude/settings.json` but is **not installed on this
+  machine** (`~/.claude/plugins/installed_plugins.json` is empty), so its skills were
+  unavailable this session; the Task Execution Protocol was followed directly.
+
+## 2026-09-03 — 13.2 Explanatory layer + empty states — DONE
+
+Built:
+- `components/layout/page-header.tsx` — title + one-sentence "what this screen is for" +
+  a collapsed "how to use it". Built on `<details>`/`<summary>` so it stays a server
+  component and works before hydration, which is exactly when a first-time user needs it.
+- `components/layout/empty-state.tsx` — `title` + `description` are required and `action` is
+  expected; "No documents." on its own tells a newcomer nothing.
+- `components/layout/glossary.tsx` — `GlossaryTerm` (inline) and `GlossaryList` (block) for
+  `write:external`, `sensitivity: pii`, `risk_class` and HITL.
+- `PageHeader` wired into all 9 screens (home, chat, scenarios, automations, automations/new,
+  examples, knowledge, approvals, admin); empty states into chat, knowledge (collections +
+  documents), examples, approvals, automations, and the 6 admin tables (agents, models,
+  users, api-keys, budgets, audit) which previously rendered a bare empty `<table>`.
+- Approvals rows gained a "why is this waiting" line (accent panel + `write:external` term)
+  and a "waiting for" duration; `ApprovalOut` gained `created_at` to feed it.
+- ~150 new TR/EN message keys, TR authored first.
+- `tests/unit/test_i18n_messages.py` — TR/EN key parity + every literal `t("…")` in 40 files
+  (316 keys) resolves + every recipe action has a nested label/help.
+
+Verified:
+- **AC every page has a header and an empty state — PASS** (9 screens, 12 empty states).
+- **AC no user-facing string leaves an unexplained platform term — PASS**: the 4 terms are
+  glossary-backed; the Approvals screen carries the block form, the builder and approval rows
+  the inline form.
+- **AC TR/EN complete with no missing-key warnings — PASS**, and now enforced by test rather
+  than by inspection: 5 cases, proven to fail when a key is removed or mis-shaped.
+
+Issues (symptom → root cause → resolution):
+- **Every action label in the builder rendered as its raw key** (`builder.actions.pg.query.
+  label`). Root cause: next-intl resolves a key by splitting on `.`, and every action id
+  contains one — so `"pg.query"` stored as a *literal* JSON key can never be reached. Nested
+  the `builder.actions` block (`pg` → `query` → `label`). The literal-scan test could not see
+  this (the lookup is a template literal), so a structural check was added that walks the
+  nesting the way next-intl does; it was proven to fail against the old flat shape.
+
+## 2026-09-03 — 13.3 Admin → Services (closes the deferred 7.3) — DONE
+
+Built:
+- `apps/api/fleet_api/services_catalog.py` — 17 services with group, local URL, probe kind
+  (http / postgres / redis / arq), an `optional` flag, and the *names* of the environment
+  variables holding their dev credentials. No secret is stored here.
+- `apps/api/fleet_api/routers/services_admin.py` — `GET /v1/admin/services` probes every
+  service concurrently at request time (nothing cached or declared) and `POST /v1/admin/
+  services/{name}/reveal` returns plaintext only to a caller who holds the `platform_admin`
+  **role**, not merely MANAGE_PLATFORM.
+- `apps/web/app/(app)/admin/services/page.tsx` + `components/admin/services-board.tsx` —
+  grouped board with per-service health, latency, queue depth, purpose, and masked
+  credentials revealed one service at a time.
+- Compose: `n8n-worker` gained `QUEUE_HEALTH_CHECK_ACTIVE` + a loopback-only `:5680` so the
+  worker has a real health surface (a queue-mode worker otherwise has none).
+- Compose + Helm: **promtail** added (see Issues).
+- `tests/unit/test_services_admin_router.py` (9) + `tests/integration/test_services_admin_live.py` (3).
+
+Verified (live, `make dev` up):
+- **AC all stack services report healthy — PASS: `healthy=16, down=0`.** arq reports
+  `down` with `no worker heartbeat` and is flagged `optional` (it is a host-run worker, not a
+  compose service), so it does not count against the total; its card says how to start it.
+- **AC a stopped container turns its own card red without breaking the page — PASS.**
+  `docker stop mailpit` → HTTP 200, `down=1`, mailpit `ConnectError`, all 17 cards still
+  rendered. Restarted.
+- **AC non-platform-admin roles get 403 — PASS** for member/builder/approver/dept_admin on
+  both endpoints.
+- **AC credential values absent from the response body for a non-`platform_admin` caller —
+  PASS, by test.** The list response is masked for *every* caller (`fleet_dev_pw`,
+  `sk-fleet-dev-master`, `sk-lf-fleet-dev` all absent from the body verbatim); a
+  non-platform-admin gets a 403 with no body; and a synthetic role holding MANAGE_PLATFORM
+  without `platform_admin` is still refused the reveal.
+
+Issues (symptom → root cause → resolution):
+- **Loki reported down on a healthy stack.** Its `/ready` returned 503 forever
+  ("Ingester not ready: waiting for 15s after being ready") while `/metrics` and
+  `/loki/api/v1/status/buildinfo` both answered 200 and it was actively uploading index
+  tables; confirmed across a restart, 60s of polling, never 200. **Root cause: nothing has
+  ever shipped logs to Loki.** Loki has been in the compose stack since Sprint 1 with no
+  producer, so its ingester never receives a push and never settles — TRD §6's log lane was
+  hollow, and this screen is simply the first thing that asked. Fixed at the source rather
+  than by softening the probe (the user chose this over repointing it): added
+  `infra/compose/promtail/promtail-config.yml` + a `promtail` service that discovers this
+  compose project's containers **over the Docker API** (a `/var/lib/docker/containers` bind
+  mount silently scrapes nothing on Docker Desktop, where that path lives inside the VM), and
+  `infra/helm/fleet/templates/promtail.yaml` as a DaemonSet + RBAC + ConfigMap for the chart.
+  Loki's `/ready` went 200 within 4s and `{job="fleet-dev"}` now returns real log lines
+  labelled by container/service. `helm lint` passes.
+  - Scope note recorded in both configs: in dev the Fleet API and web run on the *host*, so
+    their own structured logs are still not scraped — container logs only. The Kubernetes
+    DaemonSet does pick up the API's pod.
+
+## 2026-09-03 — 13.4 Automation recipes: model, compiler, deploy API — DONE
+
+Built:
+- `infra/migrations/versions/0011_automation_recipes.py` + `AutomationRecipe` model —
+  Fleet holds the recipe; `n8n_workflow_id` is only the handle for what was compiled from it.
+- `apps/api/fleet_api/recipes/schema.py` — Pydantic v2 recipe: trigger (`schedule` cron |
+  `manual`), ordered steps, one level of `if/then/else`. Five allowlisted actions
+  (`pg.query`, `agent.run`, `slack.post`, `email.send`, `http.notify`), each with a typed
+  params model at `extra="forbid"`, and every string checked so no n8n expression can be
+  smuggled through — the only templating allowed is `{{steps.<id>.<path>}}`.
+- `apps/api/fleet_api/recipes/compiler.py` — renders the recipe to n8n workflow JSON. Emits
+  only `scheduleTrigger`/`webhook`/`if`/`set`/`httpRequest`, never `code`; every
+  `httpRequest` URL is chosen from `SERVICE_PATHS` by action name and re-checked against a
+  Fleet-only regex before it enters a node; user text is emitted as JSON string literals and
+  step references rewritten to `$('<node>').item.json.<path>`.
+- `apps/api/fleet_api/routers/recipes.py` — CRUD + preview + activate/deactivate/run
+  (MANAGE_AGENTS to write, CHAT to read), deploying over n8n's REST API and reporting a
+  soft `deploy_error` when n8n is down rather than failing the save.
+- `routers/service.py` gained the three missing action endpoints: `agent-run` (reuses the
+  chat router's own reply paths so an automation gets no second, differently-governed way to
+  talk to an agent), `email-send` (**queues an approval, never sends**) and `notify` (an
+  audit-log entry, no outward effect). `n8n_client.py` gained create/update/delete.
+- `approvals.py` gained an `automation_recipe` resumer: unlike the other four this is not a
+  LangGraph resume — the recipe ran in n8n — so it performs the queued action itself, from
+  the approval's (possibly edited) payload. `seed.py` seeds the paused pseudo-agent the
+  approval rows hang off.
+- Tests: `test_recipe_schema.py` (13), `test_recipe_compiler.py` (13),
+  `test_recipes_router.py` (4), `tests/security/test_recipe_compiler_injection.py` (18),
+  `tests/integration/test_recipes_live.py` (3).
+
+Verified (live: Fleet API + n8n + Postgres, no mocks):
+- **AC a schedule-triggered recipe defined through the API exists and fires in n8n — PASS.**
+  Created via `POST /v1/recipes` → stored + deployed (`n8n_workflow_id` set, workflow present
+  in n8n with `scheduleTrigger` + `if` and no `code` node) → activated → triggered → n8n
+  recorded a `success` execution → Fleet's own log shows the `POST /v1/service/pg-query` the
+  workflow made.
+- **AC a recipe containing `email.send` produces an approval-queue entry instead of sending —
+  PASS.** The run created a pending `email.send` approval with the right payload and Mailpit
+  stayed empty; approving it then really put the mail on the wire (Mailpit: 1 message,
+  `ops@fleet.local` / "Sprint 13 AC").
+- **AC a recipe whose branches both write is still gated — PASS.** The integration recipe
+  branches `email.send` / `http.notify`; gating is proven by the endpoint the compiler picks,
+  not by which branch ran, and a unit test pins the false-branch case.
+- **AC a crafted recipe attempting a non-Fleet URL or an unlisted action is rejected — PASS.**
+  18 security cases (extra `url`/`method`/`headers` params, unlisted actions, `code.run`,
+  six expression payloads including `={{ $env.OPENAI_API_KEY }}` and
+  `require('child_process')`, quote break-out, path traversal in the name, a shell payload in
+  the cron) plus a live case proving a 422 leaves no workflow behind in n8n.
+- Deleting a recipe removes its n8n workflow; a `member` is refused a create but may list.
+
+Issues (symptom → root cause → resolution):
+- **The recipe deployed and activated but never ran; n8n recorded no execution.** Two
+  independent defects, both mine:
+  1. **The webhook was never registered.** n8n registers a production webhook by the node's
+     `webhookId`, not by `path` alone; a node deployed over the REST API without one is
+     accepted, the workflow activates, and its production URL then answers 404 "not
+     registered" (the hand-written exports in `workflows/` carry a literal UUID for exactly
+     this reason). The compiler now emits a `uuid5` derived from the recipe name, so a
+     redeploy keeps the same registration.
+  2. **`POST /run` reported `ok` over that 404.** `N8nResult.reachable` only means n8n
+     answered; the router ignored `result.error`, so a run that never happened returned a
+     green "accepted". Now a non-2xx is `trigger_failed`. (The same shape exists in the
+     Sprint 6.5 `run_weekly_summary`; left alone as out of scope, noted here.)
+- **The condition always took its false branch.** The compiler copied
+  `options.response.responseFormat: "text"` from the weekly-summary export, which puts the
+  whole body into `json.data` as a *string* — so `{{steps.q1.row_count}}` and every condition
+  reading one resolved to undefined. `text` is now applied only to `slack.post`, the one
+  endpoint that answers 204 with no body (which is why the export needed it). Regression test
+  added.
+- **n8n's executions list has no `status` field** in 1.71, so the integration test's
+  `executions[0]["status"]` raised `KeyError`. Success/failure is now read from the
+  server-side `?status=` filter.
+- **A new n8n service key was needed.** The recipe actions introduced the `agent_run`,
+  `email_send` and `notify` scopes; the existing key carried only `pg_ro`/`slack_post`.
+  Issued a replacement (revoking the old row), wrote it to `.env`'s `N8N_FLEET_API_KEY`, and
+  added the three scopes to the API-keys admin screen's picker.
+
+Notes / deviations:
+- Branching is deliberately **one level, not nestable**. A builder that can express arbitrary
+  nesting is a programming language, and every safety rule above would have to hold
+  recursively; one level covers "post only when the query returned something".
+- Every recipe gets a webhook node even when its trigger is a schedule, so "Run now" works
+  without waiting for the cron — the same shape the hand-written weekly-summary export uses.
+
+## 2026-09-03 — 13.5 Builder UI + reworked Automations page — DONE
+
+Built:
+- `components/automations/recipe-builder.tsx` — four-section form: identity → trigger
+  (manual/schedule with cron presets) → steps (fields generated per action, plus one
+  `if/then/else`) → plain-language preview and save. The preview is **the server's own
+  `POST /v1/recipes/preview`**, so what the user reads is produced by the same code that
+  compiles the workflow, and a recipe the compiler would refuse is refused before save.
+- `components/automations/recipe-summary.tsx` — shared rendering of `describe_recipe`, used
+  by both the preview and the automation cards so they can never disagree.
+- `components/automations/recipe-card.tsx` — run / activate / edit / delete with an in-app
+  confirmation dialog.
+- `app/(app)/automations/page.tsx` reworked into two sections (built-in catalog + user
+  recipes) with a directive empty state; `automations/new` and `automations/[id]/edit`.
+- `lib/recipe-actions.ts` — client mirror of the action allowlist and param models, in the
+  same "hand-kept mirror, API is the real gate" arrangement as `lib/permissions.ts`.
+- `tests/e2e/specs/automation-builder.spec.ts`.
+
+Verified:
+- **AC a `builder` defines, saves and runs an automation end to end from the browser and sees
+  the run in n8n — PASS**, as a Playwright case against the real stack: fill the form → the
+  server preview describes it in plain language → save → the workflow appears in n8n →
+  activate → Run now → n8n reports a `success` execution → delete removes the workflow again.
+- **AC a `member` can view but not edit — PASS**: no "New automation" entry point anywhere,
+  and `/automations/new` itself refuses rather than merely being hidden.
+- **AC with n8n stopped the page still renders its down-state — PASS**, inherited unchanged
+  from the 6.5.3 contract (`/v1/workflows` returns 200 with `reachable:false`) and exercised
+  by the existing `test_workflows_router.py` cases; user recipes additionally carry a
+  `deploy_error` and a "not deployed to n8n" badge.
+
+Issues (symptom → root cause → resolution):
+- **The Langfuse half of the AC is verified separately.** The e2e recipe deliberately uses
+  `pg.query` + `http.notify` only, so an e2e run does not hang on model latency; the
+  `agent.run` action reuses the chat router's own reply path, which is already the
+  Langfuse-instrumented one.
+- **`window.confirm` on delete was replaced with the app's own dialog.** It is unstyled,
+  invisible to the theme, blocks the renderer, and made the e2e depend on dialog handling.
+- Two e2e locator defects of my own: action labels also appear in every step's `<option>`
+  list (preview assertions now scoped to the summary list), and a Radix toast renders both a
+  visible node and an aria-live announcement carrying the same text (`.first()`). A
+  `data-testid` on the recipe card replaced a brittle class-name locator.
+
+## 2026-09-03 — 13.6 Tests, e2e, docs — DONE
+
+Built: covered above — 51 new unit/security cases, 6 new live integration cases, 7 new e2e
+cases. Docs: TRD §11 (`automation_recipes`) and §12 (shell & explanatory layer, Automation
+Builder, Services/system health) updated in **both** layers; three new items in
+`docs/PRODUCTION_CHECKLIST.md` (re-scope Admin → Services before it leaves dev; review the
+recipe action allowlist per environment).
+
+Verified (full gate):
+- ruff clean · mypy `apps` 18 (documented baseline, 0 new) · eslint + `tsc --noEmit` clean.
+- **Unit 560 passed** (was 510). **Security 85 passed** (was 67; +18 recipe-compiler
+  injection cases).
+- **Integration: 78 passed / 8 skipped** across two passes — the first full run had 8
+  failures, *all 8 pass on a quiet re-run with no code change*, the same testcontainers
+  connect/timeout contention recorded at the Sprint 12 close.
+- **E2E: 7 passed / 1 failed** — the failure is `chat-demo-path`, diagnosed below and not a
+  Sprint 13 regression.
+- `make eval AGENT=support_copilot` → **100%** (15/15, threshold 0.90).
+
+Issues (symptom → root cause → resolution):
+- **`chat-demo-path.spec.ts` fails — OPEN, pre-existing, awaiting a decision.**
+  Symptom: the streamed answer never arrives; the API logs
+  `Vector dimension error: expected dim: 1536, got 1024` from Qdrant.
+  Root cause, traced end to end: **`support_copilot`'s row has `sensitivity = 'pii'`** while
+  `seed.py` declares `'internal'` (and `ON CONFLICT DO NOTHING` means `make seed` will not
+  repair it). `chat._rag_reply` passes the *agent's* sensitivity into `answer_query` →
+  `client.embeddings(sensitivity='pii')` → `select_model` admits only `local-embeddings`
+  (clearance `pii`, bge-m3, **1024**) → but `cs-help-center`/`cs-procedures` were ingested
+  with the cloud `embeddings` model (clearance `internal`, **1536**) at the Sprint 12 close.
+  The drift predates the audit log's window (oldest entry 2026-08-20), most likely a leftover
+  of the Sprint 8 local-lane rehearsal.
+  **Why nothing caught it:** `evals/runner.py` hard-codes `sensitivity="internal"` for the RAG
+  path, so the eval never exercises the agent's own sensitivity — it scores 100% while live
+  chat is broken. The e2e is the only thing that walks the real path.
+  Not fixed here: the fix is a one-field change to *their* dev data (`UPDATE agents SET
+  sensitivity='internal' WHERE name='support_copilot'`, or a click in Admin → Agents), and
+  the eval's hard-coded sensitivity is worth its own decision.
+- **Leftover test agents pollute the Home dashboard.** "Active agents" counts 18, of which 7
+  are `live-chat-agent-*` rows created by integration runs and never cleaned up. Environment
+  noise, not a code defect; worth a cleanup pass or a teardown in the chat live test.
+
+## 2026-09-03 - 13.7 Colour pass + in-app examples - DONE
+
+Built:
+- **Palette rebuilt** (`app/globals.css`). Indigo-tinted neutrals instead of flat zinc (light
+  sits on `#f6f7fc`, dark on a `#0b1020` navy rather than near-black); primary indigo with a
+  violet partner for gradients; four **section accents** - Work indigo, Automation violet,
+  Knowledge teal, Admin amber - plus `--gradient-header`/`--gradient-primary`. The two dark
+  blocks are generated from one source so the OS-preference and explicit-choice entry points
+  cannot drift.
+- **Section theming is derived, not hand-maintained.** `sectionFor(pathname)` in `lib/nav.ts`
+  resolves any route to the sidebar group that owns it; `AppShell` stamps `data-section` on the
+  top bar and `<main>`, and `[data-section=...]` in globals.css rebinds `--section`,
+  `--section-bg` and `--section-fg`. A screen therefore cannot be amber in the sidebar and teal
+  in its own header.
+- Recoloured consumers: sidebar (accent group labels, per-item icon tint, active rail),
+  gradient logo mark, top-bar section hairline, role chip, `PageHeader` (gradient band + accent
+  rail), `StatTile` (per-tone icon chip + rail, `tone` now names a section), `EmptyState`.
+- **Guide screen** (`/guide`, `lib/guide.ts`, top of the Work group): four walkthroughs -
+  ask an agent, add knowledge, build an automation, see the approval gate - each with
+  numbered steps, a time estimate and a button into the screen it describes, plus the glossary.
+  Static and server-rendered, so it still reads when the API or n8n is down.
+- **Automation templates** (`lib/recipe-templates.ts`, `components/automations/template-picker.tsx`):
+  four ready-made recipes offered above a blank builder, seeding the form through the existing
+  `fromRecipe` path via `?template=`. One (`monthlyReport`) deliberately contains `email.send`
+  so the approval gate is demonstrated rather than described.
+- **Chat starters** (`lib/chat-starters.ts`): per-agent suggested first questions on an empty
+  thread, keyed off the *selected* agent so switching the dropdown swaps them.
+- i18n: 3 new namespaces/branches (`guide`, `builder.templates`, `chat.starters`), TR authored
+  first; 475 keys, TR/EN parity exact.
+- `seed.py`: the `support_copilot` insert is now `ON CONFLICT ... DO UPDATE SET sensitivity` -
+  see Issues.
+- Tests: `tests/unit/test_recipe_templates.py` (17 cases), `tests/e2e/specs/contrast.spec.ts`
+  (2), `tests/e2e/specs/guide-and-templates.spec.ts` (3).
+
+Verified:
+- **AC WCAG AA contrast in both themes - PASS.** Two ways. (1) A static check of all 30
+  foreground/background token pairs. (2) `contrast.spec.ts` walks the *rendered* DOM of 8
+  screens in pinned light and pinned dark, computes each text node's ratio against the real
+  painted background (flattening translucency), and requires 4.5:1, or 3:1 for large text - 0
+  failures. **The audit was mutation-tested**: lightening `--muted-foreground` to `#b8bfd0` made
+  it report 1.8:1 against a required 4.5 across every screen, so a pass is meaningful.
+- **AC no colour referenced that is not a defined token - PASS.** The bare-palette-class and
+  `dark:` greps return only two false positives, both inside explanatory text (`bg-green-100`
+  named in a globals.css comment; `dark: Moon` as an icon-map key).
+- **AC every template deploys unedited and stays inside the allowlists - PASS.**
+  `test_recipe_templates.py` reads `_ALLOWLISTED_TABLES`, `_ALLOWLISTED_CHANNELS` and
+  `_ALLOWED_EMAIL_DOMAINS` out of `routers/service.py` itself and checks every template against
+  them (also: read-only SQL, valid slug, seeded agents, `needsApproval` tracking the actual
+  `write:external` action). Mutation-tested - pointing a template at `users`, `#random` and
+  `evil.com` failed exactly the three relevant cases. Live half: the e2e picks the digest
+  template, renames it, previews it through the *server's* compiler and saves; the workflow
+  appears in n8n unedited and is deleted again.
+- **AC TR/EN complete - PASS.** Key-set diff is empty both ways; `test_i18n_messages.py` 5
+  passed. Every dynamic key (templates/starters/walkthroughs) is resolved explicitly by the new
+  unit test, since the existing i18n test skips template literals by design.
+- **AC the chat demo e2e passes again - PASS.** `chat-demo-path` green.
+- Full gate: ruff clean, mypy `apps` 18 (documented baseline, **0 new**), eslint clean,
+  `tsc --noEmit` clean, `next build` clean (21 routes), **unit 578 passed** (was 560),
+  **security 85 passed**, **integration 78 passed / 8 skipped** (see Issues),
+  **e2e 13 passed** (was 7 passed / 1 failed).
+
+Issues (symptom -> root cause -> resolution):
+- **`chat-demo-path` was failing (carried over from 13.6, was OPEN) - now RESOLVED.**
+  Root cause as diagnosed then: the `support_copilot` row had drifted to `sensitivity='pii'`
+  while `seed.py` declares `'internal'`, so its RAG queries selected the 1024-dim local
+  embedder against collections holding 1536-dim cloud vectors. `ON CONFLICT DO NOTHING` meant
+  `make seed` could not repair it. Fixed by making that one insert `DO UPDATE SET sensitivity`
+  - narrowly, because an agent's sensitivity selects its *embedding* model and so must stay
+  consistent with the collections seeded ten lines above it. Verified against the live DB:
+  the row read `pii` before the seed ran and `internal` after; the e2e then passed.
+  *Not* addressed here: `evals/runner.py` still hard-codes `sensitivity="internal"` for the RAG
+  path, which is why the eval scored 100% while live chat was broken. Left as its own decision.
+- **The dark-mode primary failed contrast, caught before it shipped.** The first draft lifted
+  `--primary` to `#6366f1` for the dark ground, which gives white button labels only 4.47:1 -
+  just under AA. `#585ae8` clears it at 5.19:1 while still standing off the dark surface as a
+  shape (3.3:1); `--primary-hover` carries the lift instead.
+- **The builder e2e failed with a server-side exception - environmental, not a regression.**
+  Symptom: `/automations` returned a Next.js digest error, so the login helper's `h1` never
+  appeared. Root cause: the API had been started as plain `uvicorn ... --port 8000`, which binds
+  `127.0.0.1` only, and Node 18+ resolves `localhost` to `::1` first, giving `ECONNREFUSED` from
+  the web server's `fetch`. Restarting the API with `--host 0.0.0.0` fixed it. **Worth noting:
+  `make api` also omits `--host`**, so this is reproducible for anyone whose resolver prefers
+  IPv6 - a one-word Makefile change would prevent it, left unmade as out of scope.
+- **Two locator defects of my own in the new e2e.** A walkthrough's title also appears inside
+  its own intro sentence (strict-mode violation -> matched as a heading role instead), and the
+  preview prints the raw cron `0 9 * * 1` rather than a friendly "Monday", so the schedule
+  assertion now checks the cron the template actually carries.
+- **Integration: 8 failed in the full run, all 8 pass when re-run in three groups (78 passed).**
+  `test_rag_ingest_live`, `test_rag_query_live`, `test_rag_pii_collection_live`,
+  `test_services_admin_live`, `test_pii_logging_masked_live`, `test_vehicle_intake_e2e_live`
+  (x2) and `test_insights_publisher_e2e_live` - every one a testcontainers connect/timeout
+  while the suite ran alongside the compose stack, none an assertion. Same contention recorded
+  at the Sprint 12 and 13 closes.
+
+Notes / deviations:
+- **Section colour is always redundant.** Every accent sits alongside a label or an icon that
+  already carries the meaning, and no state is signalled by hue alone - which is what lets the
+  palette be this chromatic without the colour becoming load-bearing.
+- **Amber is both the Admin accent and the warning colour.** Kept apart by role: amber-as-section
+  only ever appears as a rail or an icon, never as a badge fill.
+- Templates are constrained by the *server's* allowlists, not by what reads nicely - the SQL
+  really only touches `fixture_sales`/`fixture_orders`, Slack only `#weekly-summary`/`#dev-agent`,
+  email only `example.com`. The unit test reads those lists out of `service.py` so a change
+  there breaks the templates loudly rather than silently.
+- `contrast.spec.ts` is the colour half of the a11y AC only. Lighthouse (labels, roles,
+  landmarks) is not installed on this machine; the previous sprint's 100s stand for the
+  structural half, which this change did not touch.
+- Leftover `live-chat-agent-*` rows from earlier integration runs still inflate Home's "active
+  agents" count (18). Environment noise, unchanged from the 13.6 note.
+
+## 2026-09-03 - 13.7 close: graph refresh + commit - DONE
+
+Built: no new application code. Closing steps for 13.7 per the Task Execution Protocol.
+
+Verified:
+- **Knowledge graph refreshed** (`/graphify . --update`). 50 changed files re-extracted
+  (20 code, 30 docs): AST 142 nodes / 367 edges, plus two parallel semantic subagents over
+  the changed docs and the Turkish legal/HR eval fixtures giving 195 nodes / 246 edges /
+  6 hyperedges (~233k in / ~26k out tokens). Merged into the existing graph rather than
+  replacing it - 141 nodes replaced in place for re-extracted sources, 9 exact duplicates
+  collapsed - leaving **4,939 nodes / 9,003 edges / 401 communities**, no import cycles.
+  `graph.json`, `graph.html`, `GRAPH_REPORT.md`, manifest and cost tracker all rewritten.
+- **Committed** as `01ab23b` on `feat/sprint-13-ui-automation-builder`: 27 source/doc/test
+  files plus the graph outputs, single-sentence message, no AI byline (repo convention).
+
+Issues (symptom -> root cause -> resolution):
+- **The first community labelling named the largest communities "Unit Tests".** Root cause:
+  Louvain puts a module and its tests in one community, and the test nodes frequently
+  outnumber the module's own, so ranking labels by raw prefix count named each community
+  after whatever exercises it rather than what it *is*. Fixed by treating test/fixture
+  prefixes as subjectless - they win a label only when nothing else is present. Community 0
+  now reads "Workflow Catalog API / n8n REST Client" instead of "Unit Tests".
+  Labelling is scripted rather than hand-written because 401 communities is well past the
+  point where hand-naming is honest work.
+- **`git push` hung for 10 minutes and did not land - RESOLVED.** Symptom: the push timed
+  out with no output and the remote stayed at `c03ff14`. First guess (upload size, ~40 new
+  graphify cache blobs) was wrong. Root cause found by listing processes:
+  `git-credential-manager` was running and waiting on an **interactive credential prompt**
+  that cannot be displayed in a non-interactive session, so the push blocked forever rather
+  than failing. There is no pre-push hook. Fixed by killing the stuck git processes and
+  pushing with `gh auth token` supplied through an inline credential helper. Landed as
+  `c03ff14..01ab23b`; remote verified at `01ab23b`.
+  Worth knowing for future sessions in this repo: `credential.helper=manager` will hang a
+  non-interactive push whenever the cached credential needs refreshing.
+- Two graph nodes carry `missing required field 'source_file'` (e.g.
+  `concept_sensitivity_routing`). Pre-existing, harmless to traversal, recorded not hidden.
+
+Notes:
+- `docs/reports/sprint-13.md` gained section 7 recording the graph refresh; sections 1, 4,
+  4b and 6 were updated for 13.7 in the previous entry.
+- Pushed to `feat/sprint-13-ui-automation-builder` and **PR #19 updated** to cover 13.7
+  (its previously-open `chat-demo-path` item is now recorded as fixed).
+- **Remaining for the next session:** watch the required CI checks on PR #19 and merge only
+  once they are green. Everything else for Sprint 13 is done and verified.
+
+## 2026-09-03 - Sprint 13 leftover open items (eval sensitivity, live-test teardown, make api) - DONE
+
+Built: three recorded-but-unfixed items from `docs/reports/sprint-13.md` §4, none of them
+Sprint 13 task scope (all 13.1-13.7 were already DONE and PR #19's five CI checks green):
+- `evals/runner.py` - the RAG eval now reads the agent's **real** `sensitivity` from the DB
+  row it already queries instead of hard-coding `"internal"`. Fixed in *both* agent-derived
+  RAG paths: `run_agent_eval` (support_copilot et al.) and `run_hr_agent_eval`'s
+  `qa_grounding` branch; `_run_case` takes `sensitivity` as a required keyword.
+- `tests/integration/test_chat_live.py` - added `_purge_live_chat_agents()`, called from a
+  `finally`, which unwinds the FK chain (feedback -> messages -> conversations ->
+  prompt_versions/approvals -> agents) for every `live-chat-agent-%` row.
+- `Makefile` - `make api` now passes `--host 0.0.0.0`.
+
+Verified (dev stack up: postgres/keycloak/litellm/qdrant reachable):
+- **Eval reads the real sensitivity - PASS, mutation-tested.** `make eval AGENT=support_copilot`
+  = 100% (90% required). Then set the row to `sensitivity='pii'` - reproducing the exact
+  Sprint 13 drift - and the eval **failed loudly**: `GatewayError: gateway embed call failed
+  for model 'local-embeddings'`, i.e. it now routes exactly as live chat did. Before this
+  change the same drift scored 100%. Row restored to `internal`, eval re-run: 100%.
+  This closes the harness/live-path gap flagged in the sprint report.
+- **Teardown leaves nothing - PASS, mutation-tested.** 8 leftover `live-chat-agent-*` rows
+  existed beforehand; after one run: 0 agents, and 0 orphaned conversations/messages/feedback
+  (checked with LEFT JOIN counts). Then forced an `AssertionError` right after the feedback
+  POST: the test failed as intended and still left **0** rows, proving the `finally` path.
+  Mutation reverted; test re-run green.
+- **`--host 0.0.0.0` - PASS, but the reported cause did not reproduce (see Issues).**
+- Gate: ruff clean, unit **578 passed**, security **85 passed**, mypy `apps` 18 (documented
+  baseline, 0 new), `evals/runner.py` 3 errors before and 3 after my edit - verified by
+  stashing the diff, so **0 new**.
+
+Issues (symptom -> root cause -> resolution):
+- **The Makefile comment I first wrote was wrong, and measuring caught it.** I repeated the
+  sprint report's causal claim - that Node 18+ resolves `localhost` to `::1` and so gets
+  ECONNREFUSED against uvicorn's default bind. Measured on this machine: `0.0.0.0` is
+  IPv4-only (`http://[::1]:8010/healthz` = no response), and Node's `fetch('http://localhost:...')`
+  **succeeded against the default `127.0.0.1` bind too** - undici tries both resolved
+  addresses and falls back to IPv4. So the default is not broken here and the ECONNREFUSED
+  had some other trigger. Kept the `--host 0.0.0.0` flag (it is what actually unblocked the
+  e2e mid-sprint, and it makes the API reachable from a container/LAN, which the default is
+  not) but **rewrote the comment** to state that history instead of an unverified mechanism.
+- **`make eval AGENT=hr_agent` fails before reaching my change - pre-existing, environmental.**
+  Two distinct things: (1) `python -m evals.runner` cannot import `evals/synthetic_images.py`
+  (sibling import - only resolves via `python evals/runner.py`, which is what `make eval`
+  actually uses; my invocation was wrong, not the code); (2) via the correct entrypoint it
+  then fails with `GatewayError ... model 'local-reasoning'` because **Ollama is not running**
+  (`localhost:11434` unreachable, no container) - the HR extraction cases need
+  `PROFILE=ollama`. Both are upstream of the `qa_grounding` branch I edited, so that branch
+  was not exercised end to end. Verified my HR-path edit directly instead: the new
+  `SELECT id, collection_ids, sensitivity` + 3-tuple unpack returns
+  `agent_id=6 collection_ids=[4] sensitivity='internal'` against the live DB.
+  **Not fixed, not in scope** - recorded as an open item.
+
+Notes:
+- The two remaining hard-coded sensitivities in `runner.py` were reviewed and deliberately
+  left: the OCR tool is pinned to `confidential` (local lane by design) and the brand-voice
+  LLM-judge `utility` call is not an agent RAG path. Only the two agent-derived paths were wrong.
+- PR #19 was **not merged** - the user chose to work these side items instead. All five
+  required checks (lint, unit, integration, security, build-image) pass on `b369222` and the
+  PR is MERGEABLE/CLEAN, so it is ready whenever they want it.
+- Still open, unchanged: `FLEET_SLACK_WEBHOOK_URL` empty (no live `slack.post` verification),
+  superpowers plugin enabled in settings but not installed on this machine, and the
+  `hr_agent` eval needing `PROFILE=ollama`.
+
+## 2026-09-03 - Graph refresh + a doc correction the extraction caught - DONE
+
+Built: no application code. Closing steps for the leftover-items batch above.
+
+Verified:
+- **Knowledge graph refreshed** (`/graphify . --update`). 4 changed files re-extracted
+  (2 code via AST = 118 nodes / 318 edges; 2 docs via one semantic subagent = 56 nodes /
+  63 edges / 3 hyperedges, ~84k input tokens). Merged into the existing graph, replacing
+  139 nodes in place for the re-extracted sources: **4,973 nodes / 9,003 edges /
+  415 communities** (was 4,939 / 9,003 / 401). Health check clean - 0 dangling, 0 missing,
+  0 collapsed edges. Diff confirms this batch landed: new nodes include
+  `_purge_live_chat_agents()` and "evals/runner.py reads the agent's real sensitivity".
+  Community labels were inherited from the prior run by member-majority vote so naming
+  stayed stable (community 0 is still "Workflow Catalog API / n8n REST Client", not
+  "Unit Tests"); the 4 unlabelled leftovers were single-node isolates, named by hand.
+- **CI green on `f0305fa`**: all five required checks (lint, unit, integration, security,
+  build-image) pass. PR #19 remains open and MERGEABLE/CLEAN, not merged.
+
+Issues (symptom -> root cause -> resolution):
+- **The extraction subagent caught a contradiction I had introduced in the docs.** Reading
+  both files, it reported that `sprint-13.md` §4b still asserted the IPv6/`::1`
+  `ECONNREFUSED` mechanism as fact, while the §4 update block and the PROGRESS entry above
+  both record that it did not reproduce under measurement. Root cause: I appended the
+  correction to §4 but left the original §4b paragraph untouched, so the report argued with
+  itself. **Fixed** - §4b now states what was actually observed and carries an explicit
+  `Correction (2026-09-03)` block; the graph consequently holds the corrected version
+  (`docs_progress_ipv6_localhost_claim_not_reproduced`) rather than the superseded claim.
+  Worth noting that the graph build surfaced a documentation defect, not a code one.
+- `GRAPH_REPORT.md` sections could not be printed through the default Windows console
+  codepage (`UnicodeEncodeError` on `\u2192`); re-read with `PYTHONIOENCODING=utf-8`.
+  Cosmetic, no effect on the outputs.
+- The same 2 pre-existing `missing required field 'source_file'` warnings
+  (`concept_sensitivity_routing` et al.) recurred. Unchanged, harmless to traversal.
+
+Notes:
+- Graph god nodes are unchanged in character: `CurrentUser` (57 edges), `KillSwitch` (51),
+  `Agent` (38), `Settings` (38), `LLMClient` (35), `compile_recipe()` (29).
+- Cumulative graphify cost after 14 runs: 2,197,541 input / 160,296 output tokens.

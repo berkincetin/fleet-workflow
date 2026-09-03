@@ -1694,6 +1694,190 @@
         }
       }
     },
+    "/v1/service/agent-run": {
+      "post": {
+        "tags": [
+          "service"
+        ],
+        "summary": "Agent Run",
+        "description": "Run one agent turn from an automation, reusing the exact reply paths the\nchat router uses (RAG-grounded, analytics text-to-SQL, or plain reasoning)\n\u2014 an automation must not get a second, differently-governed way to talk to\nan agent.",
+        "operationId": "agent_run_v1_service_agent_run_post",
+        "parameters": [
+          {
+            "name": "x-fleet-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Fleet-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentRunIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/service/email-send": {
+      "post": {
+        "tags": [
+          "service"
+        ],
+        "summary": "Email Send",
+        "description": "Queue an email for human approval. **Never sends.**\n\n`email.send` is write:external (TRD \u00a79 names customer email as the\ncanonical always-approved case), so the only thing this endpoint can do is\ncreate the queue entry; the message goes on the wire in the approvals\nrouter's resume handler, after a person approves it.",
+        "operationId": "email_send_v1_service_email_send_post",
+        "parameters": [
+          {
+            "name": "x-fleet-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Fleet-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailSendIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailSendOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/service/notify": {
+      "post": {
+        "tags": [
+          "service"
+        ],
+        "summary": "Notify",
+        "description": "Internal notification: an audit-log entry an operator can find later.\n\nDeliberately the one recipe action with no outward effect at all \u2014 it is\nwhat a builder reaches for when the automation should leave a trace rather\nthan message a person.",
+        "operationId": "notify_v1_service_notify_post",
+        "parameters": [
+          {
+            "name": "x-fleet-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Fleet-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotifyIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Notify V1 Service Notify Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/invoice-agent/runs": {
       "post": {
         "tags": [
@@ -2348,6 +2532,416 @@
         }
       }
     },
+    "/v1/recipes": {
+      "get": {
+        "tags": [
+          "recipes"
+        ],
+        "summary": "List Recipes",
+        "operationId": "list_recipes_v1_recipes_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RecipeOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Recipes V1 Recipes Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "recipes"
+        ],
+        "summary": "Create Recipe",
+        "operationId": "create_recipe_v1_recipes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecipeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/recipes/{recipe_id}": {
+      "get": {
+        "tags": [
+          "recipes"
+        ],
+        "summary": "Get Recipe",
+        "operationId": "get_recipe_v1_recipes__recipe_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "recipe_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Recipe Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "recipes"
+        ],
+        "summary": "Update Recipe",
+        "operationId": "update_recipe_v1_recipes__recipe_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "recipe_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Recipe Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecipeIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "recipes"
+        ],
+        "summary": "Delete Recipe",
+        "operationId": "delete_recipe_v1_recipes__recipe_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "recipe_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Recipe Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeActionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/recipes/preview": {
+      "post": {
+        "tags": [
+          "recipes"
+        ],
+        "summary": "Preview Recipe",
+        "description": "Validate + compile without saving or deploying \u2014 what the builder's\nlast wizard step shows before the user commits.",
+        "operationId": "preview_recipe_v1_recipes_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecipeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/recipes/{recipe_id}/activate": {
+      "post": {
+        "tags": [
+          "recipes"
+        ],
+        "summary": "Activate Recipe",
+        "operationId": "activate_recipe_v1_recipes__recipe_id__activate_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "recipe_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Recipe Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeActionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/recipes/{recipe_id}/deactivate": {
+      "post": {
+        "tags": [
+          "recipes"
+        ],
+        "summary": "Deactivate Recipe",
+        "operationId": "deactivate_recipe_v1_recipes__recipe_id__deactivate_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "recipe_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Recipe Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeActionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/recipes/{recipe_id}/run": {
+      "post": {
+        "tags": [
+          "recipes"
+        ],
+        "summary": "Run Recipe",
+        "description": "Trigger the recipe's manual webhook. Every compiled recipe carries one,\nscheduled ones included, so \"Run now\" works without waiting for the cron.",
+        "operationId": "run_recipe_v1_recipes__recipe_id__run_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "recipe_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Recipe Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeActionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/admin/users": {
       "get": {
         "tags": [
@@ -2892,6 +3486,81 @@
         }
       }
     },
+    "/v1/admin/services": {
+      "get": {
+        "tags": [
+          "admin:services"
+        ],
+        "summary": "List Services",
+        "description": "Live status of every service in the catalog. Secrets are masked here\nunconditionally \u2014 see the module docstring.",
+        "operationId": "list_services_v1_admin_services_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServicesOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/services/{name}/reveal": {
+      "post": {
+        "tags": [
+          "admin:services"
+        ],
+        "summary": "Reveal Credentials",
+        "description": "Plaintext dev credentials for one service \u2014 an explicit, separately\naudited action (AuditMiddleware records the POST), not something the page\nload hands out.\n\nThe extra `platform_admin` role check is deliberate belt-and-braces: it\nkeeps the reveal tied to that one role even if MANAGE_PLATFORM is ever\ngranted to another role in `rbac.py`.",
+        "operationId": "reveal_credentials_v1_admin_services__name__reveal_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevealOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/subjects/{hash_}": {
       "delete": {
         "tags": [
@@ -3101,6 +3770,42 @@
           "collection_ids"
         ],
         "title": "AgentOut"
+      },
+      "AgentRunIn": {
+        "properties": {
+          "agent": {
+            "type": "string",
+            "title": "Agent"
+          },
+          "question": {
+            "type": "string",
+            "title": "Question"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent",
+          "question"
+        ],
+        "title": "AgentRunIn"
+      },
+      "AgentRunOut": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "trace_id": {
+            "type": "string",
+            "title": "Trace Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "trace_id"
+        ],
+        "title": "AgentRunOut"
       },
       "AgentSummaryOut": {
         "properties": {
@@ -3387,6 +4092,11 @@
               }
             ],
             "title": "Sla At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
           }
         },
         "type": "object",
@@ -3399,7 +4109,8 @@
           "status",
           "decided_by",
           "decided_at",
-          "sla_at"
+          "sla_at",
+          "created_at"
         ],
         "title": "ApprovalOut"
       },
@@ -3835,6 +4546,41 @@
         ],
         "title": "CostSummaryOut"
       },
+      "CredentialOut": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "secret_masked": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secret Masked"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label"
+        ],
+        "title": "CredentialOut"
+      },
       "DecisionIn": {
         "properties": {
           "decision": {
@@ -3964,6 +4710,52 @@
           "status"
         ],
         "title": "DocumentOut"
+      },
+      "EmailSendIn": {
+        "properties": {
+          "to": {
+            "type": "string",
+            "title": "To"
+          },
+          "subject": {
+            "type": "string",
+            "title": "Subject"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          }
+        },
+        "type": "object",
+        "required": [
+          "to",
+          "subject",
+          "body"
+        ],
+        "title": "EmailSendIn"
+      },
+      "EmailSendOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "approval_id": {
+            "type": "integer",
+            "title": "Approval Id"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "approval_id",
+          "run_id"
+        ],
+        "title": "EmailSendOut"
       },
       "ErasureResult": {
         "properties": {
@@ -4312,6 +5104,24 @@
         ],
         "title": "ModelOut"
       },
+      "NotifyIn": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "message"
+        ],
+        "title": "NotifyIn"
+      },
       "PgQueryIn": {
         "properties": {
           "sql": {
@@ -4346,6 +5156,34 @@
           "row_count"
         ],
         "title": "PgQueryOut"
+      },
+      "PreviewOut": {
+        "properties": {
+          "summary": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Summary"
+          },
+          "has_write_external": {
+            "type": "boolean",
+            "title": "Has Write External"
+          },
+          "workflow": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Workflow"
+          }
+        },
+        "type": "object",
+        "required": [
+          "summary",
+          "has_write_external",
+          "workflow"
+        ],
+        "title": "PreviewOut"
       },
       "QueryIn": {
         "properties": {
@@ -4435,6 +5273,216 @@
         ],
         "title": "ReadOnlyOut"
       },
+      "RecipeActionOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "RecipeActionOut"
+      },
+      "RecipeIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "trigger": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Trigger"
+          },
+          "steps": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Steps"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "trigger",
+          "steps"
+        ],
+        "title": "RecipeIn",
+        "description": "The recipe as the builder posts it \u2014 validated by `Recipe` itself."
+      },
+      "RecipeOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "definition": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Definition"
+          },
+          "n8n_workflow_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "N8N Workflow Id"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "summary": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Summary",
+            "default": []
+          },
+          "has_write_external": {
+            "type": "boolean",
+            "title": "Has Write External",
+            "default": false
+          },
+          "deploy_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deploy Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "definition",
+          "n8n_workflow_id",
+          "active",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "RecipeOut"
+      },
+      "RevealOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "credentials": {
+            "items": {
+              "$ref": "#/components/schemas/RevealedCredentialOut"
+            },
+            "type": "array",
+            "title": "Credentials"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "credentials"
+        ],
+        "title": "RevealOut"
+      },
+      "RevealedCredentialOut": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "secret": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secret"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label"
+        ],
+        "title": "RevealedCredentialOut"
+      },
       "RoleIn": {
         "properties": {
           "role": {
@@ -4512,6 +5560,111 @@
           "status"
         ],
         "title": "RunResultOut"
+      },
+      "ServiceOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "group": {
+            "type": "string",
+            "title": "Group"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "optional": {
+            "type": "boolean",
+            "title": "Optional"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "queue_depth": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queue Depth"
+          },
+          "credentials": {
+            "items": {
+              "$ref": "#/components/schemas/CredentialOut"
+            },
+            "type": "array",
+            "title": "Credentials",
+            "default": []
+          },
+          "has_credentials": {
+            "type": "boolean",
+            "title": "Has Credentials",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "group",
+          "url",
+          "optional",
+          "status"
+        ],
+        "title": "ServiceOut"
+      },
+      "ServicesOut": {
+        "properties": {
+          "services": {
+            "items": {
+              "$ref": "#/components/schemas/ServiceOut"
+            },
+            "type": "array",
+            "title": "Services"
+          },
+          "healthy": {
+            "type": "integer",
+            "title": "Healthy"
+          },
+          "down": {
+            "type": "integer",
+            "title": "Down"
+          }
+        },
+        "type": "object",
+        "required": [
+          "services",
+          "healthy",
+          "down"
+        ],
+        "title": "ServicesOut"
       },
       "SlackPostIn": {
         "properties": {

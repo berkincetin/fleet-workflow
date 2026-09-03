@@ -23,9 +23,9 @@ export function useToast() {
 }
 
 const variantClass: Record<ToastVariant, string> = {
-  default: "border-[var(--border)] bg-[var(--background)]",
-  success: "border-green-600/40 bg-green-50 text-green-900 dark:bg-green-950 dark:text-green-200",
-  error: "border-red-600/40 bg-red-50 text-red-900 dark:bg-red-950 dark:text-red-200",
+  default: "border-[var(--border)] bg-[var(--surface)]",
+  success: "border-[var(--success)] bg-[var(--success-bg)] text-[var(--success-fg)]",
+  error: "border-[var(--danger)] bg-[var(--danger-bg)] text-[var(--danger-fg)]",
 };
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
@@ -51,7 +51,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               }
             }}
             className={cn(
-              "rounded-md border px-4 py-3 text-sm shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out",
+              "rounded-[var(--radius-md)] border px-4 py-3 text-sm shadow-[var(--shadow-md)] data-[state=open]:animate-in data-[state=closed]:animate-out",
               variantClass[m.variant],
             )}
           >

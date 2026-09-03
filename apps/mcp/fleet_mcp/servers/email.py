@@ -34,6 +34,14 @@ class InvalidRecipientError(Exception):
     """Recipient address is malformed or outside the allowed domain set."""
 
 
+def is_allowed_recipient(to: str, allowed_domains: set[str]) -> bool:
+    """The domain-allowlist check on its own, for callers that need to reject a
+    recipient *before* an email is queued for approval (task 13.4's
+    `/v1/service/email-send`) rather than at send time."""
+    match = _EMAIL_RE.match(to)
+    return bool(match and match.group(1) in allowed_domains)
+
+
 class EmailSender(Protocol):
     async def send(self, *, to: str, subject: str, body: str) -> None: ...
 
@@ -44,8 +52,7 @@ class EmailSendTool:
     allowed_domains: set[str]
 
     def _validate(self, to: str) -> None:
-        match = _EMAIL_RE.match(to)
-        if not match or match.group(1) not in self.allowed_domains:
+        if not is_allowed_recipient(to, self.allowed_domains):
             raise InvalidRecipientError(f"recipient not allowed: {to!r}")
 
     async def send(self, to: str, subject: str, body: str) -> None:

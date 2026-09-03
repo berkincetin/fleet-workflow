@@ -7,7 +7,15 @@
     "examples": "Examples",
     "knowledge": "Knowledge",
     "approvals": "My Approvals",
-    "admin": "Admin"
+    "admin": "Admin",
+    "newAutomation": "New automation",
+    "groups": {
+      "work": "Work",
+      "automation": "Automation",
+      "knowledge": "Knowledge",
+      "admin": "Admin"
+    },
+    "guide": "Guide"
   },
   "auth": {
     "signIn": "Sign in",
@@ -17,20 +25,39 @@
   "chat": {
     "title": "Chat",
     "agent": "Agent",
-    "noAgents": "No agents available yet.",
     "placeholder": "Ask a question…",
     "send": "Send",
-    "citationsCount": "{count, plural, one {# citation} other {# citations}}"
+    "citationsCount": "{count, plural, one {# citation} other {# citations}}",
+    "intro": "Ask an agent a question and get an answer with its sources attached.",
+    "howToLabel": "How do I use this screen?",
+    "howTo": [
+      "Pick an agent at the top — each one has its own knowledge base and its own tools.",
+      "Type your question; the answer streams in and lists the sources it used underneath.",
+      "Use the thumbs buttons under an answer to leave feedback — it is recorded in Langfuse."
+    ],
+    "emptyTitle": "No agent available yet",
+    "emptyDesc": "Starting a chat needs at least one active agent. Enable one under Admin > Agents.",
+    "startersHeading": "What can you ask this agent?",
+    "starters": {
+      "support_copilot": {
+        "q1": "How do I cancel my order?",
+        "q2": "How many days does a refund take?",
+        "q3": "Where do I find my tracking number?"
+      },
+      "analytics": {
+        "q1": "Which region sold the most in the last 30 days?",
+        "q2": "How is total revenue split across regions?",
+        "q3": "How many orders were refunded?"
+      }
+    }
   },
   "knowledge": {
     "title": "Knowledge",
     "collections": "Collections",
-    "noCollections": "No collections yet.",
     "upload": "Upload document",
     "uploadPrompt": "Choose a file to upload into this collection.",
     "selectCollection": "Select a collection",
     "documents": "Documents",
-    "noDocuments": "No documents in this collection yet.",
     "status": {
       "pending": "Pending",
       "queued": "Queued",
@@ -39,11 +66,21 @@
     },
     "uploading": "Uploading…",
     "uploadSuccess": "Upload complete — ingestion started.",
-    "uploadError": "Upload failed."
+    "uploadError": "Upload failed.",
+    "intro": "The documents agents ground their answers in live here.",
+    "howToLabel": "How do I use this screen?",
+    "howTo": [
+      "Pick a collection on the left; each has its own sensitivity level and retention rule.",
+      "Upload a document — the system extracts the text, flags personal data, chunks it and makes it searchable.",
+      "Once the status reads 'Ready' the document can be cited in Chat."
+    ],
+    "emptyCollectionsTitle": "No collections yet",
+    "emptyCollectionsDesc": "A collection is the box that groups documents by sensitivity and retention rule. The first ones come from `make seed`, or an admin creates them.",
+    "emptyDocumentsTitle": "No documents in this collection",
+    "emptyDocumentsDesc": "Add the first one with 'Upload document' above; processing starts in the background as soon as the upload finishes."
   },
   "approvals": {
     "title": "My Approvals",
-    "noPending": "No pending approvals.",
     "agent": "Agent",
     "action": "Action",
     "payload": "Payload",
@@ -54,7 +91,20 @@
     "cancel": "Cancel",
     "decided": "Decision recorded.",
     "decideError": "Failed to record decision.",
-    "invalidJson": "Payload must be valid JSON."
+    "invalidJson": "Payload must be valid JSON.",
+    "intro": "Anything an agent wants to send outside the company waits here until you decide.",
+    "howToLabel": "How do I use this screen?",
+    "howTo": [
+      "Each row is an agent's paused step — the action has not happened yet.",
+      "Review the payload; use 'Edit payload' to change it before it goes out.",
+      "Approving resumes the run and the action really happens; rejecting cancels it."
+    ],
+    "emptyTitle": "No pending approvals",
+    "emptyDesc": "When an agent attempts an action that leaves the company (sending an email, for instance) a row appears here and waits for your decision.",
+    "whyWaitingLabel": "Why is this waiting?",
+    "whyWaiting": "This step is an action that leaves the company; Fleet never runs one on its own — it asks a person first.",
+    "waitingSince": "Waiting for",
+    "slaDue": "Decision due"
   },
   "common": {
     "loading": "Loading…",
@@ -64,47 +114,99 @@
     "runNow": "Run now",
     "create": "Create",
     "tryIt": "Try it",
-    "advanced": "Advanced"
+    "advanced": "Advanced",
+    "back": "Back",
+    "next": "Next",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "cancel": "Cancel",
+    "none": "—"
   },
   "home": {
     "greeting": "Hello{name, select, none {} other {, {name}}}",
-    "subtitle": "What would you like to do on Fleet today?",
-    "cardChatTitle": "Ask a question",
-    "cardChatDesc": "Ask one of our agents a question and get a cited answer.",
-    "cardAutomationsTitle": "Run an automation",
-    "cardAutomationsDesc": "Start automations like invoice processing or the weekly summary.",
-    "cardExamplesTitle": "Try the examples",
-    "cardExamplesDesc": "Explore what the platform can do with ready-made examples.",
-    "cardApprovalsTitle": "Pending approvals",
-    "cardApprovalsDesc": "You have {count} items waiting for review.",
-    "cardApprovalsDescEmpty": "No pending approvals right now.",
-    "cardAdminTitle": "Admin panel",
-    "cardAdminDesc": "Manage agents, models, and API keys."
+    "intro": "Fleet as it stands today: what is waiting for approval, what automations ran, and which agents you can talk to.",
+    "howToLabel": "How do I use this screen?",
+    "howTo": [
+      "The tiles above show only the numbers your role can see; each one links to the screen that acts on it.",
+      "Go to Chat to ask a question, or to Examples to try a ready-made task.",
+      "Go to Automations to run one by hand or to define a new one."
+    ],
+    "tileApprovals": "Pending approvals",
+    "tileApprovalsHint": "Waiting for your decision",
+    "tileApprovalsHintEmpty": "Nothing waiting",
+    "tileAutomations": "Active automations",
+    "tileAutomationsHint": "Ready to run on n8n",
+    "tileAgents": "Active agents",
+    "tileAgentsHint": "Available to you in Chat",
+    "tileSpend": "Spend today",
+    "tileSpendHint": "Model cost over the last 24 hours",
+    "recentRuns": "Recent automation runs",
+    "noRunsTitle": "No automation has run yet",
+    "noRunsDesc": "Run an automation by hand from the Automations screen and its result shows up here.",
+    "activeAgents": "Active agents",
+    "noAgentsTitle": "No active agents",
+    "noAgentsDesc": "A chat cannot start until an agent is active. Enable one under Admin > Agents."
   },
   "scenarios": {
     "title": "Department Scenarios",
-    "subtitle": "The scenarios Fleet offers, and will offer, for each department.",
     "statusLive": "Live",
     "statusPartial": "Partially live",
     "statusComingSoon": "Coming soon",
     "comingSoonAt": "Sprint {sprint}",
     "open": "Open",
     "items": {
-      "support_copilot": { "name": "Support Copilot", "desc": "Grounded answers from the help-center knowledge base." },
-      "analytics": { "name": "Self-Service Analytics", "desc": "Ask a question in plain language, get SQL and a result table." },
-      "dev_agent": { "name": "Dev Agent", "desc": "Takes a Jira ticket, plans, branches, and drafts a PR." },
-      "invoice_agent": { "name": "Invoice Reconciliation", "desc": "Extracts fields from an invoice image and sends them for approval." },
-      "hr_talent": { "name": "HR Talent & Onboarding", "desc": "CV analysis into a role-match shortlist draft, plus policy Q&A." },
-      "listing_quality": { "name": "Listing Quality", "desc": "Checks new listings for photo-description consistency." },
-      "vehicle_intake": { "name": "Vehicle Intake Assessment", "desc": "Drafts a pre-assessment brief from expertise reports and photos." },
-      "insights_publisher": { "name": "Insights Publisher", "desc": "Drafts the monthly price-index report in brand voice." },
-      "dealer_onboarding": { "name": "Dealer Onboarding", "desc": "Checks dealer application documents and requests missing items by email." },
-      "legal_review": { "name": "Legal & Compliance Review", "desc": "First-pass contract review against company playbooks, flags risky clauses." }
-    }
+      "support_copilot": {
+        "name": "Support Copilot",
+        "desc": "Grounded answers from the help-center knowledge base."
+      },
+      "analytics": {
+        "name": "Self-Service Analytics",
+        "desc": "Ask a question in plain language, get SQL and a result table."
+      },
+      "dev_agent": {
+        "name": "Dev Agent",
+        "desc": "Takes a Jira ticket, plans, branches, and drafts a PR."
+      },
+      "invoice_agent": {
+        "name": "Invoice Reconciliation",
+        "desc": "Extracts fields from an invoice image and sends them for approval."
+      },
+      "hr_talent": {
+        "name": "HR Talent & Onboarding",
+        "desc": "CV analysis into a role-match shortlist draft, plus policy Q&A."
+      },
+      "listing_quality": {
+        "name": "Listing Quality",
+        "desc": "Checks new listings for photo-description consistency."
+      },
+      "vehicle_intake": {
+        "name": "Vehicle Intake Assessment",
+        "desc": "Drafts a pre-assessment brief from expertise reports and photos."
+      },
+      "insights_publisher": {
+        "name": "Insights Publisher",
+        "desc": "Drafts the monthly price-index report in brand voice."
+      },
+      "dealer_onboarding": {
+        "name": "Dealer Onboarding",
+        "desc": "Checks dealer application documents and requests missing items by email."
+      },
+      "legal_review": {
+        "name": "Legal & Compliance Review",
+        "desc": "First-pass contract review against company playbooks, flags risky clauses."
+      }
+    },
+    "intro": "The agent scenarios each department has today, and the ones still on the way.",
+    "howToLabel": "How do I use this screen?",
+    "howTo": [
+      "Cards tagged 'Live' can be tried today; the link on the card takes you straight to that agent.",
+      "'Coming soon' cards name the sprint they land in.",
+      "To see what a scenario actually does, use the ready-made inputs on the Examples screen."
+    ]
   },
   "automations": {
     "title": "Automations",
-    "subtitle": "Start and monitor the automations running on n8n from here.",
     "n8nDown": "The automation system (n8n) is currently unreachable. Please notify your admin or try again later.",
     "n8nAuthError": "Could not connect to the automation system — the API key is missing or invalid. Contact your admin.",
     "statusActive": "Active",
@@ -123,12 +225,30 @@
     "runQueuedForApproval": "Invoice queued — check the Approvals page.",
     "runInactive": "This automation is currently inactive — activate it first.",
     "runUnreachable": "Could not reach the automation system.",
-    "advancedEditorLink": "Open the n8n editor"
+    "advancedEditorLink": "Open the n8n editor",
+    "intro": "Scheduled and manually triggered automations; all of them execute on n8n.",
+    "howToLabel": "How do I use this screen?",
+    "howTo": [
+      "If a card reads 'Active' the automation runs on its own when its trigger fires.",
+      "'Run now' triggers it without waiting; the outcome appears on the 'Last run' line.",
+      "Use 'New automation' to define your own — steps that leave the company still go through approval."
+    ],
+    "emptyTitle": "No automations yet",
+    "emptyDesc": "An automation is a trigger (a schedule or a manual run) plus a list of steps. Define your first one with 'New automation'.",
+    "catalogSection": "Built-in automations",
+    "recipesSection": "Your automations",
+    "newRecipe": "New automation",
+    "editRecipe": "Edit",
+    "deleteRecipe": "Delete",
+    "deleteConfirm": "Delete this automation? Its n8n counterpart is removed too.",
+    "deleted": "Automation deleted.",
+    "deleteError": "Could not delete the automation.",
+    "notDeployed": "Not deployed to n8n",
+    "deployFailed": "The automation was saved but could not be deployed to n8n. Check that n8n is running and save it again."
   },
   "examples": {
     "title": "Examples",
     "subtitle": "Try sample tasks for each agent, or add your own example.",
-    "noExamples": "No examples for this agent yet.",
     "tryIt": "Try it",
     "addExample": "Add example",
     "addExampleTitle": "Add a new example",
@@ -147,7 +267,16 @@
     "uploadCvImage": "Upload a CV image",
     "candidateName": "Candidate name",
     "criteria": "Required criteria (comma-separated)",
-    "criteriaPlaceholder": "e.g. Python, SQL, 3+ years"
+    "criteriaPlaceholder": "e.g. Python, SQL, 3+ years",
+    "intro": "Ready-made sample tasks for each agent — the fastest way to try the platform.",
+    "howToLabel": "How do I use this screen?",
+    "howTo": [
+      "Pick an agent at the top and press 'Try it' on an example.",
+      "Examples are real runs: steps that leave the company still land in the approval queue.",
+      "An example you add yourself shows up in the same list for everyone."
+    ],
+    "emptyTitle": "No examples for this agent",
+    "emptyDesc": "Write the first one with 'Add example' — what you add is visible to everyone else too."
   },
   "admin": {
     "title": "Admin",
@@ -234,6 +363,289 @@
     "auditAction": "Action",
     "auditSearch": "Search",
     "auditTime": "Time",
-    "auditTrace": "Trace"
+    "auditTrace": "Trace",
+    "intro": "Platform settings: agents, models, users, budgets and services.",
+    "howToLabel": "How do I use this screen?",
+    "howTo": [
+      "Tabs appear according to your role — Agents is open to builders, the rest to platform admins.",
+      "A model's sensitivity clearance decides which data that model is allowed to see.",
+      "The Services tab shows the live health and local addresses of the whole stack."
+    ],
+    "emptyAgentsTitle": "No agents registered",
+    "emptyAgentsDesc": "An agent is a prompt, a model and a tool list. Add one with 'New agent', or load the demo agents with `make seed`.",
+    "emptyModelsTitle": "No models registered",
+    "emptyModelsDesc": "A model entry names a model on the LiteLLM gateway and its sensitivity clearance. Start with 'Add model'.",
+    "emptyUsersTitle": "No users",
+    "emptyUsersDesc": "Users are created in Keycloak and appear here on first sign-in. `make seed` loads the demo users.",
+    "emptyKeysTitle": "No API keys",
+    "emptyKeysDesc": "An API key is how a service such as n8n identifies itself to Fleet. Create one with 'Issue key' — the value is shown only once.",
+    "emptyBudgetsTitle": "No budgets defined",
+    "emptyBudgetsDesc": "A budget caps monthly or daily spend for a department, agent or user. Add one with 'Create budget'.",
+    "emptyAuditTitle": "No entries found",
+    "emptyAuditDesc": "An audit entry is written on every API request. Loosen the filters, or do a few things in the app and look again.",
+    "services": "Services",
+    "servicesFooter": "These credentials are for the local development stack only; they are read from the environment and never committed."
+  },
+  "theme": {
+    "label": "Theme",
+    "system": "System theme",
+    "light": "Light theme",
+    "dark": "Dark theme"
+  },
+  "glossary": {
+    "title": "Glossary",
+    "writeExternal": {
+      "term": "write:external",
+      "definition": "A write that leaves the company (sending an email, opening a PR). Fleet never runs one on its own — it goes to the approval queue first."
+    },
+    "sensitivityPii": {
+      "term": "sensitivity: pii",
+      "definition": "The content contains personal data. These requests are routed to local models only and never reach a cloud model (KVKK)."
+    },
+    "riskClass": {
+      "term": "risk_class",
+      "definition": "The risk label every tool carries: read, write:internal, or write:external. It is what decides whether an approval is required."
+    },
+    "hitl": {
+      "term": "HITL",
+      "definition": "Human-in-the-loop: at a risky step the run pauses, a person reviews it and approves or rejects. The rows on the Approvals screen are those pauses."
+    }
+  },
+  "services": {
+    "refresh": "Refresh",
+    "healthyCount": "{count} services up",
+    "downCount": "{count} services down",
+    "statusHealthy": "Up",
+    "statusDown": "Down",
+    "statusNotRunning": "Not started",
+    "statusUnknown": "Unknown",
+    "url": "Address",
+    "latency": "Response time",
+    "queueDepth": "Queued jobs",
+    "detail": "Detail",
+    "reveal": "Show credentials",
+    "hide": "Hide",
+    "revealError": "Could not reveal the credentials.",
+    "revealRestricted": "Plaintext credentials are shown to platform admins only; here they stay masked.",
+    "emptyTitle": "Could not read service status",
+    "emptyDesc": "The Fleet API could not be reached. Check that it is running (`make api`) and try again.",
+    "purposeUnknown": "No description written for this service yet.",
+    "optionalHintGeneric": "This service is not part of the default stack; being down is normal.",
+    "optionalHint": {
+      "ollama": "Needed for the local model lane (KVKK). Start it with `make dev PROFILE=ollama` or the Ollama app itself.",
+      "arq": "The worker that drains the document-processing queue. Start it with `uv run arq fleet_rag.ingest.worker.WorkerSettings`."
+    },
+    "groups": {
+      "core": "Core",
+      "provider": "Model providers",
+      "automation": "Automation",
+      "worker": "Queues and workers",
+      "observability": "Observability"
+    },
+    "purpose": {
+      "postgres": "The platform's main database: users, agents, collections, approvals, the spend ledger and the audit log.",
+      "redis": "Rate limiting, the semantic cache, and the job queues (RAG ingest, n8n queue mode) all live here.",
+      "qdrant": "Vectors for document chunks — what RAG search actually reads.",
+      "minio": "Object store holding the raw uploaded files (S3-compatible).",
+      "keycloak": "Authentication and role management; the web app and the API trust the tokens it issues.",
+      "litellm": "The gateway every LLM call goes through — model routing, budgets and cost accounting happen here.",
+      "ollama": "The local model lane: requests carrying personal data only ever reach models on this machine.",
+      "langfuse": "LLM traces: prompt, response, cost and latency for every call.",
+      "prometheus": "Metric collection and alerting rules.",
+      "grafana": "Dashboards over metrics and logs.",
+      "loki": "Where application logs are collected.",
+      "alertmanager": "Routes Prometheus alerts to channels such as Slack.",
+      "mailpit": "Development SMTP box: email an agent sends never leaves the machine, it lands here.",
+      "n8n-main": "The automation editor and its REST API; stores workflows and enqueues executions.",
+      "n8n-worker": "The worker process that actually runs the queued automation executions.",
+      "arq": "The worker that runs after a document upload: text extraction, OCR, PII scan, chunking and embedding.",
+      "promtail": "The agent that collects container logs and pushes them to Loki — Loki's only source of data."
+    }
+  },
+  "builder": {
+    "title": "New automation",
+    "editTitle": "Edit {name}",
+    "intro": "Pick a trigger and a few steps; Fleet turns it into a workflow that runs on n8n.",
+    "howToLabel": "How do I use this screen?",
+    "howTo": [
+      "Give the automation a name first — it becomes the identity of the workflow in n8n and cannot be changed later.",
+      "Choose the trigger: scheduled (runs by itself at set times) or manual (only when you run it).",
+      "Add steps in order. Use {{steps.step_id.field}} in a later step to reuse an earlier step's output.",
+      "Optionally add a condition: one set of steps runs when it holds, another when it does not.",
+      "Read what it will do in plain language with 'Preview', then save. Saving deploys it to n8n; you still have to activate it before it runs."
+    ],
+    "sectionBasics": "1. Definition",
+    "sectionTrigger": "2. When should it run?",
+    "sectionSteps": "3. What should it do?",
+    "sectionPreview": "4. Preview and save",
+    "name": "Name",
+    "namePlaceholder": "weekly-sales-summary",
+    "nameHint": "Lowercase letters, digits and dashes. It becomes the workflow's identity in n8n.",
+    "nameLocked": "The name is the workflow's identity in n8n and cannot be changed.",
+    "description": "Description",
+    "triggerManual": "Manual",
+    "triggerSchedule": "Scheduled",
+    "triggerManualHint": "Runs only when you press 'Run now' on the Automations screen.",
+    "triggerScheduleHint": "Runs by itself at the times you choose; you can still trigger it by hand.",
+    "cronExpression": "Cron expression",
+    "cronPresets": {
+      "everyMorning": "Every day 09:00",
+      "everyMonday": "Every Monday 09:00",
+      "everyMonthFirst": "1st of each month 09:00",
+      "everyHour": "Hourly"
+    },
+    "addStep": "Add step",
+    "addCondition": "Add condition",
+    "action": "Action",
+    "operator": "Comparison",
+    "ifLabel": "If",
+    "thenLabel": "then",
+    "elseLabel": "otherwise",
+    "branchEmpty": "(no steps)",
+    "needsApproval": "Needs approval",
+    "selectAgent": "Choose an agent",
+    "referenceHint": "Reuse an earlier step's output in a later one with {{steps.step_id.field}}. No other kind of expression is accepted.",
+    "preview": "Preview",
+    "previewHint": "Read what the automation will do with 'Preview' before saving it.",
+    "previewError": "The automation is not valid. Check the fields.",
+    "saveError": "Could not save the automation.",
+    "saved": "Automation saved and deployed to n8n.",
+    "savedButNotDeployed": "Automation saved but could not be deployed to n8n.",
+    "writeExternalWarning": "This automation has a step that leaves the company; when it runs it will not send directly, it lands in the approval queue.",
+    "summaryScheduleTrigger": "On schedule: {cron}",
+    "summaryManualTrigger": "When run by hand",
+    "summaryCondition": "If {left} {operator} {right}",
+    "operators": {
+      "eq": "equals",
+      "ne": "does not equal",
+      "gt": "is greater than",
+      "gte": "is at least",
+      "lt": "is less than",
+      "lte": "is at most",
+      "contains": "contains"
+    },
+    "fields": {
+      "sql": "SQL query",
+      "agent": "Agent",
+      "question": "Question",
+      "channel": "Channel",
+      "text": "Message",
+      "to": "Recipient",
+      "subject": "Subject",
+      "body": "Body",
+      "title": "Title",
+      "message": "Message"
+    },
+    "actions": {
+      "pg": {
+        "query": {
+          "label": "Database query",
+          "help": "Runs a read-only SQL query. The table allowlist, row limit and timeout are the same ones the Analytics agent gets."
+        }
+      },
+      "agent": {
+        "run": {
+          "label": "Ask an agent",
+          "help": "Asks an agent a question and makes its answer available to later steps."
+        }
+      },
+      "slack": {
+        "post": {
+          "label": "Post to Slack",
+          "help": "Posts a message to an allowlisted Slack channel."
+        }
+      },
+      "email": {
+        "send": {
+          "label": "Send an email",
+          "help": "Does not send directly: it lands in the approval queue and goes out once a person approves it."
+        }
+      },
+      "http": {
+        "notify": {
+          "label": "Record a note",
+          "help": "Sends nothing outside the company; leaves a note in the audit log."
+        }
+      }
+    },
+    "templates": {
+      "heading": "Ready-made automations",
+      "intro": "Start from a working example instead of a blank form. Picking a template fills the form in; rename it and edit the fields before saving.",
+      "needsApproval": "Needs approval",
+      "weeklySalesDigest": {
+        "title": "Weekly sales digest",
+        "description": "Every Monday morning, totals the last 7 days of sales by region and posts a summary to the #weekly-summary Slack channel.",
+        "when": "Mondays at 09:00"
+      },
+      "refundWatch": {
+        "title": "Refund watch",
+        "description": "Counts refunded orders each morning. It messages #dev-agent only when there are any — a quiet day sends nothing.",
+        "when": "Daily at 09:00"
+      },
+      "agentBriefing": {
+        "title": "Daily analytics briefing",
+        "description": "Puts the same question to the Analytics agent each morning and records the answer in the audit log. Nothing leaves the platform.",
+        "when": "Daily at 09:00"
+      },
+      "monthlyReport": {
+        "title": "Monthly report email",
+        "description": "Emails a sales summary on the first of the month. The email is not sent straight away: it queues in Approvals and goes out once you approve it.",
+        "when": "1st of the month at 09:00"
+      }
+    }
+  },
+  "guide": {
+    "title": "Guide",
+    "intro": "Short paths showing how Fleet's screens connect: ask a question, add knowledge, build an automation, and watch the approval gate work.",
+    "howToLabel": "How to use this page",
+    "howTo": [
+      "Pick one of the paths below — each says how long it takes.",
+      "Read the steps, then use the button to go straight to that screen.",
+      "If a term is unfamiliar, check the glossary at the bottom of the page."
+    ],
+    "walkthroughsHeading": "Step-by-step paths",
+    "minutes": "~{count} min",
+    "glossaryHeading": "Terms",
+    "glossaryIntro": "The four terms in Fleet's screens that are platform vocabulary rather than plain English.",
+    "walkthroughs": {
+      "askAgent": {
+        "title": "Ask an agent a question",
+        "intro": "The shortest path: ask an agent something and see which document the answer came from.",
+        "s1": "Open Chat and pick support_copilot from the list at the top.",
+        "s2": "Click one of the suggested questions — it drops into the composer.",
+        "s3": "Send it and watch the answer stream in.",
+        "s4": "Check the source count under the answer — the agent did not invent this, it read it from the knowledge base.",
+        "cta": "Open Chat"
+      },
+      "addKnowledge": {
+        "title": "Add a document to the knowledge base",
+        "intro": "You decide what the agents answer from. Once your document is processed it shows up as a source in answers.",
+        "s1": "Open the Knowledge screen.",
+        "s2": "Pick a collection and upload a PDF or text file.",
+        "s3": "Wait for the status to move from processing to ready — the document is chunked, scanned for personal data and indexed.",
+        "s4": "Go back to Chat and ask about something in it; the new document should appear among the answer's sources.",
+        "cta": "Open Knowledge"
+      },
+      "buildAutomation": {
+        "title": "Build an automation",
+        "intro": "Set up a scheduled job that reads data, summarises it and posts to Slack. No code — a form.",
+        "s1": "Start from the Weekly sales digest template — the form arrives filled in.",
+        "s2": "Read the steps: one query, one Slack message. Edit the text if you like.",
+        "s3": "Use Preview to read what it will do in plain language.",
+        "s4": "Save it — the automation is deployed to n8n.",
+        "s5": "Hit Run now and see the result on the card; you don't have to wait for the cron.",
+        "cta": "Start from a template"
+      },
+      "approvalFlow": {
+        "title": "See the approval gate",
+        "intro": "Anything that reaches outside the platform — an email, a write to another system — is never done directly. This path shows that wall working.",
+        "s1": "Open the Monthly report email template — it contains an email step.",
+        "s2": "Notice the needs approval warning beside that step in the form.",
+        "s3": "Save it and hit Run now.",
+        "s4": "Go to Approvals: no email was sent, it queued, and the row says why it is waiting.",
+        "s5": "Approve it; only then does the action complete.",
+        "cta": "Open the template"
+      }
+    }
   }
 }

@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import type { components } from "@fleet/shared";
+import { Wallet } from "lucide-react";
+import { EmptyState } from "@/components/layout/empty-state";
 
 type BudgetOut = components["schemas"]["BudgetOut"];
 
@@ -80,10 +82,10 @@ export function BudgetsAdmin({ initialBudgets }: { initialBudgets: BudgetOut[] }
         <CardTitle>{t("budgetsTitle")}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
 
         {budgets.some((b) => b.soft_exceeded || b.hard_exceeded) && (
-          <div className="rounded-md border border-amber-500/40 bg-amber-50 p-3 text-sm dark:bg-amber-950">
+          <div className="rounded-[var(--radius-md)] border border-[var(--warning)] bg-[var(--warning-bg)] p-3 text-sm text-[var(--warning-fg)]">
             <p className="font-medium">{t("budgetWarningBanner")}</p>
             <ul className="mt-1 list-inside list-disc">
               {budgets
@@ -151,6 +153,13 @@ export function BudgetsAdmin({ initialBudgets }: { initialBudgets: BudgetOut[] }
           </Button>
         </div>
 
+        {budgets.length === 0 ? (
+          <EmptyState
+            icon={Wallet}
+            title={t("emptyBudgetsTitle")}
+            description={t("emptyBudgetsDesc")}
+          />
+        ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -212,6 +221,7 @@ export function BudgetsAdmin({ initialBudgets }: { initialBudgets: BudgetOut[] }
             ))}
           </TableBody>
         </Table>
+        )}
       </CardContent>
     </Card>
   );

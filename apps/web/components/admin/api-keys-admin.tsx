@@ -10,10 +10,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import type { components } from "@fleet/shared";
+import { KeyRound } from "lucide-react";
+import { EmptyState } from "@/components/layout/empty-state";
 
 type ApiKeyOut = components["schemas"]["ApiKeyOut"];
 
-const AVAILABLE_SCOPES = ["pg_ro", "slack_post", "invoice_intake"];
+// Mirrors the `require_scope(...)` names used across routers/service.py
+// and routers/invoice_agent.py — the automation-recipe actions added in
+// task 13.4 need their own scopes here or an n8n key cannot be issued for
+// a recipe that uses them.
+const AVAILABLE_SCOPES = [
+  "pg_ro",
+  "slack_post",
+  "invoice_intake",
+  "agent_run",
+  "email_send",
+  "notify",
+];
 
 export function ApiKeysAdmin({ initialKeys }: { initialKeys: ApiKeyOut[] }) {
   const t = useTranslations("admin");
@@ -58,7 +71,7 @@ export function ApiKeysAdmin({ initialKeys }: { initialKeys: ApiKeyOut[] }) {
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {rawKey && (
-          <div className="rounded-md border border-amber-500/40 bg-amber-50 p-3 text-sm dark:bg-amber-950">
+          <div className="rounded-[var(--radius-md)] border border-[var(--warning)] bg-[var(--warning-bg)] p-3 text-sm text-[var(--warning-fg)]">
             <p className="mb-1 font-medium">{t("keyShownOnce")}</p>
             <code className="break-all">{rawKey}</code>
           </div>
@@ -87,6 +100,13 @@ export function ApiKeysAdmin({ initialKeys }: { initialKeys: ApiKeyOut[] }) {
           </Button>
         </div>
 
+        {keys.length === 0 ? (
+          <EmptyState
+            icon={KeyRound}
+            title={t("emptyKeysTitle")}
+            description={t("emptyKeysDesc")}
+          />
+        ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -113,6 +133,7 @@ export function ApiKeysAdmin({ initialKeys }: { initialKeys: ApiKeyOut[] }) {
             ))}
           </TableBody>
         </Table>
+        )}
       </CardContent>
     </Card>
   );

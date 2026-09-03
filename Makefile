@@ -9,7 +9,12 @@ down: ## stop the dev stack
 	$(COMPOSE) down
 
 api: ## hot-reload the Fleet API (uvicorn --reload) on :8000
-	uv run uvicorn fleet_api.app:create_app --factory --reload --port 8000
+# --host 0.0.0.0 is deliberate: uvicorn's default binds 127.0.0.1 only, which
+# during Sprint 13 left the web shell's server-side fetch unable to reach the
+# API (ECONNREFUSED -> a Next.js digest error on /automations). Binding all
+# IPv4 interfaces also makes the API reachable from a container or another host
+# on the LAN, which the plain default is not.
+	uv run uvicorn fleet_api.app:create_app --factory --reload --host 0.0.0.0 --port 8000
 
 web: ## hot-reload the Next.js web shell on :3000
 	pnpm --filter web dev
@@ -33,9 +38,13 @@ seed: ## load synthetic data + analytics fixture views
 seed-docs: ## ingest Support Copilot demo KB docs into cs-help-center/cs-procedures (run after seed)
 	uv run python -m fleet_rag.seed_docs
 
+# MSYS_NO_PATHCONV=1 keeps Git Bash / MSYS on Windows from rewriting the
+# container-side path `/import/workflows` into a host path
+# (`C:/Program Files/Git/import/workflows`). Without it the n8n CLI reports
+# "Importing 0 workflows" and exits 0 — a silent no-op, not an error.
 n8n-import: ## import + activate the workflows/*.json exports into n8n (run once per fresh stack, task 6.5.4)
-	$(COMPOSE) exec n8n-main n8n import:workflow --separate --input=/import/workflows
-	$(COMPOSE) exec n8n-main n8n update:workflow --all --active=true
+	MSYS_NO_PATHCONV=1 $(COMPOSE) exec n8n-main n8n import:workflow --separate --input=/import/workflows
+	MSYS_NO_PATHCONV=1 $(COMPOSE) exec n8n-main n8n update:workflow --all --active=true
 	$(COMPOSE) restart n8n-main n8n-worker
 
 seed-demo: migrate seed seed-docs ## one-shot demo data: schema + checkpointer + synthetic data + KB ingest (run after `make dev`, before opening the app)

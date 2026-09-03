@@ -8,6 +8,8 @@ import { browserFleetClient } from "@/lib/fleet-client-browser";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DocumentStatusBadge } from "@/components/knowledge/document-status-badge";
 import { UploadForm } from "@/components/knowledge/upload-form";
+import { FileText, FolderOpen } from "lucide-react";
+import { EmptyState } from "@/components/layout/empty-state";
 
 type Collection = components["schemas"]["CollectionOut"];
 type Document = components["schemas"]["DocumentOut"];
@@ -52,7 +54,13 @@ export function KnowledgeBrowser({ initialCollections }: { initialCollections: C
   }, [selectedId, documents, loadDocuments, session?.error]);
 
   if (collections.length === 0) {
-    return <p className="text-sm text-[var(--muted-foreground)]">{t("noCollections")}</p>;
+    return (
+      <EmptyState
+        icon={FolderOpen}
+        title={t("emptyCollectionsTitle")}
+        description={t("emptyCollectionsDesc")}
+      />
+    );
   }
 
   return (
@@ -91,7 +99,11 @@ export function KnowledgeBrowser({ initialCollections }: { initialCollections: C
               </CardHeader>
               <CardContent>
                 {documents.length === 0 ? (
-                  <p className="text-sm text-[var(--muted-foreground)]">{t("noDocuments")}</p>
+                  <EmptyState
+                    icon={FileText}
+                    title={t("emptyDocumentsTitle")}
+                    description={t("emptyDocumentsDesc")}
+                  />
                 ) : (
                   <ul className="flex flex-col gap-2">
                     {documents.map((doc) => (

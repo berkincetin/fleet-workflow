@@ -8,6 +8,8 @@ and upload validation on the invoice-intake run endpoint.
 from __future__ import annotations
 
 import io
+import json
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -15,6 +17,7 @@ from fleet_api.auth import CurrentUser, get_current_user
 from fleet_api.errors import install_error_handlers
 from fleet_api.n8n_client import N8nResult
 from fleet_api.routers import workflows as workflows_router
+from fleet_api.workflows_catalog import CATALOG
 
 
 class _FakeN8nClient:
@@ -80,7 +83,7 @@ def test_catalog_merges_live_n8n_state() -> None:
     fake = _FakeN8nClient(
         list_result=N8nResult(
             reachable=True,
-            data={"data": [{"id": "1", "name": "Invoice intake", "active": True}]},
+            data={"data": [{"id": "1", "name": "invoice-intake", "active": True}]},
         ),
         executions_result=N8nResult(
             reachable=True, data={"data": [{"status": "success", "startedAt": "2026-07-20"}]}
@@ -111,7 +114,7 @@ def test_member_cannot_activate_workflow() -> None:
 def test_builder_can_activate_workflow() -> None:
     fake = _FakeN8nClient(
         list_result=N8nResult(
-            reachable=True, data={"data": [{"id": "1", "name": "Invoice intake", "active": False}]}
+            reachable=True, data={"data": [{"id": "1", "name": "invoice-intake", "active": False}]}
         ),
     )
     app = _build_app(n8n_client=fake, user=CurrentUser(sub="u1", roles={"builder"}))
@@ -137,7 +140,7 @@ def test_invoice_run_rejects_unsupported_content_type() -> None:
 def test_invoice_run_reports_workflow_inactive() -> None:
     fake = _FakeN8nClient(
         list_result=N8nResult(
-            reachable=True, data={"data": [{"id": "1", "name": "Invoice intake", "active": False}]}
+            reachable=True, data={"data": [{"id": "1", "name": "invoice-intake", "active": False}]}
         ),
     )
     app = _build_app(n8n_client=fake, user=CurrentUser(sub="u1", roles={"member"}))
@@ -154,7 +157,7 @@ def test_invoice_run_reports_workflow_inactive() -> None:
 def test_invoice_run_accepts_when_active_and_reachable() -> None:
     fake = _FakeN8nClient(
         list_result=N8nResult(
-            reachable=True, data={"data": [{"id": "1", "name": "Invoice intake", "active": True}]}
+            reachable=True, data={"data": [{"id": "1", "name": "invoice-intake", "active": True}]}
         ),
     )
     app = _build_app(n8n_client=fake, user=CurrentUser(sub="u1", roles={"member"}))
@@ -176,3 +179,47 @@ def test_weekly_summary_run_requires_manage_agents() -> None:
 
     resp = client.post("/v1/workflows/weekly-summary/run")
     assert resp.status_code == 403
+
+
+def test_catalog_names_match_the_workflow_exports() -> None:
+    """`n8n_name` is compared verbatim against n8n's workflow list, so a drift
+    between the catalog and `workflows/*.json` makes a workflow invisible to the
+    UI (`active: null`) while it is imported and active in n8n. That is exactly
+    what shipped in 6.5.3 — the catalog said "Weekly summary", the export says
+    "weekly-summary" — and it was invisible to the suite because every other
+    test builds its own fixture instead of reading the real exports."""
+    root = Path(__file__).resolve().parents[2]
+    exported = {
+        json.loads(p.read_text(encoding="utf-8"))["name"]
+        for p in (root / "workflows").glob("*.json")
+    }
+    for meta in CATALOG.values():
+        assert meta.n8n_name in exported, (
+            f"catalog entry {meta.slug!r} points at n8n_name {meta.n8n_name!r}, "
+            f"which no export in workflows/ declares (found: {sorted(exported)})"
+        )
+
+
+def test_workflow_exports_declare_active() -> None:
+    """n8n's importer writes `active` into a NOT NULL column and imports a
+    directory all-or-nothing, so one export missing the key blocks every other
+    workflow too (`make n8n-import` fails with a constraint violation)."""
+    root = Path(__file__).resolve().parents[2]
+    for p in sorted((root / "workflows").glob("*.json")):
+        assert "active" in json.loads(p.read_text(encoding="utf-8")), (
+            f"{p.name} has no top-level 'active' key — n8n import will fail"
+        )
+
+
+def test_a_finished_execution_without_a_status_field_reports_success() -> None:
+    """n8n 1.71's executions list carries `finished` but no `status`; reporting
+    the missing field verbatim rendered every completed run as a red badge on
+    the Home dashboard (task 13.1)."""
+    from fleet_api.routers.workflows import _execution_status
+
+    assert _execution_status({"finished": True}) == "success"
+    # Stopped but not finished is a run that died at a node, not one in flight.
+    assert _execution_status({"finished": False, "stoppedAt": "2026-09-03T03:36:26Z"}) == "error"
+    assert _execution_status({"finished": False}) == "running"
+    # An explicit status always wins.
+    assert _execution_status({"finished": True, "status": "error"}) == "error"

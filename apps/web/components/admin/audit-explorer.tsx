@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import type { components } from "@fleet/shared";
+import { ScrollText } from "lucide-react";
+import { EmptyState } from "@/components/layout/empty-state";
 
 type AuditRowOut = components["schemas"]["AuditRowOut"];
 
@@ -48,6 +50,13 @@ export function AuditExplorer({ initialRows }: { initialRows: AuditRowOut[] }) {
           </Button>
         </div>
 
+        {rows.length === 0 ? (
+          <EmptyState
+            icon={ScrollText}
+            title={t("emptyAuditTitle")}
+            description={t("emptyAuditDesc")}
+          />
+        ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -71,7 +80,7 @@ export function AuditExplorer({ initialRows }: { initialRows: AuditRowOut[] }) {
                       href={row.langfuse_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-xs text-[var(--primary)] underline"
+                      className="text-xs text-[var(--link)] underline"
                     >
                       {t("auditTrace")}
                     </a>
@@ -81,6 +90,7 @@ export function AuditExplorer({ initialRows }: { initialRows: AuditRowOut[] }) {
             ))}
           </TableBody>
         </Table>
+        )}
       </CardContent>
     </Card>
   );

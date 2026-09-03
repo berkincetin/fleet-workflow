@@ -58,3 +58,15 @@ grafana:
 
 loki:
   image: grafana/loki:3.3.2
+
+# Log shipper feeding Loki (task 13.3). Runs as a DaemonSet — container logs
+# live on each node, so a shipper has to be on each node.
+promtail:
+  image: grafana/promtail:3.3.2
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi

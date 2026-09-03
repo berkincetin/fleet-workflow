@@ -8,6 +8,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ExampleCard } from "@/components/examples/example-card";
 import { CreateExampleDialog } from "@/components/examples/create-example-dialog";
 import type { components } from "@fleet/shared";
+import { FileText } from "lucide-react";
+import { EmptyState } from "@/components/layout/empty-state";
 
 type AgentSummary = components["schemas"]["AgentSummaryOut"];
 type ExampleOut = components["schemas"]["ExampleOut"];
@@ -52,7 +54,12 @@ export function ExamplesGallery({
               <CreateExampleDialog agentName={a.name} onCreated={refresh} />
             </div>
             {agentExamples.length === 0 ? (
-              <p className="text-sm text-[var(--muted-foreground)]">{t("noExamples")}</p>
+              <EmptyState
+                icon={FileText}
+                title={t("emptyTitle")}
+                description={t("emptyDesc")}
+                action={<CreateExampleDialog agentName={a.name} onCreated={refresh} />}
+              />
             ) : (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {agentExamples.map((ex) => (

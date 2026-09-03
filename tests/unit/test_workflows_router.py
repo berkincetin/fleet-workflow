@@ -209,3 +209,17 @@ def test_workflow_exports_declare_active() -> None:
         assert "active" in json.loads(p.read_text(encoding="utf-8")), (
             f"{p.name} has no top-level 'active' key — n8n import will fail"
         )
+
+
+def test_a_finished_execution_without_a_status_field_reports_success() -> None:
+    """n8n 1.71's executions list carries `finished` but no `status`; reporting
+    the missing field verbatim rendered every completed run as a red badge on
+    the Home dashboard (task 13.1)."""
+    from fleet_api.routers.workflows import _execution_status
+
+    assert _execution_status({"finished": True}) == "success"
+    # Stopped but not finished is a run that died at a node, not one in flight.
+    assert _execution_status({"finished": False, "stoppedAt": "2026-09-03T03:36:26Z"}) == "error"
+    assert _execution_status({"finished": False}) == "running"
+    # An explicit status always wins.
+    assert _execution_status({"finished": True, "status": "error"}) == "error"

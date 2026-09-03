@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import type { components } from "@fleet/shared";
+import { Bot } from "lucide-react";
+import { EmptyState } from "@/components/layout/empty-state";
 
 type AgentOut = components["schemas"]["AgentOut"];
 
@@ -116,6 +118,13 @@ export function AgentsAdmin({
             </Button>
           </div>
 
+          {agents.length === 0 ? (
+            <EmptyState
+              icon={Bot}
+              title={t("emptyAgentsTitle")}
+              description={t("emptyAgentsDesc")}
+            />
+          ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -157,6 +166,7 @@ export function AgentsAdmin({
               ))}
             </TableBody>
           </Table>
+          )}
         </CardContent>
       </Card>
     </div>

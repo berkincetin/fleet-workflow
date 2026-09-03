@@ -1145,3 +1145,331 @@ Notes / deviations:
   credentials revealed on demand for `platform_admin` (not plaintext, not hidden). It is
   knowingly larger than a typical sprint here; the documented softener is dropping branching
   from 13.4.
+
+## 2026-09-03 — 13.1 Design system + app shell refresh — DONE
+
+Built (branch `feat/sprint-13-ui-automation-builder`):
+- `apps/web/app/globals.css` — the 8-variable stub replaced by a full token system:
+  surface ladder (background/surface/surface-2/-3/sidebar), text, border/border-strong,
+  a blue accent (`--primary`/`--primary-hover`/`--accent-soft`/`--accent-foreground`/`--ring`/
+  `--link`), four semantic triples (success/warning/danger/info as `X`/`X-bg`/`X-fg`),
+  `--overlay`, and radius + shadow scales — each defined in all three theme states.
+- `lib/theme.ts` + `components/theme-switcher.tsx` + `app/layout.tsx` — system/light/dark
+  switch stamped as `data-theme` on `<html>`, persisted in the `fleet_theme` cookie so the
+  *server* render already carries the choice (no flash on reload).
+- `components/app-shell.tsx` + `lib/nav.ts` — grouped, role-filtered sidebar
+  (Work · Automation · Knowledge · Admin) with lucide icons and deepest-match active state,
+  a top bar with breadcrumb + user/role chip, and a horizontal nav strip under `md`.
+- `app/page.tsx` + `components/home/stat-tile.tsx` — Home rebuilt as a role-aware dashboard:
+  pending approvals / active automations / active agents / today's spend, plus recent
+  automation runs and an agent quick-start row. Every query is gated by the same permission
+  its screen needs, so a `member` never fires a request that would 403.
+- Token pass over every primitive (`card`, `button`, `badge`, `input`, `select`, `table`,
+  `tabs`, `textarea`, `toast`, `dialog`, `locale-switcher`) and the 5 components that still
+  carried bare Tailwind palette classes; `components/admin/admin-tabs.tsx` extracted so the
+  admin tab bar has an active state.
+- `tests/e2e/specs/shell-roles.spec.ts` — nav filtering for user1/approver/builder/admin +
+  the theme switch.
+
+Verified:
+- **AC nav filters per role — PASS**, as 4 Playwright cases against real Keycloak logins:
+  `user1` sees neither Approvals nor Admin nor the builder; `approver` gains Approvals only;
+  `builder` gains Admin + New automation but not Approvals; `admin` sees all four groups and
+  the platform-only Services tab.
+- **AC light and dark both legible — PASS.** Theme spec proves system → dark → reload → dark
+  → light → system on `data-theme`. Lighthouse was run in both.
+- **AC no colour referenced that is not a defined token — PASS.** `grep -rnoE
+  '(bg|text|border|ring|fill|stroke)-(red|green|blue|amber|…)'` over `app/` + `components/`
+  returns nothing; no `dark:` variant remains anywhere.
+- **AC Lighthouse a11y ≥ 90 on Home and Automations — PASS: both 100**, in dark *and* in
+  explicit light. Method: Playwright login → session cookie → `lighthouse --only-categories=
+  accessibility --extra-headers` (an unauthenticated run would only score the sign-in prompt).
+  Full sweep: home 100 · automations 100 · knowledge 100 · chat 100 · admin/services 100 ·
+  approvals 100 · scenarios 100 · examples 100 · automations/new 100 · admin/agents 100 ·
+  admin/cost 99.
+- Unit 560 passed · ruff clean · mypy `apps` 18 (documented baseline, 0 new) · eslint clean ·
+  `tsc --noEmit` clean.
+
+Issues (symptom → root cause → resolution):
+- **`--primary` as link text failed contrast in dark mode.** Lighthouse scored
+  `/admin/services` 96: `#2563eb` on `#131316` is 3.58:1 against a 4.5 requirement, on all 15
+  service URLs. Root cause: `--primary` is a *background* token — it is contrast-checked
+  against `--primary-foreground` sitting on top of it, not against a surface behind it.
+  Added a separate `--link` token (`#1d4ed8` light / `#93c5fd` dark) checked as text, and
+  repointed the two `text-[var(--primary)]` call sites. Services → 100.
+- **Two pre-existing label defects on screens this sprint touches.** `/knowledge` scored 94
+  (`label`: the file input had no accessible name) and `/chat` 95 (`select-name`: the agent
+  `<select>` had a `<label>` beside it with no `htmlFor`). Both are Sprint 3/4 components,
+  neither is named in this AC, both fixed here since the sprint is overhauling those screens
+  — each → 100.
+- **The Home dashboard showed every finished automation run as a red badge.** n8n 1.71's
+  public executions list omits `status` per row and carries only `finished`/`stoppedAt`;
+  `_catalog_entry` passed the missing field through verbatim. Added `_execution_status`
+  mapping finished → success, stopped-but-unfinished → error, otherwise running, matching
+  what n8n's own `?status=` filter concludes for the same rows.
+- **`getByLabel` could not find the builder's fields** — a wrapping `<label>` folds its hint
+  text into the input's accessible name, so the name was "Name" plus a paragraph. Replaced
+  with an explicit `htmlFor` + `aria-describedby` `Field` helper: better for a screen reader
+  and findable by role.
+
+Notes / deviations:
+- Palette chosen with the user: zinc neutrals + a single blue accent, semantic colours kept
+  deliberately distinct from the accent (a green "active" badge must not read as an action).
+- The superpowers plugin is enabled in `.claude/settings.json` but is **not installed on this
+  machine** (`~/.claude/plugins/installed_plugins.json` is empty), so its skills were
+  unavailable this session; the Task Execution Protocol was followed directly.
+
+## 2026-09-03 — 13.2 Explanatory layer + empty states — DONE
+
+Built:
+- `components/layout/page-header.tsx` — title + one-sentence "what this screen is for" +
+  a collapsed "how to use it". Built on `<details>`/`<summary>` so it stays a server
+  component and works before hydration, which is exactly when a first-time user needs it.
+- `components/layout/empty-state.tsx` — `title` + `description` are required and `action` is
+  expected; "No documents." on its own tells a newcomer nothing.
+- `components/layout/glossary.tsx` — `GlossaryTerm` (inline) and `GlossaryList` (block) for
+  `write:external`, `sensitivity: pii`, `risk_class` and HITL.
+- `PageHeader` wired into all 9 screens (home, chat, scenarios, automations, automations/new,
+  examples, knowledge, approvals, admin); empty states into chat, knowledge (collections +
+  documents), examples, approvals, automations, and the 6 admin tables (agents, models,
+  users, api-keys, budgets, audit) which previously rendered a bare empty `<table>`.
+- Approvals rows gained a "why is this waiting" line (accent panel + `write:external` term)
+  and a "waiting for" duration; `ApprovalOut` gained `created_at` to feed it.
+- ~150 new TR/EN message keys, TR authored first.
+- `tests/unit/test_i18n_messages.py` — TR/EN key parity + every literal `t("…")` in 40 files
+  (316 keys) resolves + every recipe action has a nested label/help.
+
+Verified:
+- **AC every page has a header and an empty state — PASS** (9 screens, 12 empty states).
+- **AC no user-facing string leaves an unexplained platform term — PASS**: the 4 terms are
+  glossary-backed; the Approvals screen carries the block form, the builder and approval rows
+  the inline form.
+- **AC TR/EN complete with no missing-key warnings — PASS**, and now enforced by test rather
+  than by inspection: 5 cases, proven to fail when a key is removed or mis-shaped.
+
+Issues (symptom → root cause → resolution):
+- **Every action label in the builder rendered as its raw key** (`builder.actions.pg.query.
+  label`). Root cause: next-intl resolves a key by splitting on `.`, and every action id
+  contains one — so `"pg.query"` stored as a *literal* JSON key can never be reached. Nested
+  the `builder.actions` block (`pg` → `query` → `label`). The literal-scan test could not see
+  this (the lookup is a template literal), so a structural check was added that walks the
+  nesting the way next-intl does; it was proven to fail against the old flat shape.
+
+## 2026-09-03 — 13.3 Admin → Services (closes the deferred 7.3) — DONE
+
+Built:
+- `apps/api/fleet_api/services_catalog.py` — 17 services with group, local URL, probe kind
+  (http / postgres / redis / arq), an `optional` flag, and the *names* of the environment
+  variables holding their dev credentials. No secret is stored here.
+- `apps/api/fleet_api/routers/services_admin.py` — `GET /v1/admin/services` probes every
+  service concurrently at request time (nothing cached or declared) and `POST /v1/admin/
+  services/{name}/reveal` returns plaintext only to a caller who holds the `platform_admin`
+  **role**, not merely MANAGE_PLATFORM.
+- `apps/web/app/(app)/admin/services/page.tsx` + `components/admin/services-board.tsx` —
+  grouped board with per-service health, latency, queue depth, purpose, and masked
+  credentials revealed one service at a time.
+- Compose: `n8n-worker` gained `QUEUE_HEALTH_CHECK_ACTIVE` + a loopback-only `:5680` so the
+  worker has a real health surface (a queue-mode worker otherwise has none).
+- Compose + Helm: **promtail** added (see Issues).
+- `tests/unit/test_services_admin_router.py` (9) + `tests/integration/test_services_admin_live.py` (3).
+
+Verified (live, `make dev` up):
+- **AC all stack services report healthy — PASS: `healthy=16, down=0`.** arq reports
+  `down` with `no worker heartbeat` and is flagged `optional` (it is a host-run worker, not a
+  compose service), so it does not count against the total; its card says how to start it.
+- **AC a stopped container turns its own card red without breaking the page — PASS.**
+  `docker stop mailpit` → HTTP 200, `down=1`, mailpit `ConnectError`, all 17 cards still
+  rendered. Restarted.
+- **AC non-platform-admin roles get 403 — PASS** for member/builder/approver/dept_admin on
+  both endpoints.
+- **AC credential values absent from the response body for a non-`platform_admin` caller —
+  PASS, by test.** The list response is masked for *every* caller (`fleet_dev_pw`,
+  `sk-fleet-dev-master`, `sk-lf-fleet-dev` all absent from the body verbatim); a
+  non-platform-admin gets a 403 with no body; and a synthetic role holding MANAGE_PLATFORM
+  without `platform_admin` is still refused the reveal.
+
+Issues (symptom → root cause → resolution):
+- **Loki reported down on a healthy stack.** Its `/ready` returned 503 forever
+  ("Ingester not ready: waiting for 15s after being ready") while `/metrics` and
+  `/loki/api/v1/status/buildinfo` both answered 200 and it was actively uploading index
+  tables; confirmed across a restart, 60s of polling, never 200. **Root cause: nothing has
+  ever shipped logs to Loki.** Loki has been in the compose stack since Sprint 1 with no
+  producer, so its ingester never receives a push and never settles — TRD §6's log lane was
+  hollow, and this screen is simply the first thing that asked. Fixed at the source rather
+  than by softening the probe (the user chose this over repointing it): added
+  `infra/compose/promtail/promtail-config.yml` + a `promtail` service that discovers this
+  compose project's containers **over the Docker API** (a `/var/lib/docker/containers` bind
+  mount silently scrapes nothing on Docker Desktop, where that path lives inside the VM), and
+  `infra/helm/fleet/templates/promtail.yaml` as a DaemonSet + RBAC + ConfigMap for the chart.
+  Loki's `/ready` went 200 within 4s and `{job="fleet-dev"}` now returns real log lines
+  labelled by container/service. `helm lint` passes.
+  - Scope note recorded in both configs: in dev the Fleet API and web run on the *host*, so
+    their own structured logs are still not scraped — container logs only. The Kubernetes
+    DaemonSet does pick up the API's pod.
+
+## 2026-09-03 — 13.4 Automation recipes: model, compiler, deploy API — DONE
+
+Built:
+- `infra/migrations/versions/0011_automation_recipes.py` + `AutomationRecipe` model —
+  Fleet holds the recipe; `n8n_workflow_id` is only the handle for what was compiled from it.
+- `apps/api/fleet_api/recipes/schema.py` — Pydantic v2 recipe: trigger (`schedule` cron |
+  `manual`), ordered steps, one level of `if/then/else`. Five allowlisted actions
+  (`pg.query`, `agent.run`, `slack.post`, `email.send`, `http.notify`), each with a typed
+  params model at `extra="forbid"`, and every string checked so no n8n expression can be
+  smuggled through — the only templating allowed is `{{steps.<id>.<path>}}`.
+- `apps/api/fleet_api/recipes/compiler.py` — renders the recipe to n8n workflow JSON. Emits
+  only `scheduleTrigger`/`webhook`/`if`/`set`/`httpRequest`, never `code`; every
+  `httpRequest` URL is chosen from `SERVICE_PATHS` by action name and re-checked against a
+  Fleet-only regex before it enters a node; user text is emitted as JSON string literals and
+  step references rewritten to `$('<node>').item.json.<path>`.
+- `apps/api/fleet_api/routers/recipes.py` — CRUD + preview + activate/deactivate/run
+  (MANAGE_AGENTS to write, CHAT to read), deploying over n8n's REST API and reporting a
+  soft `deploy_error` when n8n is down rather than failing the save.
+- `routers/service.py` gained the three missing action endpoints: `agent-run` (reuses the
+  chat router's own reply paths so an automation gets no second, differently-governed way to
+  talk to an agent), `email-send` (**queues an approval, never sends**) and `notify` (an
+  audit-log entry, no outward effect). `n8n_client.py` gained create/update/delete.
+- `approvals.py` gained an `automation_recipe` resumer: unlike the other four this is not a
+  LangGraph resume — the recipe ran in n8n — so it performs the queued action itself, from
+  the approval's (possibly edited) payload. `seed.py` seeds the paused pseudo-agent the
+  approval rows hang off.
+- Tests: `test_recipe_schema.py` (13), `test_recipe_compiler.py` (13),
+  `test_recipes_router.py` (4), `tests/security/test_recipe_compiler_injection.py` (18),
+  `tests/integration/test_recipes_live.py` (3).
+
+Verified (live: Fleet API + n8n + Postgres, no mocks):
+- **AC a schedule-triggered recipe defined through the API exists and fires in n8n — PASS.**
+  Created via `POST /v1/recipes` → stored + deployed (`n8n_workflow_id` set, workflow present
+  in n8n with `scheduleTrigger` + `if` and no `code` node) → activated → triggered → n8n
+  recorded a `success` execution → Fleet's own log shows the `POST /v1/service/pg-query` the
+  workflow made.
+- **AC a recipe containing `email.send` produces an approval-queue entry instead of sending —
+  PASS.** The run created a pending `email.send` approval with the right payload and Mailpit
+  stayed empty; approving it then really put the mail on the wire (Mailpit: 1 message,
+  `ops@fleet.local` / "Sprint 13 AC").
+- **AC a recipe whose branches both write is still gated — PASS.** The integration recipe
+  branches `email.send` / `http.notify`; gating is proven by the endpoint the compiler picks,
+  not by which branch ran, and a unit test pins the false-branch case.
+- **AC a crafted recipe attempting a non-Fleet URL or an unlisted action is rejected — PASS.**
+  18 security cases (extra `url`/`method`/`headers` params, unlisted actions, `code.run`,
+  six expression payloads including `={{ $env.OPENAI_API_KEY }}` and
+  `require('child_process')`, quote break-out, path traversal in the name, a shell payload in
+  the cron) plus a live case proving a 422 leaves no workflow behind in n8n.
+- Deleting a recipe removes its n8n workflow; a `member` is refused a create but may list.
+
+Issues (symptom → root cause → resolution):
+- **The recipe deployed and activated but never ran; n8n recorded no execution.** Two
+  independent defects, both mine:
+  1. **The webhook was never registered.** n8n registers a production webhook by the node's
+     `webhookId`, not by `path` alone; a node deployed over the REST API without one is
+     accepted, the workflow activates, and its production URL then answers 404 "not
+     registered" (the hand-written exports in `workflows/` carry a literal UUID for exactly
+     this reason). The compiler now emits a `uuid5` derived from the recipe name, so a
+     redeploy keeps the same registration.
+  2. **`POST /run` reported `ok` over that 404.** `N8nResult.reachable` only means n8n
+     answered; the router ignored `result.error`, so a run that never happened returned a
+     green "accepted". Now a non-2xx is `trigger_failed`. (The same shape exists in the
+     Sprint 6.5 `run_weekly_summary`; left alone as out of scope, noted here.)
+- **The condition always took its false branch.** The compiler copied
+  `options.response.responseFormat: "text"` from the weekly-summary export, which puts the
+  whole body into `json.data` as a *string* — so `{{steps.q1.row_count}}` and every condition
+  reading one resolved to undefined. `text` is now applied only to `slack.post`, the one
+  endpoint that answers 204 with no body (which is why the export needed it). Regression test
+  added.
+- **n8n's executions list has no `status` field** in 1.71, so the integration test's
+  `executions[0]["status"]` raised `KeyError`. Success/failure is now read from the
+  server-side `?status=` filter.
+- **A new n8n service key was needed.** The recipe actions introduced the `agent_run`,
+  `email_send` and `notify` scopes; the existing key carried only `pg_ro`/`slack_post`.
+  Issued a replacement (revoking the old row), wrote it to `.env`'s `N8N_FLEET_API_KEY`, and
+  added the three scopes to the API-keys admin screen's picker.
+
+Notes / deviations:
+- Branching is deliberately **one level, not nestable**. A builder that can express arbitrary
+  nesting is a programming language, and every safety rule above would have to hold
+  recursively; one level covers "post only when the query returned something".
+- Every recipe gets a webhook node even when its trigger is a schedule, so "Run now" works
+  without waiting for the cron — the same shape the hand-written weekly-summary export uses.
+
+## 2026-09-03 — 13.5 Builder UI + reworked Automations page — DONE
+
+Built:
+- `components/automations/recipe-builder.tsx` — four-section form: identity → trigger
+  (manual/schedule with cron presets) → steps (fields generated per action, plus one
+  `if/then/else`) → plain-language preview and save. The preview is **the server's own
+  `POST /v1/recipes/preview`**, so what the user reads is produced by the same code that
+  compiles the workflow, and a recipe the compiler would refuse is refused before save.
+- `components/automations/recipe-summary.tsx` — shared rendering of `describe_recipe`, used
+  by both the preview and the automation cards so they can never disagree.
+- `components/automations/recipe-card.tsx` — run / activate / edit / delete with an in-app
+  confirmation dialog.
+- `app/(app)/automations/page.tsx` reworked into two sections (built-in catalog + user
+  recipes) with a directive empty state; `automations/new` and `automations/[id]/edit`.
+- `lib/recipe-actions.ts` — client mirror of the action allowlist and param models, in the
+  same "hand-kept mirror, API is the real gate" arrangement as `lib/permissions.ts`.
+- `tests/e2e/specs/automation-builder.spec.ts`.
+
+Verified:
+- **AC a `builder` defines, saves and runs an automation end to end from the browser and sees
+  the run in n8n — PASS**, as a Playwright case against the real stack: fill the form → the
+  server preview describes it in plain language → save → the workflow appears in n8n →
+  activate → Run now → n8n reports a `success` execution → delete removes the workflow again.
+- **AC a `member` can view but not edit — PASS**: no "New automation" entry point anywhere,
+  and `/automations/new` itself refuses rather than merely being hidden.
+- **AC with n8n stopped the page still renders its down-state — PASS**, inherited unchanged
+  from the 6.5.3 contract (`/v1/workflows` returns 200 with `reachable:false`) and exercised
+  by the existing `test_workflows_router.py` cases; user recipes additionally carry a
+  `deploy_error` and a "not deployed to n8n" badge.
+
+Issues (symptom → root cause → resolution):
+- **The Langfuse half of the AC is verified separately.** The e2e recipe deliberately uses
+  `pg.query` + `http.notify` only, so an e2e run does not hang on model latency; the
+  `agent.run` action reuses the chat router's own reply path, which is already the
+  Langfuse-instrumented one.
+- **`window.confirm` on delete was replaced with the app's own dialog.** It is unstyled,
+  invisible to the theme, blocks the renderer, and made the e2e depend on dialog handling.
+- Two e2e locator defects of my own: action labels also appear in every step's `<option>`
+  list (preview assertions now scoped to the summary list), and a Radix toast renders both a
+  visible node and an aria-live announcement carrying the same text (`.first()`). A
+  `data-testid` on the recipe card replaced a brittle class-name locator.
+
+## 2026-09-03 — 13.6 Tests, e2e, docs — DONE
+
+Built: covered above — 51 new unit/security cases, 6 new live integration cases, 7 new e2e
+cases. Docs: TRD §11 (`automation_recipes`) and §12 (shell & explanatory layer, Automation
+Builder, Services/system health) updated in **both** layers; three new items in
+`docs/PRODUCTION_CHECKLIST.md` (re-scope Admin → Services before it leaves dev; review the
+recipe action allowlist per environment).
+
+Verified (full gate):
+- ruff clean · mypy `apps` 18 (documented baseline, 0 new) · eslint + `tsc --noEmit` clean.
+- **Unit 560 passed** (was 510). **Security 85 passed** (was 67; +18 recipe-compiler
+  injection cases).
+- **Integration: 78 passed / 8 skipped** across two passes — the first full run had 8
+  failures, *all 8 pass on a quiet re-run with no code change*, the same testcontainers
+  connect/timeout contention recorded at the Sprint 12 close.
+- **E2E: 7 passed / 1 failed** — the failure is `chat-demo-path`, diagnosed below and not a
+  Sprint 13 regression.
+- `make eval AGENT=support_copilot` → **100%** (15/15, threshold 0.90).
+
+Issues (symptom → root cause → resolution):
+- **`chat-demo-path.spec.ts` fails — OPEN, pre-existing, awaiting a decision.**
+  Symptom: the streamed answer never arrives; the API logs
+  `Vector dimension error: expected dim: 1536, got 1024` from Qdrant.
+  Root cause, traced end to end: **`support_copilot`'s row has `sensitivity = 'pii'`** while
+  `seed.py` declares `'internal'` (and `ON CONFLICT DO NOTHING` means `make seed` will not
+  repair it). `chat._rag_reply` passes the *agent's* sensitivity into `answer_query` →
+  `client.embeddings(sensitivity='pii')` → `select_model` admits only `local-embeddings`
+  (clearance `pii`, bge-m3, **1024**) → but `cs-help-center`/`cs-procedures` were ingested
+  with the cloud `embeddings` model (clearance `internal`, **1536**) at the Sprint 12 close.
+  The drift predates the audit log's window (oldest entry 2026-08-20), most likely a leftover
+  of the Sprint 8 local-lane rehearsal.
+  **Why nothing caught it:** `evals/runner.py` hard-codes `sensitivity="internal"` for the RAG
+  path, so the eval never exercises the agent's own sensitivity — it scores 100% while live
+  chat is broken. The e2e is the only thing that walks the real path.
+  Not fixed here: the fix is a one-field change to *their* dev data (`UPDATE agents SET
+  sensitivity='internal' WHERE name='support_copilot'`, or a click in Admin → Agents), and
+  the eval's hard-coded sensitivity is worth its own decision.
+- **Leftover test agents pollute the Home dashboard.** "Active agents" counts 18, of which 7
+  are `live-chat-agent-*` rows created by integration runs and never cleaned up. Environment
+  noise, not a code defect; worth a cleanup pass or a teardown in the chat live test.

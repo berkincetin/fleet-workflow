@@ -537,6 +537,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/service/agent-run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Agent Run
+         * @description Run one agent turn from an automation, reusing the exact reply paths the
+         *     chat router uses (RAG-grounded, analytics text-to-SQL, or plain reasoning)
+         *     — an automation must not get a second, differently-governed way to talk to
+         *     an agent.
+         */
+        post: operations["agent_run_v1_service_agent_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/service/email-send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Email Send
+         * @description Queue an email for human approval. **Never sends.**
+         *
+         *     `email.send` is write:external (TRD §9 names customer email as the
+         *     canonical always-approved case), so the only thing this endpoint can do is
+         *     create the queue entry; the message goes on the wire in the approvals
+         *     router's resume handler, after a person approves it.
+         */
+        post: operations["email_send_v1_service_email_send_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/service/notify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Notify
+         * @description Internal notification: an audit-log entry an operator can find later.
+         *
+         *     Deliberately the one recipe action with no outward effect at all — it is
+         *     what a builder reaches for when the automation should leave a trace rather
+         *     than message a person.
+         */
+        post: operations["notify_v1_service_notify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/invoice-agent/runs": {
         parameters: {
             query?: never;
@@ -742,6 +814,119 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/recipes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Recipes */
+        get: operations["list_recipes_v1_recipes_get"];
+        put?: never;
+        /** Create Recipe */
+        post: operations["create_recipe_v1_recipes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/recipes/{recipe_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Recipe */
+        get: operations["get_recipe_v1_recipes__recipe_id__get"];
+        /** Update Recipe */
+        put: operations["update_recipe_v1_recipes__recipe_id__put"];
+        post?: never;
+        /** Delete Recipe */
+        delete: operations["delete_recipe_v1_recipes__recipe_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/recipes/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview Recipe
+         * @description Validate + compile without saving or deploying — what the builder's
+         *     last wizard step shows before the user commits.
+         */
+        post: operations["preview_recipe_v1_recipes_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/recipes/{recipe_id}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Activate Recipe */
+        post: operations["activate_recipe_v1_recipes__recipe_id__activate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/recipes/{recipe_id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Deactivate Recipe */
+        post: operations["deactivate_recipe_v1_recipes__recipe_id__deactivate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/recipes/{recipe_id}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Recipe
+         * @description Trigger the recipe's manual webhook. Every compiled recipe carries one,
+         *     scheduled ones included, so "Run now" works without waiting for the cron.
+         */
+        post: operations["run_recipe_v1_recipes__recipe_id__run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/users": {
         parameters: {
             query?: never;
@@ -897,6 +1082,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/services": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Services
+         * @description Live status of every service in the catalog. Secrets are masked here
+         *     unconditionally — see the module docstring.
+         */
+        get: operations["list_services_v1_admin_services_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/services/{name}/reveal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reveal Credentials
+         * @description Plaintext dev credentials for one service — an explicit, separately
+         *     audited action (AuditMiddleware records the POST), not something the page
+         *     load hands out.
+         *
+         *     The extra `platform_admin` role check is deliberate belt-and-braces: it
+         *     keeps the reveal tied to that one role even if MANAGE_PLATFORM is ever
+         *     granted to another role in `rbac.py`.
+         */
+        post: operations["reveal_credentials_v1_admin_services__name__reveal_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/subjects/{hash_}": {
         parameters: {
             query?: never;
@@ -986,6 +1218,20 @@ export interface components {
             /** Collection Ids */
             collection_ids: number[];
         };
+        /** AgentRunIn */
+        AgentRunIn: {
+            /** Agent */
+            agent: string;
+            /** Question */
+            question: string;
+        };
+        /** AgentRunOut */
+        AgentRunOut: {
+            /** Text */
+            text: string;
+            /** Trace Id */
+            trace_id: string;
+        };
         /** AgentSummaryOut */
         AgentSummaryOut: {
             /** Id */
@@ -1067,6 +1313,11 @@ export interface components {
             decided_at: string | null;
             /** Sla At */
             sla_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** AuditRowOut */
         AuditRowOut: {
@@ -1228,6 +1479,15 @@ export interface components {
             /** Cache Hit Ratio */
             cache_hit_ratio: number;
         };
+        /** CredentialOut */
+        CredentialOut: {
+            /** Label */
+            label: string;
+            /** Username */
+            username?: string | null;
+            /** Secret Masked */
+            secret_masked?: string | null;
+        };
         /** DecisionIn */
         DecisionIn: {
             /** Decision */
@@ -1272,6 +1532,24 @@ export interface components {
             status: string;
             /** Subject Hash */
             subject_hash?: string | null;
+        };
+        /** EmailSendIn */
+        EmailSendIn: {
+            /** To */
+            to: string;
+            /** Subject */
+            subject: string;
+            /** Body */
+            body: string;
+        };
+        /** EmailSendOut */
+        EmailSendOut: {
+            /** Status */
+            status: string;
+            /** Approval Id */
+            approval_id: number;
+            /** Run Id */
+            run_id: string;
         };
         /** ErasureResult */
         ErasureResult: {
@@ -1404,6 +1682,13 @@ export interface components {
             /** Smoke Latency Ms */
             smoke_latency_ms: number | null;
         };
+        /** NotifyIn */
+        NotifyIn: {
+            /** Title */
+            title: string;
+            /** Message */
+            message: string;
+        };
         /** PgQueryIn */
         PgQueryIn: {
             /** Sql */
@@ -1417,6 +1702,19 @@ export interface components {
             }[];
             /** Row Count */
             row_count: number;
+        };
+        /** PreviewOut */
+        PreviewOut: {
+            /** Summary */
+            summary: {
+                [key: string]: unknown;
+            }[];
+            /** Has Write External */
+            has_write_external: boolean;
+            /** Workflow */
+            workflow: {
+                [key: string]: unknown;
+            };
         };
         /** QueryIn */
         QueryIn: {
@@ -1451,6 +1749,93 @@ export interface components {
             /** Enabled */
             enabled: boolean;
         };
+        /** RecipeActionOut */
+        RecipeActionOut: {
+            /** Status */
+            status: string;
+            /** Detail */
+            detail?: string | null;
+        };
+        /**
+         * RecipeIn
+         * @description The recipe as the builder posts it — validated by `Recipe` itself.
+         */
+        RecipeIn: {
+            /** Name */
+            name: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Trigger */
+            trigger: {
+                [key: string]: unknown;
+            };
+            /** Steps */
+            steps: {
+                [key: string]: unknown;
+            }[];
+        };
+        /** RecipeOut */
+        RecipeOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /** Definition */
+            definition: {
+                [key: string]: unknown;
+            };
+            /** N8N Workflow Id */
+            n8n_workflow_id: string | null;
+            /** Active */
+            active: boolean;
+            /** Created By */
+            created_by: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Summary
+             * @default []
+             */
+            summary: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Has Write External
+             * @default false
+             */
+            has_write_external: boolean;
+            /** Deploy Error */
+            deploy_error?: string | null;
+        };
+        /** RevealOut */
+        RevealOut: {
+            /** Name */
+            name: string;
+            /** Credentials */
+            credentials: components["schemas"]["RevealedCredentialOut"][];
+        };
+        /** RevealedCredentialOut */
+        RevealedCredentialOut: {
+            /** Label */
+            label: string;
+            /** Username */
+            username?: string | null;
+            /** Secret */
+            secret?: string | null;
+        };
         /** RoleIn */
         RoleIn: {
             /** Role */
@@ -1473,6 +1858,44 @@ export interface components {
             status: string;
             /** Detail */
             detail?: string | null;
+        };
+        /** ServiceOut */
+        ServiceOut: {
+            /** Name */
+            name: string;
+            /** Group */
+            group: string;
+            /** Url */
+            url: string;
+            /** Optional */
+            optional: boolean;
+            /** Status */
+            status: string;
+            /** Detail */
+            detail?: string | null;
+            /** Latency Ms */
+            latency_ms?: number | null;
+            /** Queue Depth */
+            queue_depth?: number | null;
+            /**
+             * Credentials
+             * @default []
+             */
+            credentials: components["schemas"]["CredentialOut"][];
+            /**
+             * Has Credentials
+             * @default false
+             */
+            has_credentials: boolean;
+        };
+        /** ServicesOut */
+        ServicesOut: {
+            /** Services */
+            services: components["schemas"]["ServiceOut"][];
+            /** Healthy */
+            healthy: number;
+            /** Down */
+            down: number;
         };
         /** SlackPostIn */
         SlackPostIn: {
@@ -2864,6 +3287,113 @@ export interface operations {
             };
         };
     };
+    agent_run_v1_service_agent_run_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-fleet-api-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentRunIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    email_send_v1_service_email_send_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-fleet-api-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailSendIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailSendOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    notify_v1_service_notify_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-fleet-api-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotifyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     start_run_v1_invoice_agent_runs_post: {
         parameters: {
             query?: never;
@@ -3267,6 +3797,282 @@ export interface operations {
             };
         };
     };
+    list_recipes_v1_recipes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeOut"][];
+                };
+            };
+        };
+    };
+    create_recipe_v1_recipes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecipeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_recipe_v1_recipes__recipe_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recipe_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_recipe_v1_recipes__recipe_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recipe_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecipeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_recipe_v1_recipes__recipe_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recipe_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeActionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_recipe_v1_recipes_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecipeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    activate_recipe_v1_recipes__recipe_id__activate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recipe_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeActionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deactivate_recipe_v1_recipes__recipe_id__deactivate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recipe_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeActionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_recipe_v1_recipes__recipe_id__run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recipe_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeActionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_users_v1_admin_users_get: {
         parameters: {
             query?: never;
@@ -3576,6 +4382,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditRowOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_services_v1_admin_services_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServicesOut"];
+                };
+            };
+        };
+    };
+    reveal_credentials_v1_admin_services__name__reveal_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevealOut"];
                 };
             };
             /** @description Validation Error */

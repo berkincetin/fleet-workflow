@@ -369,3 +369,30 @@ class AuditLog(Base):
     entity: Mapped[str | None] = mapped_column(String(255), nullable=True)
     entity_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     trace_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+class AutomationRecipe(Base):
+    """A user-defined automation (task 13.4, TRD §12 builder screens).
+
+    Fleet is the source of truth: `definition` holds the validated recipe
+    (`fleet_api.recipes.schema.Recipe`), and `n8n_workflow_id` is only the
+    handle for the workflow compiled from it. A recipe can therefore be
+    recompiled and redeployed after an edit without n8n ever holding state
+    Fleet does not have.
+    """
+
+    __tablename__ = "automation_recipes"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    description: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    n8n_workflow_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )

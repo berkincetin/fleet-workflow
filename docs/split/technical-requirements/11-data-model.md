@@ -28,4 +28,7 @@ models(… see §4.1) · budgets(id, scope_type[global|dept|agent|user], scope_i
 eval_datasets/eval_runs(id, agent_id, pass_rate, metrics jsonb, git_sha)
 audit_log(id, ts, actor, actor_type, action, entity, entity_id, detail jsonb, trace_id) [append-only]
 feedback(id, message_id, score, reason)
+automation_recipes(id, name, description, definition jsonb, n8n_workflow_id,
+       active bool, created_by)  [§12: Fleet is the source of truth; the
+       recipe is compiled into the n8n workflow named by n8n_workflow_id]
 ```

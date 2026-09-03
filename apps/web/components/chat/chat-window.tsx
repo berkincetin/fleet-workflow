@@ -9,6 +9,8 @@ import { streamChatMessage } from "@/lib/chat-stream";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FeedbackButtons } from "@/components/chat/feedback-buttons";
+import { Bot } from "lucide-react";
+import { EmptyState } from "@/components/layout/empty-state";
 
 type AgentSummary = components["schemas"]["AgentSummaryOut"];
 
@@ -116,15 +118,18 @@ export function ChatWindow({
   }
 
   if (agents.length === 0) {
-    return <p className="text-sm text-[var(--muted-foreground)]">{t("noAgents")}</p>;
+    return <EmptyState icon={Bot} title={t("emptyTitle")} description={t("emptyDesc")} />;
   }
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
-        <label className="text-sm text-[var(--muted-foreground)]">{t("agent")}</label>
+        <label htmlFor="chat-agent" className="text-sm text-[var(--muted-foreground)]">
+          {t("agent")}
+        </label>
         <select
-          className="rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-sm"
+          id="chat-agent"
+          className="h-9 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--surface)] px-2 text-sm"
           value={agentId ?? ""}
           disabled={conversationId != null}
           onChange={(e) => setAgentId(Number(e.target.value))}

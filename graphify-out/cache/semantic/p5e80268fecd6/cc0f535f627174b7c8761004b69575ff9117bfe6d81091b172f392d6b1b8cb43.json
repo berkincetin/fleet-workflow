@@ -1,0 +1,1 @@
+{"nodes": [{"id": "infra_helm_fleet_templates_promtail", "label": "Promtail DaemonSet Template", "file_type": "code", "source_file": "infra/helm/fleet/templates/promtail.yaml"}], "edges": [], "hyperedges": []}

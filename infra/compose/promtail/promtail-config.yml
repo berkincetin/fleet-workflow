@@ -1,0 +1,45 @@
+# Promtail: the log shipper that feeds Loki (task 13.3).
+#
+# Loki was in the stack from Sprint 1 but nothing ever pushed to it, so TRD §6's
+# log lane had no input and Loki's own /ready gate never settled ("Ingester not
+# ready: waiting for 15s after being ready"), which is what the Admin -> Services
+# health probe surfaced.
+#
+# Discovery goes through the Docker API rather than a host log-path mount:
+# /var/lib/docker/containers does not exist on the host under Docker Desktop
+# (it lives inside the Linux VM), so a bind mount of it would silently scrape
+# nothing on this platform.
+#
+# Scope note: in dev the Fleet API and the web app run on the *host*, not in
+# compose, so their structured logs are not scraped here — container logs only
+# (Postgres, LiteLLM, n8n, Keycloak, Langfuse, …). In Kubernetes the promtail
+# DaemonSet (infra/helm/fleet/templates/promtail.yaml) picks up every pod
+# including the API's, which is the deployment this is a stand-in for.
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: fleet-containers
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 10s
+        filters:
+          - name: label
+            values: ["com.docker.compose.project=fleet-dev"]
+    relabel_configs:
+      # /fleet-dev-postgres-1 -> fleet-dev-postgres-1
+      - source_labels: ["__meta_docker_container_name"]
+        regex: "/(.*)"
+        target_label: "container"
+      - source_labels: ["__meta_docker_container_label_com_docker_compose_service"]
+        target_label: "service"
+      - target_label: "job"
+        replacement: "fleet-dev"

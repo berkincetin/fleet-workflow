@@ -60,6 +60,8 @@ export function UploadForm({
         <div className="flex items-center gap-2">
           <input
             ref={inputRef}
+            id="knowledge-upload-file"
+            aria-label={t("upload")}
             type="file"
             className="text-sm"
             disabled={state === "uploading"}
@@ -69,7 +71,7 @@ export function UploadForm({
           </Button>
         </div>
         {state === "success" && (
-          <p className="text-sm text-green-700 dark:text-green-400">{t("uploadSuccess")}</p>
+          <p className="text-sm text-[var(--success)]">{t("uploadSuccess")}</p>
         )}
         {state === "error" && (
           <p className="text-sm text-[var(--danger)]">{t("uploadError")}</p>

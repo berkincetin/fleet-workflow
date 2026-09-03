@@ -1,30 +1,191 @@
 @import "tailwindcss";
 
+/* Fleet design tokens (task 13.1).
+ *
+ * Every colour the UI paints comes from a variable defined here, in both
+ * schemes — no bare Tailwind palette class (`bg-green-100`) and no `dark:`
+ * variant anywhere in components. That is what makes "light and dark both
+ * legible" checkable: a token that is missing from one of the two blocks
+ * below is a visible bug, not a silent inherit.
+ *
+ * Theme resolution has three states, matching lib/theme.ts:
+ *   - no `data-theme` on <html>  -> follow the OS (prefers-color-scheme)
+ *   - data-theme="light"/"dark"  -> explicit user choice, wins over the OS
+ * The dark media block is therefore guarded with :not([data-theme="light"])
+ * so an explicit "light" is not overridden by a dark OS.
+ *
+ * Palette: zinc neutrals + a single blue accent. Semantic colours
+ * (success/warning/danger/info) are deliberately *not* the accent — a green
+ * "active" badge must not read as a primary action.
+ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #0a0a0a;
+  color-scheme: light;
+
+  /* Surfaces, from furthest back to nearest */
+  --background: #fafafa;
+  --surface: #ffffff;
+  --surface-2: #f4f4f5;
+  --surface-3: #e4e4e7;
+  --sidebar: #ffffff;
+
+  /* Text */
+  --foreground: #18181b;
   --muted: #f4f4f5;
-  --muted-foreground: #71717a;
+  --muted-foreground: #52525b;
+
+  /* Lines */
   --border: #e4e4e7;
-  --primary: #18181b;
-  --primary-foreground: #fafafa;
+  --border-strong: #d4d4d8;
+
+  /* Accent / primary action */
+  --primary: #1d4ed8;
+  --primary-foreground: #ffffff;
+  --primary-hover: #1e40af;
+  --accent-soft: #eff6ff;
+  --accent-foreground: #1e40af;
+  --ring: #2563eb;
+  /* `--primary` is a *background* token, read against --primary-foreground on
+   * top of it. Used as link text on a surface it only reaches 3.6:1 in dark
+   * mode, so inline links get their own token, contrast-checked as text. */
+  --link: #1d4ed8;
+
+  /* Semantic (fg pairs are for text on the matching -bg) */
+  --success: #15803d;
+  --success-bg: #dcfce7;
+  --success-fg: #14532d;
+  --warning: #b45309;
+  --warning-bg: #fef3c7;
+  --warning-fg: #78350f;
   --danger: #dc2626;
+  --danger-bg: #fee2e2;
+  --danger-fg: #7f1d1d;
+  --info: #0369a1;
+  --info-bg: #e0f2fe;
+  --info-fg: #0c4a6e;
+
+  --overlay: rgb(9 9 11 / 0.5);
+
+  /* Radius scale */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* Elevation scale */
+  --shadow-sm: 0 1px 2px 0 rgb(9 9 11 / 0.05);
+  --shadow-md: 0 2px 8px -2px rgb(9 9 11 / 0.10), 0 1px 3px -1px rgb(9 9 11 / 0.06);
+  --shadow-lg: 0 12px 32px -8px rgb(9 9 11 / 0.18);
 }
 
+/* The dark values live in a custom property block that both selectors below
+ * reuse, so the two entry points (OS preference, explicit choice) can never
+ * drift apart. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --background: #09090b;
+    --surface: #131316;
+    --surface-2: #1c1c20;
+    --surface-3: #27272a;
+    --sidebar: #0e0e11;
+
     --foreground: #fafafa;
-    --muted: #18181b;
+    --muted: #1c1c20;
     --muted-foreground: #a1a1aa;
+
     --border: #27272a;
-    --primary: #fafafa;
-    --primary-foreground: #18181b;
+    --border-strong: #3f3f46;
+
+    --primary: #2563eb;
+    --primary-foreground: #ffffff;
+    --primary-hover: #3b82f6;
+    --accent-soft: #172554;
+    --accent-foreground: #bfdbfe;
+    --ring: #60a5fa;
+    --link: #93c5fd;
+
+    --success: #4ade80;
+    --success-bg: #052e16;
+    --success-fg: #bbf7d0;
+    --warning: #fbbf24;
+    --warning-bg: #422006;
+    --warning-fg: #fde68a;
     --danger: #f87171;
+    --danger-bg: #450a0a;
+    --danger-fg: #fecaca;
+    --info: #38bdf8;
+    --info-bg: #082f49;
+    --info-fg: #bae6fd;
+
+    --overlay: rgb(0 0 0 / 0.65);
+
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+    --shadow-md: 0 2px 8px -2px rgb(0 0 0 / 0.55), 0 1px 3px -1px rgb(0 0 0 / 0.4);
+    --shadow-lg: 0 12px 32px -8px rgb(0 0 0 / 0.7);
   }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --background: #09090b;
+  --surface: #131316;
+  --surface-2: #1c1c20;
+  --surface-3: #27272a;
+  --sidebar: #0e0e11;
+
+  --foreground: #fafafa;
+  --muted: #1c1c20;
+  --muted-foreground: #a1a1aa;
+
+  --border: #27272a;
+  --border-strong: #3f3f46;
+
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --primary-hover: #3b82f6;
+  --accent-soft: #172554;
+  --accent-foreground: #bfdbfe;
+  --ring: #60a5fa;
+  --link: #93c5fd;
+
+  --success: #4ade80;
+  --success-bg: #052e16;
+  --success-fg: #bbf7d0;
+  --warning: #fbbf24;
+  --warning-bg: #422006;
+  --warning-fg: #fde68a;
+  --danger: #f87171;
+  --danger-bg: #450a0a;
+  --danger-fg: #fecaca;
+  --info: #38bdf8;
+  --info-bg: #082f49;
+  --info-fg: #bae6fd;
+
+  --overlay: rgb(0 0 0 / 0.65);
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow-md: 0 2px 8px -2px rgb(0 0 0 / 0.55), 0 1px 3px -1px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 12px 32px -8px rgb(0 0 0 / 0.7);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* One focus treatment for the whole app: keyboard focus is always visible and
+ * always the accent ring (a11y AC). Mouse clicks keep the ring off. */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--accent-foreground);
 }

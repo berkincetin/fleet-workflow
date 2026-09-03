@@ -597,6 +597,28 @@ async def seed() -> None:
     await engine.dispose()
 
 
+async def seed_automation_recipe_agent() -> None:
+    """Pseudo-agent that recipe-queued approvals are filed under (task 13.4).
+
+    `approvals.agent_id` is a NOT NULL FK and the resume registry keys on
+    `agents.name`, so a user-defined automation's `email.send` step needs a row
+    here to hang its approval off. Seeded `paused` on purpose: it is not
+    something anyone chats with, and `/v1/agents` only lists active agents.
+    """
+    engine = get_engine(database_url())
+    async with engine.begin() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO agents (name, dept_id, status, reasoning_model, utility_model, "
+                "sensitivity, semantic_cache, semantic_cache_threshold, max_context_tokens, "
+                "collection_ids) VALUES ('automation_recipe', NULL, 'paused', 'reasoning', "
+                "'utility', 'internal', false, 0.95, 8000, '{}') "
+                "ON CONFLICT (name) DO NOTHING"
+            )
+        )
+    await engine.dispose()
+
+
 def main() -> None:
     asyncio.run(seed())
     asyncio.run(seed_support_copilot())
@@ -609,6 +631,7 @@ def main() -> None:
     asyncio.run(seed_insights_publisher_agent())
     asyncio.run(seed_dealer_onboarding_agent())
     asyncio.run(seed_legal_review_agent())
+    asyncio.run(seed_automation_recipe_agent())
     asyncio.run(seed_eval_cases())
     asyncio.run(seed_observability_demo())
 

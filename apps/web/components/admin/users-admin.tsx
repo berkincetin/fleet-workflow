@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import type { components } from "@fleet/shared";
+import { Users } from "lucide-react";
+import { EmptyState } from "@/components/layout/empty-state";
 
 type UserOut = components["schemas"]["UserOut"];
 type DepartmentOut = components["schemas"]["DepartmentOut"];
@@ -74,6 +76,13 @@ export function UsersAdmin({
         <CardTitle>{t("usersTitle")}</CardTitle>
       </CardHeader>
       <CardContent>
+        {users.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title={t("emptyUsersTitle")}
+            description={t("emptyUsersDesc")}
+          />
+        ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -148,6 +157,7 @@ export function UsersAdmin({
             ))}
           </TableBody>
         </Table>
+        )}
       </CardContent>
     </Card>
   );

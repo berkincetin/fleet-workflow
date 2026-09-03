@@ -74,6 +74,18 @@ class N8nClient:
     async def get_workflow(self, workflow_id: str) -> N8nResult:
         return await self._request("GET", f"/api/v1/workflows/{workflow_id}")
 
+    async def create_workflow(self, payload: dict[str, Any]) -> N8nResult:
+        """Deploy a compiled recipe (task 13.4). n8n's public API rejects
+        read-only fields like `active` on create, so the compiler never emits
+        them — activation is a separate call."""
+        return await self._request("POST", "/api/v1/workflows", json=payload)
+
+    async def update_workflow(self, workflow_id: str, payload: dict[str, Any]) -> N8nResult:
+        return await self._request("PUT", f"/api/v1/workflows/{workflow_id}", json=payload)
+
+    async def delete_workflow(self, workflow_id: str) -> N8nResult:
+        return await self._request("DELETE", f"/api/v1/workflows/{workflow_id}")
+
     async def set_active(self, workflow_id: str, active: bool) -> N8nResult:
         suffix = "activate" if active else "deactivate"
         return await self._request("POST", f"/api/v1/workflows/{workflow_id}/{suffix}")

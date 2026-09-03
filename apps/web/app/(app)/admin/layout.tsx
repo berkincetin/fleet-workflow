@@ -1,7 +1,8 @@
 import { getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
+import { AdminTabs, type AdminTab } from "@/components/admin/admin-tabs";
+import { PageHeader } from "@/components/layout/page-header";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const t = await getTranslations("admin");
@@ -12,36 +13,28 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     return <p className="text-sm text-[var(--muted-foreground)]">{t("noAccess")}</p>;
   }
 
+  const tabs: AdminTab[] = [{ href: "/admin/agents", label: t("agents") }];
+  if (can(roles, "manage_platform")) {
+    tabs.push(
+      { href: "/admin/models", label: t("models") },
+      { href: "/admin/api-keys", label: t("apiKeys") },
+      { href: "/admin/users", label: t("users") },
+      { href: "/admin/budgets", label: t("budgets") },
+      { href: "/admin/cost", label: t("cost") },
+      { href: "/admin/audit", label: t("audit") },
+      { href: "/admin/services", label: t("services") },
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold">{t("title")}</h1>
-      <nav className="flex gap-4 border-b border-[var(--border)] text-sm">
-        <Link href="/admin/agents" className="px-1 pb-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
-          {t("agents")}
-        </Link>
-        {can(roles, "manage_platform") && (
-          <>
-            <Link href="/admin/models" className="px-1 pb-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
-              {t("models")}
-            </Link>
-            <Link href="/admin/api-keys" className="px-1 pb-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
-              {t("apiKeys")}
-            </Link>
-            <Link href="/admin/users" className="px-1 pb-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
-              {t("users")}
-            </Link>
-            <Link href="/admin/budgets" className="px-1 pb-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
-              {t("budgets")}
-            </Link>
-            <Link href="/admin/cost" className="px-1 pb-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
-              {t("cost")}
-            </Link>
-            <Link href="/admin/audit" className="px-1 pb-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
-              {t("audit")}
-            </Link>
-          </>
-        )}
-      </nav>
+      <PageHeader
+        title={t("title")}
+        intro={t("intro")}
+        howToLabel={t("howToLabel")}
+        howTo={t.raw("howTo") as string[]}
+      />
+      <AdminTabs tabs={tabs} />
       {children}
     </div>
   );

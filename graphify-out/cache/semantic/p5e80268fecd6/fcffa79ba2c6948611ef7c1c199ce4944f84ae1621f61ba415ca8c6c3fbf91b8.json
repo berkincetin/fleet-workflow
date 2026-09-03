@@ -1,0 +1,1 @@
+{"nodes": [{"id": "infra_compose_promtail_promtail_config", "label": "Promtail Config", "file_type": "code", "source_file": "infra/compose/promtail/promtail-config.yml"}], "edges": [], "hyperedges": []}

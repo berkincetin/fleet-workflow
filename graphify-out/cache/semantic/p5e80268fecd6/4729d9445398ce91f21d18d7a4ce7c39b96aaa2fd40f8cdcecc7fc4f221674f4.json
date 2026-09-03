@@ -1,0 +1,1 @@
+{"nodes": [{"id": "github_workflows_release", "label": "Release Workflow", "file_type": "code", "source_file": ".github/workflows/release.yml", "rationale": "Tag-triggered release pipeline (v*) that builds and pushes the release image after checks pass."}], "edges": [], "hyperedges": []}

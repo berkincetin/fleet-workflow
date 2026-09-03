@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import type { components } from "@fleet/shared";
+import { Cpu } from "lucide-react";
+import { EmptyState } from "@/components/layout/empty-state";
 
 type ModelOut = components["schemas"]["ModelOut"];
 
@@ -94,6 +96,13 @@ export function ModelsAdmin({ initialModels }: { initialModels: ModelOut[] }) {
           </Button>
         </div>
 
+        {models.length === 0 ? (
+          <EmptyState
+            icon={Cpu}
+            title={t("emptyModelsTitle")}
+            description={t("emptyModelsDesc")}
+          />
+        ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -123,6 +132,7 @@ export function ModelsAdmin({ initialModels }: { initialModels: ModelOut[] }) {
             ))}
           </TableBody>
         </Table>
+        )}
         <p className="text-xs text-[var(--muted-foreground)]">{t("clearanceLegend")}</p>
       </CardContent>
     </Card>

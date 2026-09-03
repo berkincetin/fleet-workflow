@@ -9,7 +9,12 @@ down: ## stop the dev stack
 	$(COMPOSE) down
 
 api: ## hot-reload the Fleet API (uvicorn --reload) on :8000
-	uv run uvicorn fleet_api.app:create_app --factory --reload --port 8000
+# --host 0.0.0.0 is deliberate: uvicorn's default binds 127.0.0.1 only, which
+# during Sprint 13 left the web shell's server-side fetch unable to reach the
+# API (ECONNREFUSED -> a Next.js digest error on /automations). Binding all
+# IPv4 interfaces also makes the API reachable from a container or another host
+# on the LAN, which the plain default is not.
+	uv run uvicorn fleet_api.app:create_app --factory --reload --host 0.0.0.0 --port 8000
 
 web: ## hot-reload the Next.js web shell on :3000
 	pnpm --filter web dev

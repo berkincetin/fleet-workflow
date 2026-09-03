@@ -1628,3 +1628,66 @@ Notes:
   (its previously-open `chat-demo-path` item is now recorded as fixed).
 - **Remaining for the next session:** watch the required CI checks on PR #19 and merge only
   once they are green. Everything else for Sprint 13 is done and verified.
+
+## 2026-09-03 - Sprint 13 leftover open items (eval sensitivity, live-test teardown, make api) - DONE
+
+Built: three recorded-but-unfixed items from `docs/reports/sprint-13.md` §4, none of them
+Sprint 13 task scope (all 13.1-13.7 were already DONE and PR #19's five CI checks green):
+- `evals/runner.py` - the RAG eval now reads the agent's **real** `sensitivity` from the DB
+  row it already queries instead of hard-coding `"internal"`. Fixed in *both* agent-derived
+  RAG paths: `run_agent_eval` (support_copilot et al.) and `run_hr_agent_eval`'s
+  `qa_grounding` branch; `_run_case` takes `sensitivity` as a required keyword.
+- `tests/integration/test_chat_live.py` - added `_purge_live_chat_agents()`, called from a
+  `finally`, which unwinds the FK chain (feedback -> messages -> conversations ->
+  prompt_versions/approvals -> agents) for every `live-chat-agent-%` row.
+- `Makefile` - `make api` now passes `--host 0.0.0.0`.
+
+Verified (dev stack up: postgres/keycloak/litellm/qdrant reachable):
+- **Eval reads the real sensitivity - PASS, mutation-tested.** `make eval AGENT=support_copilot`
+  = 100% (90% required). Then set the row to `sensitivity='pii'` - reproducing the exact
+  Sprint 13 drift - and the eval **failed loudly**: `GatewayError: gateway embed call failed
+  for model 'local-embeddings'`, i.e. it now routes exactly as live chat did. Before this
+  change the same drift scored 100%. Row restored to `internal`, eval re-run: 100%.
+  This closes the harness/live-path gap flagged in the sprint report.
+- **Teardown leaves nothing - PASS, mutation-tested.** 8 leftover `live-chat-agent-*` rows
+  existed beforehand; after one run: 0 agents, and 0 orphaned conversations/messages/feedback
+  (checked with LEFT JOIN counts). Then forced an `AssertionError` right after the feedback
+  POST: the test failed as intended and still left **0** rows, proving the `finally` path.
+  Mutation reverted; test re-run green.
+- **`--host 0.0.0.0` - PASS, but the reported cause did not reproduce (see Issues).**
+- Gate: ruff clean, unit **578 passed**, security **85 passed**, mypy `apps` 18 (documented
+  baseline, 0 new), `evals/runner.py` 3 errors before and 3 after my edit - verified by
+  stashing the diff, so **0 new**.
+
+Issues (symptom -> root cause -> resolution):
+- **The Makefile comment I first wrote was wrong, and measuring caught it.** I repeated the
+  sprint report's causal claim - that Node 18+ resolves `localhost` to `::1` and so gets
+  ECONNREFUSED against uvicorn's default bind. Measured on this machine: `0.0.0.0` is
+  IPv4-only (`http://[::1]:8010/healthz` = no response), and Node's `fetch('http://localhost:...')`
+  **succeeded against the default `127.0.0.1` bind too** - undici tries both resolved
+  addresses and falls back to IPv4. So the default is not broken here and the ECONNREFUSED
+  had some other trigger. Kept the `--host 0.0.0.0` flag (it is what actually unblocked the
+  e2e mid-sprint, and it makes the API reachable from a container/LAN, which the default is
+  not) but **rewrote the comment** to state that history instead of an unverified mechanism.
+- **`make eval AGENT=hr_agent` fails before reaching my change - pre-existing, environmental.**
+  Two distinct things: (1) `python -m evals.runner` cannot import `evals/synthetic_images.py`
+  (sibling import - only resolves via `python evals/runner.py`, which is what `make eval`
+  actually uses; my invocation was wrong, not the code); (2) via the correct entrypoint it
+  then fails with `GatewayError ... model 'local-reasoning'` because **Ollama is not running**
+  (`localhost:11434` unreachable, no container) - the HR extraction cases need
+  `PROFILE=ollama`. Both are upstream of the `qa_grounding` branch I edited, so that branch
+  was not exercised end to end. Verified my HR-path edit directly instead: the new
+  `SELECT id, collection_ids, sensitivity` + 3-tuple unpack returns
+  `agent_id=6 collection_ids=[4] sensitivity='internal'` against the live DB.
+  **Not fixed, not in scope** - recorded as an open item.
+
+Notes:
+- The two remaining hard-coded sensitivities in `runner.py` were reviewed and deliberately
+  left: the OCR tool is pinned to `confidential` (local lane by design) and the brand-voice
+  LLM-judge `utility` call is not an agent RAG path. Only the two agent-derived paths were wrong.
+- PR #19 was **not merged** - the user chose to work these side items instead. All five
+  required checks (lint, unit, integration, security, build-image) pass on `b369222` and the
+  PR is MERGEABLE/CLEAN, so it is ready whenever they want it.
+- Still open, unchanged: `FLEET_SLACK_WEBHOOK_URL` empty (no live `slack.post` verification),
+  superpowers plugin enabled in settings but not installed on this machine, and the
+  `hr_agent` eval needing `PROFILE=ollama`.

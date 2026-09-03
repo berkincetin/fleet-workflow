@@ -66,6 +66,59 @@ def _parse_sse(raw: bytes) -> list[tuple[str, dict]]:
     return events
 
 
+async def _purge_live_chat_agents() -> None:
+    """Delete every ``live-chat-agent-*`` row and everything that references it.
+
+    The API's ``DELETE /v1/admin/agents/{id}`` is a hard delete, so it trips the
+    FKs from ``conversations`` (and thus ``messages``/``feedback``) that this test
+    necessarily creates. Cleaning up therefore has to go through the DB in
+    dependency order: feedback -> messages -> conversations -> prompt_versions /
+    approvals -> agents. Run unconditionally after the test so a failing
+    assertion cannot leak rows either; it also sweeps rows left behind by
+    earlier runs, which used to inflate the Home dashboard's "active agents"
+    count.
+    """
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    engine = create_async_engine(API_DATABASE_URL)
+    try:
+        async with engine.begin() as conn:
+            ids = [
+                r[0]
+                for r in (
+                    await conn.execute(
+                        text("SELECT id FROM agents WHERE name LIKE 'live-chat-agent-%'")
+                    )
+                ).all()
+            ]
+            if not ids:
+                return
+            await conn.execute(
+                text(
+                    "DELETE FROM feedback WHERE message_id IN ("
+                    "  SELECT m.id FROM messages m"
+                    "  JOIN conversations c ON c.id = m.conv_id"
+                    "  WHERE c.agent_id = ANY(:ids))"
+                ),
+                {"ids": ids},
+            )
+            await conn.execute(
+                text(
+                    "DELETE FROM messages WHERE conv_id IN ("
+                    "  SELECT id FROM conversations WHERE agent_id = ANY(:ids))"
+                ),
+                {"ids": ids},
+            )
+            for table in ("conversations", "prompt_versions", "approvals"):
+                await conn.execute(
+                    text(f"DELETE FROM {table} WHERE agent_id = ANY(:ids)"), {"ids": ids}
+                )
+            await conn.execute(text("DELETE FROM agents WHERE id = ANY(:ids)"), {"ids": ids})
+    finally:
+        await engine.dispose()
+
+
 def test_chat_stream_renders_answer_and_feedback_lands_in_langfuse() -> None:
     os.environ["FLEET_DATABASE_URL"] = API_DATABASE_URL
     os.environ["FLEET_OIDC_ISSUER"] = f"{KEYCLOAK_BASE}/realms/fleet"
@@ -133,9 +186,9 @@ def test_chat_stream_renders_answer_and_feedback_lands_in_langfuse() -> None:
                 json={"score": 1, "reason": "clear and correct"},
             )
             assert feedback.status_code == 201, feedback.text
-            # Cleanup: conversations/messages/feedback reference this agent's
-            # conversation via FK, so leave the agent row (dev-only, harmless)
-            # rather than cascading deletes the API doesn't expose.
+            # Cleanup happens in _purge_live_chat_agents() below, outside this
+            # client block and in a finally: the API exposes no cascading delete,
+            # so the FK chain is unwound directly against the dev DB.
 
         # Poll Langfuse briefly — the score POST is synchronous in our code but
         # Langfuse's own ingestion can lag slightly behind the write.
@@ -149,4 +202,10 @@ def test_chat_stream_renders_answer_and_feedback_lands_in_langfuse() -> None:
                 await asyncio.sleep(1)
             pytest.fail(f"feedback score never appeared on Langfuse trace {trace_id}")
 
-    asyncio.run(_run())
+    async def _main() -> None:
+        try:
+            await _run()
+        finally:
+            await _purge_live_chat_agents()
+
+    asyncio.run(_main())

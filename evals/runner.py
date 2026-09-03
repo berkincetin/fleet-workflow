@@ -173,7 +173,9 @@ def evaluate_case(case: EvalCase, answer: RagAnswer) -> CaseResult:
     return CaseResult(id=case.id, passed=True, reason="ok")
 
 
-async def _run_case(case: EvalCase, *, agent_id: int, collection_ids: list[int]) -> RagAnswer:
+async def _run_case(
+    case: EvalCase, *, agent_id: int, collection_ids: list[int], sensitivity: str
+) -> RagAnswer:
     """Run one case through the real Support Copilot RAG pipeline."""
     from core.llm.factory import build_client
     from fleet_rag.query.retrieve import Hit
@@ -209,7 +211,7 @@ async def _run_case(case: EvalCase, *, agent_id: int, collection_ids: list[int])
         embed_client=llm_client,
         reasoning_client=llm_client,
         config=AgentQueryConfig(top_k=5),
-        sensitivity="internal",
+        sensitivity=sensitivity,
         agent_id=str(agent_id),
     )
     return RagAnswer(
@@ -237,17 +239,23 @@ async def run_agent_eval(agent_name: str) -> tuple[list[CaseResult], float, floa
     async with engine.connect() as conn:
         row = (
             await conn.execute(
-                text("SELECT id, collection_ids FROM agents WHERE name = :n"), {"n": agent_name}
+                text("SELECT id, collection_ids, sensitivity FROM agents WHERE name = :n"),
+                {"n": agent_name},
             )
         ).first()
     await engine.dispose()
     if row is None:
         raise RuntimeError(f"agent {agent_name!r} not seeded — run `make seed` first")
-    agent_id, collection_ids = int(row[0]), list(row[1])
+    agent_id, collection_ids, sensitivity = int(row[0]), list(row[1]), str(row[2])
 
     results = []
     for case in cases:
-        answer = await _run_case(case, agent_id=agent_id, collection_ids=collection_ids)
+        answer = await _run_case(
+            case,
+            agent_id=agent_id,
+            collection_ids=collection_ids,
+            sensitivity=sensitivity,
+        )
         results.append(evaluate_case(case, answer))
 
     pass_rate = sum(1 for r in results if r.passed) / len(results) if results else 0.0
@@ -865,13 +873,20 @@ async def run_hr_agent_eval() -> tuple[list[CaseResult], float, float]:
     async with engine.connect() as conn:
         row = (
             await conn.execute(
-                text("SELECT id, collection_ids FROM agents WHERE name = 'hr_onboarding'")
+                text(
+                    "SELECT id, collection_ids, sensitivity FROM agents "
+                    "WHERE name = 'hr_onboarding'"
+                )
             )
         ).first()
     await engine.dispose()
     if row is None:
         raise RuntimeError("hr_onboarding agent not seeded — run `make seed` first")
-    onboarding_agent_id, onboarding_collection_ids = int(row[0]), list(row[1])
+    onboarding_agent_id, onboarding_collection_ids, onboarding_sensitivity = (
+        int(row[0]),
+        list(row[1]),
+        str(row[2]),
+    )
 
     llm_client = await build_client()
     results: list[CaseResult] = []
@@ -888,7 +903,10 @@ async def run_hr_agent_eval() -> tuple[list[CaseResult], float, float]:
                 must_cite=case.must_cite,
             )
             answer = await _run_case(
-                qa_case, agent_id=onboarding_agent_id, collection_ids=onboarding_collection_ids
+                qa_case,
+                agent_id=onboarding_agent_id,
+                collection_ids=onboarding_collection_ids,
+                sensitivity=onboarding_sensitivity,
             )
             results.append(evaluate_case(qa_case, answer))
         else:

@@ -155,6 +155,23 @@ Two things follow from it:
   for the RAG path.** `support_copilot` scores 100% while live chat is broken. That gap
   between the eval harness and the real call path is worth its own fix.
 
+> **Update (2026-09-03, after the sprint close).** Two of the items below are now fixed,
+> outside Sprint 13 task scope:
+> - **The eval/live-path sensitivity gap is closed.** `evals/runner.py` now reads the agent's
+>   real `sensitivity` from the DB in both agent-derived RAG paths (`run_agent_eval` and the
+>   HR `qa_grounding` branch) instead of hard-coding `"internal"`. Mutation-tested: with the
+>   row set back to `pii` the eval fails on `local-embeddings` exactly as live chat did, where
+>   it previously still scored 100%.
+> - **The `live-chat-agent-*` leak is fixed.** `test_chat_live.py` unwinds the FK chain in a
+>   `finally`; a run now ends with 0 such agents and 0 orphaned conversations/messages/feedback,
+>   including when the test fails mid-way.
+>
+> `make api` also gained `--host 0.0.0.0`. Note that the IPv6/`::1` explanation recorded for
+> that e2e failure **did not reproduce** when measured afterwards — Node's `fetch` reaches the
+> default `127.0.0.1` bind fine — so the flag is kept for reachability, not for that mechanism.
+> Still open: no live `slack.post` verification (`FLEET_SLACK_WEBHOOK_URL` empty), superpowers
+> not installed, and `make eval AGENT=hr_agent` needing `PROFILE=ollama`.
+
 **Also noted, not acted on**
 
 - 7 leftover `live-chat-agent-*` rows from integration runs inflate the Home dashboard's

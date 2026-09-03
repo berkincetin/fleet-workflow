@@ -33,9 +33,13 @@ seed: ## load synthetic data + analytics fixture views
 seed-docs: ## ingest Support Copilot demo KB docs into cs-help-center/cs-procedures (run after seed)
 	uv run python -m fleet_rag.seed_docs
 
+# MSYS_NO_PATHCONV=1 keeps Git Bash / MSYS on Windows from rewriting the
+# container-side path `/import/workflows` into a host path
+# (`C:/Program Files/Git/import/workflows`). Without it the n8n CLI reports
+# "Importing 0 workflows" and exits 0 — a silent no-op, not an error.
 n8n-import: ## import + activate the workflows/*.json exports into n8n (run once per fresh stack, task 6.5.4)
-	$(COMPOSE) exec n8n-main n8n import:workflow --separate --input=/import/workflows
-	$(COMPOSE) exec n8n-main n8n update:workflow --all --active=true
+	MSYS_NO_PATHCONV=1 $(COMPOSE) exec n8n-main n8n import:workflow --separate --input=/import/workflows
+	MSYS_NO_PATHCONV=1 $(COMPOSE) exec n8n-main n8n update:workflow --all --active=true
 	$(COMPOSE) restart n8n-main n8n-worker
 
 seed-demo: migrate seed seed-docs ## one-shot demo data: schema + checkpointer + synthetic data + KB ingest (run after `make dev`, before opening the app)
